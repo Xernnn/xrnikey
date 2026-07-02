@@ -1,0 +1,63 @@
+# Maintainer: VietKey Team
+pkgname=vietkey
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="Production-grade bilingual Vietnamese-English IME for Linux (Fcitx5 + IBus)"
+arch=('x86_64' 'aarch64')
+url="https://github.com/user/vietkey"
+license=('GPL3')
+depends=(
+    'fcitx5'
+    'fcitx5-gtk'
+    'fcitx5-qt'
+    'libibus'
+    'python'
+    'python-gobject'
+    'boost'
+    'noto-fonts'
+)
+makedepends=(
+    'cmake'
+    'extra-cmake-modules'
+    'python-pip'
+    'catch2'
+)
+optdepends=(
+    'fcitx5-configtool: GUI configuration'
+    'noto-fonts-cjk: recommended Vietnamese font'
+    'noto-fonts-emoji: emoji rendering'
+)
+source=("$pkgname-$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+    cd "$pkgname-$pkgver"
+    cmake -B build \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DVIETKEY_ENABLE_TESTS=ON \
+        -DVIETKEY_DATA_DIR=/usr/share/vietkey
+    cmake --build build -- -j$(nproc)
+}
+
+check() {
+    cd "$pkgname-$pkgver/build"
+    ctest --output-on-failure
+}
+
+package() {
+    cd "$pkgname-$pkgver"
+    DESTDIR="$pkgdir" cmake --install build
+
+    # Build dictionary if not already built
+    if [ ! -f "$pkgdir/usr/share/vietkey/dict/vi.dict" ]; then
+        bash data/dict/build_dict.sh
+        install -Dm644 build/data/dict/vi.dict "$pkgdir/usr/share/vietkey/dict/vi.dict"
+    fi
+
+    # Generate emoji data if needed
+    if [ ! -f "$pkgdir/usr/share/vietkey/emoji/emoji.json" ]; then
+        python3 data/emoji/generate.py
+        install -Dm644 data/emoji/emoji.json "$pkgdir/usr/share/vietkey/emoji/emoji.json"
+    fi
+}

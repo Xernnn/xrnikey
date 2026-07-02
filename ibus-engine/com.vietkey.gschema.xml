@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="com.vietkey" path="/com/vietkey/">
+    <key name="input-mode" type="s">
+      <default>'Telex'</default>
+      <summary>Input mode</summary>
+      <description>Telex or VNI input method</description>
+    </key>
+    <key name="auto-switch" type="b">
+      <default>true</default>
+      <summary>Auto bilingual switch</summary>
+    </key>
+    <key name="prediction-enabled" type="b">
+      <default>true</default>
+      <summary>Enable word prediction</summary>
+    </key>
+    <key name="emoji-enabled" type="b">
+      <default>true</default>
+      <summary>Enable emoji input</summary>
+    </key>
+    <key name="emoji-trigger" type="s">
+      <default>':'</default>
+      <summary>Emoji trigger character</summary>
+    </key>
+    <key name="auto-correct" type="b">
+      <default>true</default>
+      <summary>Enable autocorrect</summary>
+    </key>
+  </schema>
+</schemalist>

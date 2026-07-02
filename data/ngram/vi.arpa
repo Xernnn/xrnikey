@@ -1,0 +1,132 @@
+\data\
+ngram 1: type=unigrams	count=50
+ngram 2: type=bigrams	count=40
+ngram 3: type=trigrams	count=30
+
+\1-grams:
+-2.5000	tôi
+-2.8000	bạn
+-2.6000	là
+-2.7000	có
+-2.9000	không
+-3.0000	được
+-2.4000	một
+-2.5000	người
+-2.6000	nhà
+-2.7000	nước
+-2.8000	việt
+-2.9000	nam
+-3.0000	xin
+-3.1000	chào
+-3.2000	cảm
+-3.3000	ơn
+-2.3000	rất
+-2.4000	nhiều
+-2.5000	lớn
+-2.6000	nhỏ
+-2.7000	đẹp
+-2.8000	tốt
+-2.9000	xấu
+-3.0000	học
+-3.1000	làm
+-3.2000	ăn
+-3.3000	uống
+-3.4000	đi
+-3.5000	về
+-2.2000	thế
+-2.3000	giới
+-2.4000	cuộc
+-2.5000	sống
+-2.6000	thời
+-2.7000	gian
+-2.8000	năm
+-2.9000	tháng
+-3.0000	ngày
+-3.1000	đêm
+-3.2000	sáng
+-3.3000	chiều
+-3.4000	tối
+-2.1000	hạnh
+-2.2000	phúc
+-2.3000	yêu
+-2.4000	thương
+-2.5000	gia
+-2.6000	đình
+-2.7000	bạn
+-2.8000	bè
+
+\2-grams:
+-3.5000	tôi rất
+-3.6000	rất vui
+-3.7000	xin chào
+-3.8000	cảm ơn
+-3.9000	thế giới
+-4.0000	việt nam
+-4.1000	hạnh phúc
+-4.2000	tôi yêu
+-4.3000	yêu bạn
+-4.4000	nhà nước
+-4.5000	người việt
+-3.4000	có thể
+-3.5000	không thể
+-3.6000	được rồi
+-3.7000	một ngày
+-3.8000	cuộc sống
+-3.9000	thời gian
+-4.0000	học tập
+-4.1000	làm việc
+-4.2000	ăn uống
+-4.3000	đi về
+-4.4000	rất nhiều
+-4.5000	rất đẹp
+-4.6000	rất tốt
+-3.3000	tôi là
+-3.4000	bạn là
+-3.5000	đây là
+-3.6000	đó là
+-3.7000	nó là
+-3.8000	ai là
+-3.9000	gì là
+-4.0000	sao là
+-4.1000	tại sao
+-4.2000	như thế
+-4.3000	thế nào
+-4.4000	bao nhiêu
+-4.5000	bao giờ
+-4.6000	ở đâu
+-4.7000	làm sao
+-4.8000	thế giới
+
+\3-grams:
+-5.0000	tôi rất vui
+-5.1000	xin chào bạn
+-5.2000	cảm ơn bạn
+-5.3000	tôi yêu bạn
+-5.4000	việt nam đẹp
+-5.5000	hạnh phúc gia đình
+-5.6000	cuộc sống hạnh phúc
+-5.7000	thời gian trôi qua
+-5.8000	học tập chăm chỉ
+-5.9000	làm việc chăm chỉ
+-6.0000	ăn uống đầy đủ
+-6.1000	đi về nhà
+-6.2000	một ngày đẹp
+-6.3000	rất nhiều người
+-6.4000	rất đẹp quá
+-6.5000	tôi là người
+-6.6000	bạn là ai
+-6.7000	đây là nhà
+-6.8000	tại sao vậy
+-6.9000	như thế nào
+-7.0000	bao nhiêu tiền
+-7.1000	bao giờ về
+-7.2000	ở đâu vậy
+-7.3000	làm sao bây giờ
+-7.4000	thế giới này
+-7.5000	người việt nam
+-7.6000	nhà nước việt
+-7.7000	xin chào thế
+-7.8000	chào thế giới
+-7.9000	tôi rất thích
+
+\end\

@@ -1,0 +1,17 @@
+[
+  {"char": "😀", "name": "grinning face", "shortcode": ":grinning:", "tags": "happy smile", "vi": "cười mỉm"},
+  {"char": "😃", "name": "grinning face with big eyes", "shortcode": ":smiley:", "tags": "happy smile", "vi": "cười to"},
+  {"char": "😄", "name": "grinning face with smiling eyes", "shortcode": ":smile:", "tags": "happy smile", "vi": "cười vui"},
+  {"char": "😁", "name": "beaming face with smiling eyes", "shortcode": ":grin:", "tags": "happy smile", "vi": "cười tươi"},
+  {"char": "😊", "name": "smiling face with smiling eyes", "shortcode": ":blush:", "tags": "happy smile shy", "vi": "mỉm cười"},
+  {"char": "😅", "name": "grinning face with sweat", "shortcode": ":sweat_smile:", "tags": "relief smile", "vi": "cười gượng"},
+  {"char": "😂", "name": "face with tears of joy", "shortcode": ":joy:", "tags": "laugh cry", "vi": "cười ra nước mắt"},
+  {"char": "🤣", "name": "rolling on the floor laughing", "shortcode": ":rofl:", "tags": "laugh", "vi": "cười lăn"},
+  {"char": "❤️", "name": "red heart", "shortcode": ":heart:", "tags": "love", "vi": "trái tim"},
+  {"char": "👍", "name": "thumbs up", "shortcode": ":thumbsup:", "tags": "approve ok", "vi": "tán thành"},
+  {"char": "👎", "name": "thumbs down", "shortcode": ":thumbsdown:", "tags": "disapprove", "vi": "không tán thành"},
+  {"char": "🇻🇳", "name": "flag Vietnam", "shortcode": ":flag_vn:", "tags": "vietnam flag", "vi": "cờ Việt Nam"},
+  {"char": "🎉", "name": "party popper", "shortcode": ":tada:", "tags": "celebration party", "vi": "ăn mừng"},
+  {"char": "🔥", "name": "fire", "shortcode": ":fire:", "tags": "hot flame", "vi": "lửa"},
+  {"char": "✅", "name": "check mark button", "shortcode": ":white_check_mark:", "tags": "done ok", "vi": "hoàn thành"}
+]

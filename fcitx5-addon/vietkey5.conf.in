@@ -1,0 +1,14 @@
+[Addon]
+Name=VietKey
+Name[vi]=VietKey
+Category=InputMethod
+Version=1.0.0
+OnDemand=True
+Configurable=True
+
+[InputMethod]
+Label=VietKey
+Label[vi]=VietKey
+LangCode=vi
+Addon=vietkey5
+Icon=vietkey
