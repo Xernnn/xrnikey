@@ -1,4 +1,4 @@
-#include "vietkey.h"
+#include "xrnikey.h"
 #include <fstream>
 #include <string>
 #include <vector>
@@ -13,7 +13,7 @@ struct EmojiEntry {
     std::vector<std::string> vi_tags;
 };
 
-struct VKEmojiDBImpl {
+struct XKEmojiDBImpl {
     std::vector<EmojiEntry> entries;
 };
 
@@ -28,10 +28,10 @@ static bool fuzzy_match(const std::string& query, const std::string& target) {
 
 extern "C" {
 
-VKEmojiDB* vk_emoji_load(const char* json_path) {
+XKEmojiDB* xk_emoji_load(const char* json_path) {
     if (!json_path) return nullptr;
 
-    auto* db = new VKEmojiDBImpl{};
+    auto* db = new XKEmojiDBImpl{};
     std::ifstream f(json_path);
     if (!f.is_open()) { delete db; return nullptr; }
 
@@ -70,18 +70,18 @@ VKEmojiDB* vk_emoji_load(const char* json_path) {
         pos++;
     }
 
-    return reinterpret_cast<VKEmojiDB*>(db);
+    return reinterpret_cast<XKEmojiDB*>(db);
 }
 
-void vk_emoji_free(VKEmojiDB* db) {
-    if (db) delete reinterpret_cast<VKEmojiDBImpl*>(db);
+void xk_emoji_free(XKEmojiDB* db) {
+    if (db) delete reinterpret_cast<XKEmojiDBImpl*>(db);
 }
 
-int vk_emoji_search(VKEmojiDB* db, const char* query,
+int xk_emoji_search(XKEmojiDB* db, const char* query,
                     char** chars, char** names, int max_results) {
     if (!db || !query || !chars || !names || max_results <= 0) return 0;
 
-    auto* d = reinterpret_cast<VKEmojiDBImpl*>(db);
+    auto* d = reinterpret_cast<XKEmojiDBImpl*>(db);
     std::string q(query);
     for (char& c : q) c = static_cast<char>(tolower(static_cast<unsigned char>(c)));
 

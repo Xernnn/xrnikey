@@ -1,8 +1,8 @@
-#include "vietkey_internal.h"
+#include "xrnikey_internal.h"
 #include <unordered_set>
 #include <string>
 
-namespace vietkey {
+namespace xrnikey {
 
 static const char* ONSETS[] = {
     "", "b", "c", "ch", "d", "đ", "g", "gh", "gi", "h", "k", "kh", "l",
@@ -157,13 +157,13 @@ bool is_valid_vn_syllable(const std::string& word) {
     return match_syllable_structure(word);
 }
 
-} /* namespace vietkey */
+} /* namespace xrnikey */
 
 extern "C" {
 
-int vk_is_valid_syllable(const char* word) {
+int xk_is_valid_syllable(const char* word) {
     if (!word) return 0;
-    return vietkey::is_valid_vn_syllable(word) ? 1 : 0;
+    return xrnikey::is_valid_vn_syllable(word) ? 1 : 0;
 }
 
 } /* extern "C" */

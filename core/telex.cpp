@@ -1,11 +1,11 @@
-#include "vietkey_internal.h"
+#include "xrnikey_internal.h"
 #include <algorithm>
 #include <cctype>
 #include <vector>
 
-namespace vietkey {
+namespace xrnikey {
 
-static void push_undo(VKStateImpl* s) {
+static void push_undo(XKStateImpl* s) {
     UndoEntry e;
     e.buffer = s->buffer;
     e.tone = s->tone;
@@ -13,12 +13,12 @@ static void push_undo(VKStateImpl* s) {
     if (s->undo_stack.size() > 50) s->undo_stack.erase(s->undo_stack.begin());
 }
 
-static void finalize_syllable(VKStateImpl* s, VKResult* r) {
+static void finalize_syllable(XKStateImpl* s, XKResult* r) {
     std::string out = apply_tone_to_syllable(s->buffer, s->tone);
     out = nfc_compose(out);
     std::strncpy(r->commit, out.c_str(), sizeof(r->commit) - 1);
     s->buffer.clear();
-    s->tone = VK_TONE_NONE;
+    s->tone = XK_TONE_NONE;
     s->passthrough_word = false;
     s->char_count_no_vowel = 0;
 }
@@ -80,7 +80,7 @@ static void replace_glyph(std::string& buf, const std::vector<WGlyph>& gs,
 
 /* Returns false when there is no nucleus vowel to mark, so the caller can
  * emit a literal 'w' (leading "w", English words like "new"). */
-static bool apply_w_mod(VKStateImpl* s) {
+static bool apply_w_mod(XKStateImpl* s) {
     std::string& buf = s->buffer;
 
     std::vector<WGlyph> gs;
@@ -132,7 +132,7 @@ static bool apply_w_mod(VKStateImpl* s) {
     return false;
 }
 
-void telex_backspace(VKStateImpl* s, VKResult* r) {
+void telex_backspace(XKStateImpl* s, XKResult* r) {
     if (!s->undo_stack.empty()) {
         UndoEntry e = s->undo_stack.back();
         s->undo_stack.pop_back();
@@ -140,7 +140,7 @@ void telex_backspace(VKStateImpl* s, VKResult* r) {
         s->tone = e.tone;
     } else if (!s->buffer.empty()) {
         s->buffer.pop_back();
-        if (s->buffer.empty()) s->tone = VK_TONE_NONE;
+        if (s->buffer.empty()) s->tone = XK_TONE_NONE;
     } else {
         /* Nothing buffered — let the real backspace through to the app. */
         return;
@@ -155,7 +155,7 @@ void telex_backspace(VKStateImpl* s, VKResult* r) {
     r->consumed = 1;
 }
 
-void telex_process_char(VKStateImpl* s, char c, VKResult* r) {
+void telex_process_char(XKStateImpl* s, char c, XKResult* r) {
     char lc = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
 
     /* Decide English vs Vietnamese from the syllable shape typed SO FAR.
@@ -201,11 +201,11 @@ void telex_process_char(VKStateImpl* s, char c, VKResult* r) {
      * leading consonant (the 'x' in "xin", the 's' in "sinh"), not a tone
      * signal. */
     if (find_tone_vowel_index(s->buffer) >= 0) {
-        if (lc == 's') { push_undo(s); s->tone = VK_TONE_SAC; goto update; }
-        if (lc == 'f') { push_undo(s); s->tone = VK_TONE_HUYEN; goto update; }
-        if (lc == 'r') { push_undo(s); s->tone = VK_TONE_HOI; goto update; }
-        if (lc == 'x') { push_undo(s); s->tone = VK_TONE_NGA; goto update; }
-        if (lc == 'j') { push_undo(s); s->tone = VK_TONE_NANG; goto update; }
+        if (lc == 's') { push_undo(s); s->tone = XK_TONE_SAC; goto update; }
+        if (lc == 'f') { push_undo(s); s->tone = XK_TONE_HUYEN; goto update; }
+        if (lc == 'r') { push_undo(s); s->tone = XK_TONE_HOI; goto update; }
+        if (lc == 'x') { push_undo(s); s->tone = XK_TONE_NGA; goto update; }
+        if (lc == 'j') { push_undo(s); s->tone = XK_TONE_NANG; goto update; }
     }
 
     /* Vowel modifications */
@@ -264,4 +264,4 @@ update:
     r->consumed = 1;
 }
 
-} /* namespace vietkey */
+} /* namespace xrnikey */

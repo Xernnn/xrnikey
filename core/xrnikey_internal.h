@@ -1,14 +1,14 @@
-#ifndef VIETKEY_INTERNAL_H
-#define VIETKEY_INTERNAL_H
+#ifndef XRNIKEY_INTERNAL_H
+#define XRNIKEY_INTERNAL_H
 
-#include "vietkey.h"
+#include "xrnikey.h"
 #include <string>
 #include <vector>
 #include <cstdint>
 #include <cstring>
 #include <memory>
 
-namespace vietkey {
+namespace xrnikey {
 
 /* Unicode combining marks */
 constexpr char COMB_SAC[]   = "\xCC\x81";  /* U+0301 */
@@ -23,7 +23,7 @@ struct UndoEntry {
     int vowel_mod;
 };
 
-struct VKStateImpl {
+struct XKStateImpl {
     int mode;
     std::string buffer;
     std::string committed;
@@ -39,19 +39,19 @@ struct VKStateImpl {
     int last_key_time_ms;
     bool instant_commit;
 
-    VKStateImpl(int m) : mode(m), tone(VK_TONE_NONE), enabled(true),
+    XKStateImpl(int m) : mode(m), tone(XK_TONE_NONE), enabled(true),
         passthrough_word(false), char_count_no_vowel(0),
         history_idx(-1), double_press_escape(false),
         last_key(0), last_key_time_ms(0), instant_commit(false) {}
 };
 
 /* telex.cpp */
-void telex_process_char(VKStateImpl* s, char c, VKResult* r);
-void telex_backspace(VKStateImpl* s, VKResult* r);
+void telex_process_char(XKStateImpl* s, char c, XKResult* r);
+void telex_backspace(XKStateImpl* s, XKResult* r);
 
 /* vni.cpp */
-void vni_process_char(VKStateImpl* s, char c, VKResult* r);
-void vni_backspace(VKStateImpl* s, VKResult* r);
+void vni_process_char(XKStateImpl* s, char c, XKResult* r);
+void vni_backspace(XKStateImpl* s, XKResult* r);
 
 /* tone_placement.cpp */
 std::string apply_tone_to_syllable(const std::string& base, int tone);
@@ -66,7 +66,7 @@ int utf8_encode(uint32_t cp, char* out);
  * codepoint and fill r->delete_before / r->commit with the minimal
  * delete-then-insert to bring committed text in sync. Does not touch
  * r->preedit. */
-void diff_commit(const std::string& old_str, const std::string& new_str, VKResult* r);
+void diff_commit(const std::string& old_str, const std::string& new_str, XKResult* r);
 
 /* syllable_validator.cpp */
 bool is_valid_vn_syllable(const std::string& word);
@@ -79,6 +79,6 @@ bool is_vowel_char(char c);
 bool has_vietnamese_vowel_pattern(const std::string& s);
 uint32_t keysym_to_char(uint32_t keysym);
 
-} /* namespace vietkey */
+} /* namespace xrnikey */
 
-#endif /* VIETKEY_INTERNAL_H */
+#endif /* XRNIKEY_INTERNAL_H */

@@ -1,9 +1,9 @@
-#include "vietkey_internal.h"
+#include "xrnikey_internal.h"
 #include <cctype>
 
-namespace vietkey {
+namespace xrnikey {
 
-static void push_undo_vni(VKStateImpl* s) {
+static void push_undo_vni(XKStateImpl* s) {
     UndoEntry e;
     e.buffer = s->buffer;
     e.tone = s->tone;
@@ -11,7 +11,7 @@ static void push_undo_vni(VKStateImpl* s) {
     if (s->undo_stack.size() > 50) s->undo_stack.erase(s->undo_stack.begin());
 }
 
-static void apply_vni_vowel_mod(VKStateImpl* s, char vowel, int mod) {
+static void apply_vni_vowel_mod(XKStateImpl* s, char vowel, int mod) {
     std::string& buf = s->buffer;
     for (int i = static_cast<int>(buf.size()) - 1; i >= 0; --i) {
         char c = std::tolower(static_cast<unsigned char>(buf[i]));
@@ -38,7 +38,7 @@ static void apply_vni_vowel_mod(VKStateImpl* s, char vowel, int mod) {
     }
 }
 
-void vni_backspace(VKStateImpl* s, VKResult* r) {
+void vni_backspace(XKStateImpl* s, XKResult* r) {
     if (!s->undo_stack.empty()) {
         UndoEntry e = s->undo_stack.back();
         s->undo_stack.pop_back();
@@ -46,7 +46,7 @@ void vni_backspace(VKStateImpl* s, VKResult* r) {
         s->tone = e.tone;
     } else if (!s->buffer.empty()) {
         s->buffer.pop_back();
-        if (s->buffer.empty()) s->tone = VK_TONE_NONE;
+        if (s->buffer.empty()) s->tone = XK_TONE_NONE;
     } else {
         /* Nothing buffered — let the real backspace through to the app. */
         return;
@@ -61,7 +61,7 @@ void vni_backspace(VKStateImpl* s, VKResult* r) {
     r->consumed = 1;
 }
 
-void vni_process_char(VKStateImpl* s, char c, VKResult* r) {
+void vni_process_char(XKStateImpl* s, char c, XKResult* r) {
     /* Decide English vs Vietnamese from the syllable shape typed SO FAR.
      * Vietnamese cannot spell "wo-", "sh-", "hel-", so once the buffer has
      * left the space of possible Vietnamese syllables, every later key is
@@ -124,7 +124,7 @@ void vni_process_char(VKStateImpl* s, char c, VKResult* r) {
 
         if (digit == 0) {
             push_undo_vni(s);
-            s->tone = VK_TONE_NONE;
+            s->tone = XK_TONE_NONE;
             goto update;
         }
 
@@ -157,4 +157,4 @@ update:
     r->consumed = 1;
 }
 
-} /* namespace vietkey */
+} /* namespace xrnikey */

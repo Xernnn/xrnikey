@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# VietKey universal installer for non-Arch distros
+# Xrnikey universal installer for non-Arch distros
 set -euo pipefail
 
-VIETKEY_VERSION="1.0.0"
+XRNIKEY_VERSION="1.0.0"
 INSTALL_PREFIX="/usr/local"
-BUILD_DIR="/tmp/vietkey-build"
+BUILD_DIR="/tmp/xrnikey-build"
 
-log() { echo "[vietkey-install] $*"; }
+log() { echo "[xrnikey-install] $*"; }
 
 detect_distro() {
     if [ -f /etc/arch-release ]; then echo "arch"
@@ -56,12 +56,12 @@ build_and_install() {
     local src_dir
     src_dir="$(cd "$(dirname "$0")/.." && pwd)"
 
-    log "Building VietKey from $src_dir..."
+    log "Building Xrnikey from $src_dir..."
     cmake -B "$BUILD_DIR" \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_INSTALL_PREFIX="$INSTALL_PREFIX" \
-        -DVIETKEY_ENABLE_TESTS=ON \
-        -DVIETKEY_DATA_DIR="$INSTALL_PREFIX/share/vietkey" \
+        -DXRNIKEY_ENABLE_TESTS=ON \
+        -DXRNIKEY_DATA_DIR="$INSTALL_PREFIX/share/xrnikey" \
         -S "$src_dir"
 
     cmake --build "$BUILD_DIR" -- -j"$(nproc)"
@@ -76,16 +76,16 @@ build_and_install() {
 }
 
 run_setup() {
-    if command -v vk-setup >/dev/null 2>&1; then
-        log "Running vk-setup..."
-        vk-setup
+    if command -v xk-setup >/dev/null 2>&1; then
+        log "Running xk-setup..."
+        xk-setup
     else
-        log "vk-setup not found in PATH. Add $INSTALL_PREFIX/bin to PATH."
+        log "xk-setup not found in PATH. Add $INSTALL_PREFIX/bin to PATH."
     fi
 }
 
 main() {
-    log "VietKey Universal Installer v${VIETKEY_VERSION}"
+    log "Xrnikey Universal Installer v${XRNIKEY_VERSION}"
     log "==========================================="
 
     local distro
@@ -98,8 +98,8 @@ main() {
 
     log ""
     log "Installation complete!"
-    log "Log out and back in, then select VietKey as your input method."
-    log "Run 'vk-diagnose' to verify the installation."
+    log "Log out and back in, then select Xrnikey as your input method."
+    log "Run 'xk-diagnose' to verify the installation."
 }
 
 main "$@"

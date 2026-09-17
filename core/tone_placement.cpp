@@ -1,10 +1,10 @@
-#include "vietkey_internal.h"
+#include "xrnikey_internal.h"
 #include <map>
 #include <vector>
 #include <cstdlib>
 #include <cstring>
 
-namespace vietkey {
+namespace xrnikey {
 
 /* Every Vietnamese vowel identity (plain and already-modified) needs its own
  * row: â/ă/ê/ô/ơ/ư are distinct letters, not decorations on a/e/o/u, and
@@ -50,11 +50,11 @@ static const char* get_toned_vowel(int vowel_id, int tone) {
     if (vowel_id < 0 || vowel_id >= V_COUNT) return nullptr;
     const VowelEntry& v = VOWELS[vowel_id];
     switch (tone) {
-        case VK_TONE_SAC:   return v.sac;
-        case VK_TONE_HUYEN: return v.huyen;
-        case VK_TONE_HOI:   return v.hoi;
-        case VK_TONE_NGA:   return v.nga;
-        case VK_TONE_NANG:  return v.nang;
+        case XK_TONE_SAC:   return v.sac;
+        case XK_TONE_HUYEN: return v.huyen;
+        case XK_TONE_HOI:   return v.hoi;
+        case XK_TONE_NGA:   return v.nga;
+        case XK_TONE_NANG:  return v.nang;
         default: return v.plain;
     }
 }
@@ -180,7 +180,7 @@ int find_tone_vowel_index(const std::string& syllable) {
 }
 
 std::string apply_tone_to_syllable(const std::string& base, int tone) {
-    if (tone == VK_TONE_NONE || base.empty()) return base;
+    if (tone == XK_TONE_NONE || base.empty()) return base;
 
     int idx = find_tone_vowel_index(base);
     if (idx < 0) return base;
@@ -219,7 +219,7 @@ static std::vector<uint32_t> to_codepoints(const std::string& s) {
     return out;
 }
 
-void diff_commit(const std::string& old_str, const std::string& new_str, VKResult* r) {
+void diff_commit(const std::string& old_str, const std::string& new_str, XKResult* r) {
     std::vector<uint32_t> a = to_codepoints(old_str);
     std::vector<uint32_t> b = to_codepoints(new_str);
 
@@ -239,13 +239,13 @@ void diff_commit(const std::string& old_str, const std::string& new_str, VKResul
     r->consumed = 1;
 }
 
-} /* namespace vietkey */
+} /* namespace xrnikey */
 
 extern "C" {
 
-char* vk_place_tone(const char* syllable, int tone) {
-    std::string result = vietkey::apply_tone_to_syllable(syllable, tone);
-    result = vietkey::nfc_compose(result);
+char* xk_place_tone(const char* syllable, int tone) {
+    std::string result = xrnikey::apply_tone_to_syllable(syllable, tone);
+    result = xrnikey::nfc_compose(result);
     char* out = static_cast<char*>(std::malloc(result.size() + 1));
     if (out) std::strcpy(out, result.c_str());
     return out;

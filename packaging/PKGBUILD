@@ -1,10 +1,10 @@
-# Maintainer: VietKey Team
-pkgname=vietkey
+# Maintainer: Xrnikey Team
+pkgname=xrnikey
 pkgver=1.0.0
 pkgrel=1
 pkgdesc="Production-grade bilingual Vietnamese-English IME for Linux (Fcitx5 + IBus)"
 arch=('x86_64' 'aarch64')
-url="https://github.com/user/vietkey"
+url="https://github.com/user/xrnikey"
 license=('GPL3')
 depends=(
     'fcitx5'
@@ -35,8 +35,8 @@ build() {
     cmake -B build \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_INSTALL_PREFIX=/usr \
-        -DVIETKEY_ENABLE_TESTS=ON \
-        -DVIETKEY_DATA_DIR=/usr/share/vietkey
+        -DXRNIKEY_ENABLE_TESTS=ON \
+        -DXRNIKEY_DATA_DIR=/usr/share/xrnikey
     cmake --build build -- -j$(nproc)
 }
 
@@ -50,14 +50,14 @@ package() {
     DESTDIR="$pkgdir" cmake --install build
 
     # Build dictionary if not already built
-    if [ ! -f "$pkgdir/usr/share/vietkey/dict/vi.dict" ]; then
+    if [ ! -f "$pkgdir/usr/share/xrnikey/dict/vi.dict" ]; then
         bash data/dict/build_dict.sh
-        install -Dm644 build/data/dict/vi.dict "$pkgdir/usr/share/vietkey/dict/vi.dict"
+        install -Dm644 build/data/dict/vi.dict "$pkgdir/usr/share/xrnikey/dict/vi.dict"
     fi
 
     # Generate emoji data if needed
-    if [ ! -f "$pkgdir/usr/share/vietkey/emoji/emoji.json" ]; then
+    if [ ! -f "$pkgdir/usr/share/xrnikey/emoji/emoji.json" ]; then
         python3 data/emoji/generate.py
-        install -Dm644 data/emoji/emoji.json "$pkgdir/usr/share/vietkey/emoji/emoji.json"
+        install -Dm644 data/emoji/emoji.json "$pkgdir/usr/share/xrnikey/emoji/emoji.json"
     fi
 }

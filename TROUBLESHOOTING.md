@@ -1,12 +1,12 @@
-# VietKey Troubleshooting
+# Xrnikey Troubleshooting
 
 ## 1. IME not appearing in input method list
 
-**Symptom:** VietKey doesn't show up after installation.
+**Symptom:** Xrnikey doesn't show up after installation.
 
 **Fix (Fcitx5):**
 ```bash
-sudo cp /usr/share/fcitx5/addon/vietkey5.conf /usr/share/fcitx5/inputmethod/
+sudo cp /usr/share/fcitx5/addon/xrnikey5.conf /usr/share/fcitx5/inputmethod/
 fcitx5 -r
 ```
 
@@ -27,7 +27,7 @@ killall ibus-daemon   # if using Fcitx5
 killall fcitx5        # if using IBus
 ```
 
-Only one IMF should run. Use `vk-diagnose` to detect conflicts.
+Only one IMF should run. Use `xk-diagnose` to detect conflicts.
 
 ## 3. Wrong GTK_IM_MODULE for desktop environment
 
@@ -46,7 +46,7 @@ export QT_IM_MODULE=ibus
 export XMODIFIERS=@im=ibus
 ```
 
-Run `vk-setup` to configure automatically.
+Run `xk-setup` to configure automatically.
 
 ## 4. Electron/Chromium apps not accepting input
 
@@ -54,7 +54,7 @@ Run `vk-setup` to configure automatically.
 
 **Fix:**
 ```bash
-vk-setup   # auto-patches Electron app flags
+xk-setup   # auto-patches Electron app flags
 # Manual fix for VS Code:
 echo "--gtk-version=4" >> ~/.config/Code/flags.conf
 ```
@@ -83,25 +83,25 @@ fc-cache -fv
 fc-match :lang=vi
 ```
 
-## 7. vkd daemon not running
+## 7. xkd daemon not running
 
 **Symptom:** Prediction and emoji search don't work.
 
 **Fix:**
 ```bash
-systemctl --user enable vkd
-systemctl --user start vkd
-systemctl --user status vkd
+systemctl --user enable xkd
+systemctl --user start xkd
+systemctl --user status xkd
 ```
 
-## 8. libvietkey.so not found
+## 8. libxrnikey.so not found
 
-**Symptom:** `vk-diagnose` reports missing library.
+**Symptom:** `xk-diagnose` reports missing library.
 
 **Fix:**
 ```bash
 sudo ldconfig
-ldconfig -p | grep vietkey
+ldconfig -p | grep xrnikey
 # If missing:
 sudo cmake --install build
 sudo ldconfig
@@ -113,11 +113,11 @@ sudo ldconfig
 
 **Fix:** Add terminal WM_CLASS to app overrides:
 ```json
-// ~/.config/vietkey/app-overrides.json
+// ~/.config/xrnikey/app-overrides.json
 ["code", "alacritty", "kitty", "foot", "wezterm", "terminal", "konsole"]
 ```
 
-Or disable VietKey in terminals via Fcitx5 config: `AppOverrideList`.
+Or disable Xrnikey in terminals via Fcitx5 config: `AppOverrideList`.
 
 ## 10. Flatpak/Snap app isolation
 
@@ -143,18 +143,18 @@ Snap apps may not inherit host IME. Use native packages when possible.
 
 **Fix:**
 ```bash
-# Ensure vkd is running (handles hot-reload):
-systemctl --user restart vkd
+# Ensure xkd is running (handles hot-reload):
+systemctl --user restart xkd
 
 # Or manually reload:
-vk-dict add "từ mới" 9000
+xk-dict add "từ mới" 9000
 ```
 
 ## 13. Space commits instead of selecting candidate
 
 **Symptom:** Pressing Space commits preedit instead of selecting candidate #1.
 
-**Fix:** Configure in `~/.config/fcitx5/conf/vietkey5.conf`:
+**Fix:** Configure in `~/.config/fcitx5/conf/xrnikey5.conf`:
 ```
 CommitKey=space
 ```
@@ -172,21 +172,21 @@ Use number keys 1–9 to select candidates explicitly.
 
 **Fix:**
 ```bash
-# Check vkd socket latency:
-echo '{"type":"stats"}' | nc -U /run/user/$(id -u)/vietkey.sock
+# Check xkd socket latency:
+echo '{"type":"stats"}' | nc -U /run/user/$(id -u)/xrnikey.sock
 
 # Ensure dictionary is mmap'd (not loading from slow storage):
-ls -la /usr/share/vietkey/dict/vi.dict
+ls -la /usr/share/xrnikey/dict/vi.dict
 ```
 
 ## 16. IBus engine crashes on startup
 
-**Symptom:** `vietkey-ibus` exits immediately.
+**Symptom:** `xrnikey-ibus` exits immediately.
 
 **Fix:**
 ```bash
-# Check libvietkey is loadable:
-python3 -c "import ctypes; ctypes.CDLL('/usr/lib/libvietkey.so')"
+# Check libxrnikey is loadable:
+python3 -c "import ctypes; ctypes.CDLL('/usr/lib/libxrnikey.so')"
 # Check IBus is running:
 ibus-daemon -drx
 ```
@@ -197,7 +197,7 @@ ibus-daemon -drx
 
 **Fix:**
 ```bash
-vk-setup   # writes to ~/.bashrc, ~/.pam_environment, etc.
+xk-setup   # writes to ~/.bashrc, ~/.pam_environment, etc.
 # Or manually add to ~/.pam_environment:
 GTK_IM_MODULE=fcitx
 QT_IM_MODULE=fcitx
@@ -206,13 +206,13 @@ XMODIFIERS=@im=fcitx
 
 ## 18. CachyOS-specific: fcitx5-unikey conflict
 
-**Symptom:** Both unikey and VietKey active simultaneously.
+**Symptom:** Both unikey and Xrnikey active simultaneously.
 
 **Fix:**
 ```bash
 # Disable fcitx5-unikey:
 sudo pacman -R fcitx5-unikey
-fcitx5-configtool   # remove Unikey, add VietKey
+fcitx5-configtool   # remove Unikey, add Xrnikey
 ```
 
 ## 19. Emoji search returns no results
@@ -222,10 +222,10 @@ fcitx5-configtool   # remove Unikey, add VietKey
 **Fix:**
 ```bash
 # Verify emoji data:
-ls /usr/share/vietkey/emoji/emoji.json
+ls /usr/share/xrnikey/emoji/emoji.json
 # Regenerate:
-python3 /usr/share/vietkey/scripts/generate.py
-systemctl --user restart vkd
+python3 /usr/share/xrnikey/scripts/generate.py
+systemctl --user restart xkd
 ```
 
 ## 20. Build fails on missing Fcitx5 headers
@@ -236,14 +236,14 @@ systemctl --user restart vkd
 ```bash
 sudo pacman -S fcitx5 fcitx5-qt fcitx5-gtk extra-cmake-modules
 # Or build without Fcitx5:
-cmake -B build -DVIETKEY_BUILD_FCITX5=OFF
+cmake -B build -DXRNIKEY_BUILD_FCITX5=OFF
 ```
 
 ## Getting Help
 
 Run the diagnostic tool for an automated report:
 ```bash
-vk-diagnose
+xk-diagnose
 ```
 
 This checks all 12 common misconfiguration patterns and suggests exact fix commands.

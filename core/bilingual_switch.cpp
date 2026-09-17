@@ -1,5 +1,5 @@
-#include "vietkey.h"
-#include "vietkey_internal.h"
+#include "xrnikey.h"
+#include "xrnikey_internal.h"
 #include <unordered_set>
 #include <fstream>
 #include <string>
@@ -114,31 +114,31 @@ static void init_english_whitelist() {
 
 extern "C" {
 
-int vk_is_english_word(const char* word) {
+int xk_is_english_word(const char* word) {
     if (!word) return 0;
     init_english_whitelist();
     std::string w(word);
     for (char& c : w) c = static_cast<char>(tolower(static_cast<unsigned char>(c)));
     if (english_whitelist.count(w)) return 1;
-    if (!vk_is_valid_syllable(word)) return 1;
+    if (!xk_is_valid_syllable(word)) return 1;
     return 0;
 }
 
-void vk_bilingual_set_enabled(VKState* state, int enabled) {
+void xk_bilingual_set_enabled(XKState* state, int enabled) {
     if (!state) return;
-    auto* s = reinterpret_cast<vietkey::VKStateImpl*>(state);
+    auto* s = reinterpret_cast<xrnikey::XKStateImpl*>(state);
     s->enabled = enabled != 0;
 }
 
-int vk_bilingual_is_enabled(VKState* state) {
+int xk_bilingual_is_enabled(XKState* state) {
     if (!state) return 1;
-    auto* s = reinterpret_cast<vietkey::VKStateImpl*>(state);
+    auto* s = reinterpret_cast<xrnikey::XKStateImpl*>(state);
     return s->enabled ? 1 : 0;
 }
 
-void vk_bilingual_load_state(VKState* state, const char* state_path) {
+void xk_bilingual_load_state(XKState* state, const char* state_path) {
     if (!state || !state_path) return;
-    auto* s = reinterpret_cast<vietkey::VKStateImpl*>(state);
+    auto* s = reinterpret_cast<xrnikey::XKStateImpl*>(state);
     std::ifstream f(state_path);
     if (!f.is_open()) return;
     std::string line;
@@ -149,15 +149,15 @@ void vk_bilingual_load_state(VKState* state, const char* state_path) {
     }
 }
 
-void vk_bilingual_save_state(VKState* state, const char* state_path) {
+void xk_bilingual_save_state(XKState* state, const char* state_path) {
     if (!state || !state_path) return;
-    auto* s = reinterpret_cast<vietkey::VKStateImpl*>(state);
+    auto* s = reinterpret_cast<xrnikey::XKStateImpl*>(state);
     std::ofstream f(state_path);
     if (!f.is_open()) return;
     f << "{\n  \"enabled\": " << (s->enabled ? "true" : "false") << "\n}\n";
 }
 
-int vk_bilingual_app_disabled(const char* wm_class, const char* overrides_path) {
+int xk_bilingual_app_disabled(const char* wm_class, const char* overrides_path) {
     if (!wm_class || !overrides_path) return 0;
     std::ifstream f(overrides_path);
     if (!f.is_open()) return 0;

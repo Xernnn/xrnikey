@@ -1,10 +1,10 @@
 [Unit]
-Description=VietKey daemon (prediction, emoji, dictionary)
+Description=Xrnikey daemon (prediction, emoji, dictionary)
 After=default.target
 
 [Service]
 Type=simple
-ExecStart=@CMAKE_INSTALL_PREFIX@/bin/vkd
+ExecStart=@CMAKE_INSTALL_PREFIX@/bin/xkd
 Restart=on-failure
 RestartSec=5
 

@@ -18,7 +18,7 @@
 #include <fcitx/surroundingtext.h>
 #include <fcitx/text.h>
 #include <fcitx/userinterface.h>
-#include <vietkey.h>
+#include <xrnikey.h>
 #include <cstring>
 #include <algorithm>
 #include <cstdlib>
@@ -32,16 +32,16 @@ namespace fcitx {
  * addons carry custom state per IC in Fcitx5; a real InputContext is always
  * owned and created by the connected frontend (X11/Wayland/DBus), never by
  * the input method engine itself. */
-class VietKeyState : public InputContextProperty {
+class XrnikeyState : public InputContextProperty {
 public:
-    explicit VietKeyState(int mode) : state_(vk_state_new(mode)) {}
-    ~VietKeyState() override {
-        if (state_) vk_state_free(state_);
+    explicit XrnikeyState(int mode) : state_(xk_state_new(mode)) {}
+    ~XrnikeyState() override {
+        if (state_) xk_state_free(state_);
     }
 
-    VKState *state() { return state_; }
+    XKState *state() { return state_; }
     void reset() {
-        if (state_) vk_state_reset(state_);
+        if (state_) xk_state_reset(state_);
         composing_ = false;
     }
 
@@ -71,7 +71,7 @@ public:
     void setLastPreedit(std::string v) { lastPreedit_ = std::move(v); }
 
 private:
-    VKState *state_;
+    XKState *state_;
     bool sawSurrounding_ = false;
     bool composing_ = false;
     bool instantForWord_ = false;
@@ -82,9 +82,9 @@ private:
 /* A candidate the user can actually pick. The stock DisplayOnlyCandidateWord
  * renders but has an empty select(), so the candidate window stayed inert
  * even once it had data behind it. */
-class VietKeyCandidateWord : public CandidateWord {
+class XrnikeyCandidateWord : public CandidateWord {
 public:
-    VietKeyCandidateWord(
+    XrnikeyCandidateWord(
         std::string text,
         std::function<void(InputContext *, const std::string &)> commit)
         : CandidateWord(Text(text)), text_(std::move(text)),
@@ -97,27 +97,27 @@ private:
     std::function<void(InputContext *, const std::string &)> commit_;
 };
 
-class VietKeyEngine : public InputMethodEngineV3 {
+class XrnikeyEngine : public InputMethodEngineV3 {
 public:
-    VietKeyEngine(Instance *instance)
-        : instance_(instance), config_(std::make_shared<VietKeyConfig>()),
+    XrnikeyEngine(Instance *instance)
+        : instance_(instance), config_(std::make_shared<XrnikeyConfig>()),
           factory_([this](InputContext &) {
-              return new VietKeyState(config_->inputMode.value() ==
+              return new XrnikeyState(config_->inputMode.value() ==
                                                InputMode::VNI
-                                           ? VK_MODE_VNI
-                                           : VK_MODE_TELEX);
+                                           ? XK_MODE_VNI
+                                           : XK_MODE_TELEX);
           }) {
-        instance_->inputContextManager().registerProperty("vietkeyState",
+        instance_->inputContextManager().registerProperty("xrnikeyState",
                                                             &factory_);
         for (int i = 0; i < 9; ++i) {
             selectionKeys_.emplace_back(
                 static_cast<KeySym>(FcitxKey_1 + i));
         }
-        candidateProvider_.load(VIETKEY_DATA_DIR);
+        candidateProvider_.load(XRNIKEY_DATA_DIR);
         reloadConfig();
     }
 
-    ~VietKeyEngine() override = default;
+    ~XrnikeyEngine() override = default;
 
     FCITX_ADDON_DEPENDENCY_LOADER(notifications, instance_->addonManager());
 
@@ -135,7 +135,7 @@ public:
 
         /* Fcitx5 delivers keyEvent for BOTH press and release. Two things go
          * wrong if releases are not dropped here:
-         *   1. every keystroke reaches vk_process_key twice, so a single 'a'
+         *   1. every keystroke reaches xk_process_key twice, so a single 'a'
          *      composes as "aa" -> "â";
          *   2. filterAndAccept()ing a release swallows it, so the client
          *      still believes the key is held and starts auto-repeating it —
@@ -154,7 +154,7 @@ public:
             bool on = !config_->predictionEnabled.value();
             config_->predictionEnabled.setValue(on);
             safeSaveAsIni(*config_, StandardPathsType::PkgConfig,
-                          "conf/vietkey5.conf");
+                          "conf/xrnikey5.conf");
             if (!on) ic->inputPanel().setCandidateList(nullptr);
             ic->updateUserInterface(UserInterfaceComponent::InputPanel);
             if (auto *n = notifications()) {
@@ -163,7 +163,7 @@ public:
                  * that flips. replaceId reuses the same popup instead of
                  * stacking one per toggle. */
                 notifyId_ = n->call<INotifications::sendNotification>(
-                    _("VietKey"), notifyId_, "vietkey", _("VietKey"),
+                    _("Xrnikey"), notifyId_, "xrnikey", _("Xrnikey"),
                     on ? _("Word suggestions on")
                        : _("Word suggestions off"),
                     std::vector<std::string>(), 2000,
@@ -183,7 +183,7 @@ public:
             return;
 
         auto *icState = ic->propertyFor(&factory_);
-        VKState *state = icState->state();
+        XKState *state = icState->state();
         if (!state) return;
 
         /* Number keys pick a candidate. Telex only: VNI spells its tones and
@@ -238,9 +238,9 @@ public:
                 icState->sawSurrounding());
         }
         bool instantMode = icState->instantForWord();
-        vk_state_set_instant_commit(state, instantMode ? 1 : 0);
+        xk_state_set_instant_commit(state, instantMode ? 1 : 0);
 
-        VKResult result = vk_process_key(state, keysym, mods);
+        XKResult result = xk_process_key(state, keysym, mods);
 
         if (result.consumed) {
             keyEvent.filterAndAccept();
@@ -289,7 +289,7 @@ public:
          * screen stayed there forever -- turning suggestions off left the
          * last ones visible. A one-character prefix is also skipped: it
          * matches most of the dictionary and is pure noise. */
-        std::vector<VietKeyCandidate> candidates;
+        std::vector<XrnikeyCandidate> candidates;
         if (config_->predictionEnabled.value() && result.preedit[0] &&
             utf8::length(std::string(result.preedit)) >= 2) {
             candidates = candidateProvider_.getCandidates(
@@ -306,7 +306,7 @@ public:
                         ? CandidateLayoutHint::Vertical
                         : CandidateLayoutHint::Horizontal);
                 for (size_t i = 0; i < candidates.size() && i < 9; ++i) {
-                    list->append<VietKeyCandidateWord>(
+                    list->append<XrnikeyCandidateWord>(
                         candidates[i].text,
                         [this](InputContext *c, const std::string &w) {
                             commitCandidate(c, w);
@@ -351,7 +351,7 @@ public:
     void commitCandidate(InputContext *ic, const std::string &word) {
         auto *icState = ic->propertyFor(&factory_);
         if (icState->instantForWord()) {
-            char *cur = vk_state_get_preedit(icState->state());
+            char *cur = xk_state_get_preedit(icState->state());
             if (cur) {
                 std::string shown(cur);
                 std::free(cur);
@@ -377,7 +377,7 @@ public:
 
     void reloadConfig() override {
         readAsIni(*config_, StandardPathsType::PkgConfig,
-                  "conf/vietkey5.conf");
+                  "conf/xrnikey5.conf");
         candidateProvider_.setConfig(config_);
     }
 
@@ -385,26 +385,26 @@ public:
     void setConfig(const RawConfig &config) override {
         config_->load(config, true);
         safeSaveAsIni(*config_, StandardPathsType::PkgConfig,
-                      "conf/vietkey5.conf");
+                      "conf/xrnikey5.conf");
         candidateProvider_.setConfig(config_);
     }
 
 private:
     Instance *instance_;
-    std::shared_ptr<VietKeyConfig> config_;
+    std::shared_ptr<XrnikeyConfig> config_;
     CandidateProvider candidateProvider_;
-    FactoryFor<VietKeyState> factory_;
+    FactoryFor<XrnikeyState> factory_;
     KeyList selectionKeys_;
     uint32_t notifyId_ = 0;
 };
 
-class VietKeyEngineFactory : public AddonFactory {
+class XrnikeyEngineFactory : public AddonFactory {
 public:
     AddonInstance *create(AddonManager *manager) override {
-        return new VietKeyEngine(manager->instance());
+        return new XrnikeyEngine(manager->instance());
     }
 };
 
 } // namespace fcitx
 
-FCITX_ADDON_FACTORY(fcitx::VietKeyEngineFactory);
+FCITX_ADDON_FACTORY(fcitx::XrnikeyEngineFactory);

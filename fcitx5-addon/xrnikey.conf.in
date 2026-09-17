@@ -1,0 +1,8 @@
+[InputMethod]
+Name=Xrnikey
+Name[vi]=Xrnikey
+Icon=xrnikey
+Label=VN
+LangCode=vi
+Addon=xrnikey5
+Configurable=True

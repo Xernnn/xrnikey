@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""vk-dict — interactive dictionary CLI for VietKey."""
+"""xk-dict — interactive dictionary CLI for Xrnikey."""
 
 import argparse
 import ctypes
@@ -7,30 +7,30 @@ import os
 import sys
 
 def load_lib():
-    for path in ["/usr/lib/libvietkey.so", "/usr/local/lib/libvietkey.so"]:
+    for path in ["/usr/lib/libxrnikey.so", "/usr/local/lib/libxrnikey.so"]:
         if os.path.exists(path):
             return ctypes.CDLL(path)
-    print("Error: libvietkey.so not found", file=sys.stderr)
+    print("Error: libxrnikey.so not found", file=sys.stderr)
     sys.exit(1)
 
 def cmd_lookup(lib, word, dict_path):
-    lib.vk_dict_load.argtypes = [ctypes.c_char_p]
-    lib.vk_dict_load.restype = ctypes.c_void_p
-    lib.vk_dict_lookup.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-    lib.vk_dict_lookup.restype = ctypes.c_int
-    lib.vk_dict_free.argtypes = [ctypes.c_void_p]
+    lib.xk_dict_load.argtypes = [ctypes.c_char_p]
+    lib.xk_dict_load.restype = ctypes.c_void_p
+    lib.xk_dict_lookup.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+    lib.xk_dict_lookup.restype = ctypes.c_int
+    lib.xk_dict_free.argtypes = [ctypes.c_void_p]
 
-    d = lib.vk_dict_load(dict_path.encode())
+    d = lib.xk_dict_load(dict_path.encode())
     if not d:
         print(f"Error: cannot load dictionary from {dict_path}", file=sys.stderr)
         sys.exit(1)
 
-    freq = lib.vk_dict_lookup(d, word.encode("utf-8"))
+    freq = lib.xk_dict_lookup(d, word.encode("utf-8"))
     if freq:
         print(f"{word}\tfrequency={freq}")
     else:
         print(f"{word}\tnot found")
-    lib.vk_dict_free(d)
+    lib.xk_dict_free(d)
 
 def cmd_add(word, freq, user_dict):
     os.makedirs(os.path.dirname(user_dict), exist_ok=True)
@@ -79,12 +79,12 @@ def cmd_stats(user_dict):
     print(f"User dictionary: {len(lines)} entries")
 
 def main():
-    parser = argparse.ArgumentParser(description="VietKey dictionary CLI")
+    parser = argparse.ArgumentParser(description="Xrnikey dictionary CLI")
     sub = parser.add_subparsers(dest="command")
 
     p_lookup = sub.add_parser("lookup")
     p_lookup.add_argument("word")
-    p_lookup.add_argument("--dict", default="/usr/share/vietkey/dict/vi.dict")
+    p_lookup.add_argument("--dict", default="/usr/share/xrnikey/dict/vi.dict")
 
     p_add = sub.add_parser("add")
     p_add.add_argument("word")
@@ -102,7 +102,7 @@ def main():
     sub.add_parser("stats")
 
     args = parser.parse_args()
-    user_dict = os.path.expanduser("~/.local/share/vietkey/user-dict.txt")
+    user_dict = os.path.expanduser("~/.local/share/xrnikey/user-dict.txt")
 
     if args.command == "lookup":
         lib = load_lib()

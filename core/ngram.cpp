@@ -1,4 +1,4 @@
-#include "vietkey.h"
+#include "xrnikey.h"
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -11,7 +11,7 @@ struct NgramEntry {
     float log_prob;
 };
 
-struct VKNgramImpl {
+struct XKNgramImpl {
     std::unordered_map<std::string, NgramEntry> unigrams;
     std::unordered_map<std::string, NgramEntry> bigrams;
     std::unordered_map<std::string, NgramEntry> trigrams;
@@ -38,10 +38,10 @@ static float quantize_score(float log_prob) {
 
 extern "C" {
 
-VKNgram* vk_ngram_load(const char* arpa_path) {
+XKNgram* xk_ngram_load(const char* arpa_path) {
     if (!arpa_path) return nullptr;
 
-    auto* ng = new VKNgramImpl{};
+    auto* ng = new XKNgramImpl{};
     ng->unk_log_prob = -10.0f;
 
     std::ifstream f(arpa_path);
@@ -83,16 +83,16 @@ VKNgram* vk_ngram_load(const char* arpa_path) {
         }
     }
 
-    return reinterpret_cast<VKNgram*>(ng);
+    return reinterpret_cast<XKNgram*>(ng);
 }
 
-void vk_ngram_free(VKNgram* ng) {
-    if (ng) delete reinterpret_cast<VKNgramImpl*>(ng);
+void xk_ngram_free(XKNgram* ng) {
+    if (ng) delete reinterpret_cast<XKNgramImpl*>(ng);
 }
 
-float vk_ngram_score(VKNgram* ng, const char** context, int ctx_len, const char* word) {
-    if (!ng || !word) return ng ? reinterpret_cast<VKNgramImpl*>(ng)->unk_log_prob : -10.0f;
-    auto* n = reinterpret_cast<VKNgramImpl*>(ng);
+float xk_ngram_score(XKNgram* ng, const char** context, int ctx_len, const char* word) {
+    if (!ng || !word) return ng ? reinterpret_cast<XKNgramImpl*>(ng)->unk_log_prob : -10.0f;
+    auto* n = reinterpret_cast<XKNgramImpl*>(ng);
 
     if (ctx_len >= 2 && context[ctx_len - 2] && context[ctx_len - 1]) {
         std::string key = make_key({context[ctx_len - 2], context[ctx_len - 1], word});

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""GSettings schema wrapper for VietKey IBus engine."""
+"""GSettings schema wrapper for Xrnikey IBus engine."""
 
 import os
 
@@ -9,8 +9,8 @@ try:
 except ImportError:
     HAS_GSETTINGS = False
 
-SCHEMA_ID = "com.vietkey"
-SCHEMA_PATH = "/com/vietkey/"
+SCHEMA_ID = "com.xrnikey"
+SCHEMA_PATH = "/com/xrnikey/"
 
 DEFAULTS = {
     "input-mode": "Telex",
@@ -21,7 +21,7 @@ DEFAULTS = {
     "auto-correct": True,
 }
 
-class VietKeyConfig:
+class XrnikeyConfig:
     def __init__(self):
         self._settings = None
         if HAS_GSETTINGS:

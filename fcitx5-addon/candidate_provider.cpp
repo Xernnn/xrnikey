@@ -9,26 +9,26 @@ CandidateProvider::CandidateProvider()
     : dict_(nullptr), ngram_(nullptr), emoji_(nullptr) {}
 
 CandidateProvider::~CandidateProvider() {
-    if (dict_) vk_dict_free(dict_);
-    if (ngram_) vk_ngram_free(ngram_);
-    if (emoji_) vk_emoji_free(emoji_);
+    if (dict_) xk_dict_free(dict_);
+    if (ngram_) xk_ngram_free(ngram_);
+    if (emoji_) xk_emoji_free(emoji_);
 }
 
-void CandidateProvider::setConfig(std::shared_ptr<VietKeyConfig> config) {
+void CandidateProvider::setConfig(std::shared_ptr<XrnikeyConfig> config) {
     config_ = config;
 }
 
 void CandidateProvider::load(const std::string& dataDir) {
     if (dict_) return;  /* idempotent: reloadConfig() may call this again */
-    dict_ = vk_dict_load((dataDir + "/dict/vi.dict").c_str());
-    ngram_ = vk_ngram_load((dataDir + "/ngram/vi.arpa").c_str());
-    emoji_ = vk_emoji_load((dataDir + "/emoji/emoji.json").c_str());
+    dict_ = xk_dict_load((dataDir + "/dict/vi.dict").c_str());
+    ngram_ = xk_ngram_load((dataDir + "/ngram/vi.arpa").c_str());
+    emoji_ = xk_emoji_load((dataDir + "/emoji/emoji.json").c_str());
 }
 
-std::vector<VietKeyCandidate> CandidateProvider::getCandidates(
+std::vector<XrnikeyCandidate> CandidateProvider::getCandidates(
     const std::string& prefix, int max,
     const std::vector<std::string>& context) {
-    std::vector<VietKeyCandidate> results;
+    std::vector<XrnikeyCandidate> results;
     if (!dict_ || prefix.empty()) return results;
 
     /* Raw C pointers for the C ABI; `context` outlives this call. */
@@ -37,18 +37,18 @@ std::vector<VietKeyCandidate> CandidateProvider::getCandidates(
     for (const auto& w : context) ctx.push_back(w.c_str());
 
     char* completions[32];
-    int n = vk_dict_complete(dict_, prefix.c_str(), completions, max);
+    int n = xk_dict_complete(dict_, prefix.c_str(), completions, max);
     for (int i = 0; i < n; ++i) {
-        VietKeyCandidate c;
+        XrnikeyCandidate c;
         c.text = completions[i];
         /* Dictionary frequency is the base score; the n-gram model then says
          * how well the word follows what was just typed. Without this the
          * ranking was frequency-only and the trained model went unused --
          * "chúc" should outrank "chủ" right after "xin". */
-        float freq = static_cast<float>(vk_dict_lookup(dict_, completions[i]));
+        float freq = static_cast<float>(xk_dict_lookup(dict_, completions[i]));
         c.score = freq / 10000.0f;
         if (ngram_ && !ctx.empty()) {
-            c.score += 0.5f * vk_ngram_score(ngram_, ctx.data(),
+            c.score += 0.5f * xk_ngram_score(ngram_, ctx.data(),
                                              static_cast<int>(ctx.size()),
                                              completions[i]);
         }
@@ -59,14 +59,14 @@ std::vector<VietKeyCandidate> CandidateProvider::getCandidates(
     }
 
     if (config_ && config_->autoCorrect.value()) {
-        VKCandidate corrections[8];
-        int nc = vk_autocorrect(dict_, ngram_, prefix.c_str(),
+        XKCandidate corrections[8];
+        int nc = xk_autocorrect(dict_, ngram_, prefix.c_str(),
                                 ctx.empty() ? nullptr : ctx.data(),
                                 static_cast<int>(ctx.size()), corrections, 8);
         for (int i = 0; i < nc; ++i) {
             if (corrections[i].score < config_->autoCorrectThreshold.value())
                 continue;
-            VietKeyCandidate c;
+            XrnikeyCandidate c;
             c.text = corrections[i].text;
             c.score = corrections[i].score;
             c.type = corrections[i].type;
@@ -76,23 +76,23 @@ std::vector<VietKeyCandidate> CandidateProvider::getCandidates(
     }
 
     std::sort(results.begin(), results.end(),
-              [](const VietKeyCandidate& a, const VietKeyCandidate& b) {
+              [](const XrnikeyCandidate& a, const XrnikeyCandidate& b) {
                   return a.score > b.score;
               });
     if (static_cast<int>(results.size()) > max) results.resize(max);
     return results;
 }
 
-std::vector<VietKeyCandidate> CandidateProvider::getEmojiCandidates(
+std::vector<XrnikeyCandidate> CandidateProvider::getEmojiCandidates(
     const std::string& query, int max) {
-    std::vector<VietKeyCandidate> results;
+    std::vector<XrnikeyCandidate> results;
     if (!emoji_) return results;
 
     char* chars[16];
     char* names[16];
-    int n = vk_emoji_search(emoji_, query.c_str(), chars, names, max);
+    int n = xk_emoji_search(emoji_, query.c_str(), chars, names, max);
     for (int i = 0; i < n; ++i) {
-        VietKeyCandidate c;
+        XrnikeyCandidate c;
         c.text = chars[i];
         c.gloss = names[i];
         c.type = 0;

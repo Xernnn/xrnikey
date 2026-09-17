@@ -42,7 +42,7 @@ struct OptionTypeName<double> {
 };
 
 FCITX_CONFIGURATION(
-    VietKeyConfig,
+    XrnikeyConfig,
     Option<InputMode, NoConstrain<InputMode>, DefaultMarshaller<InputMode>,
            InputModeI18NAnnotation>
         inputMode{this, "InputMode", _("Input Mode"), InputMode::Telex};

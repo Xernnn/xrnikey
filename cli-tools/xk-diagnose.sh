@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# vk-diagnose — comprehensive VietKey diagnostic tool
+# xk-diagnose — comprehensive Xrnikey diagnostic tool
 set -euo pipefail
 
-REPORT="vietkey-diagnostic-$(date +%Y%m%d-%H%M%S).txt"
+REPORT="xrnikey-diagnostic-$(date +%Y%m%d-%H%M%S).txt"
 ISSUES=0
 
 log() { echo "$*" | tee -a "$REPORT"; }
@@ -40,34 +40,34 @@ check_imf_running() {
     fi
 }
 
-check_libvietkey() {
-    log "=== libvietkey.so ==="
-    if ldconfig -p 2>/dev/null | grep -q libvietkey; then
-        ok "libvietkey.so found in ldconfig cache"
-        ldd "$(ldconfig -p | grep libvietkey | awk '{print $NF}' | head -1)" 2>&1 | tee -a "$REPORT"
-    elif [ -f /usr/lib/libvietkey.so ]; then
-        ok "Found /usr/lib/libvietkey.so"
-        ldd /usr/lib/libvietkey.so 2>&1 | tee -a "$REPORT"
+check_libxrnikey() {
+    log "=== libxrnikey.so ==="
+    if ldconfig -p 2>/dev/null | grep -q libxrnikey; then
+        ok "libxrnikey.so found in ldconfig cache"
+        ldd "$(ldconfig -p | grep libxrnikey | awk '{print $NF}' | head -1)" 2>&1 | tee -a "$REPORT"
+    elif [ -f /usr/lib/libxrnikey.so ]; then
+        ok "Found /usr/lib/libxrnikey.so"
+        ldd /usr/lib/libxrnikey.so 2>&1 | tee -a "$REPORT"
     else
-        issue "libvietkey.so not found"
-        fix "Install VietKey: sudo cmake --install build"
+        issue "libxrnikey.so not found"
+        fix "Install Xrnikey: sudo cmake --install build"
     fi
 }
 
-check_vkd_socket() {
-    log "=== vkd Daemon ==="
-    local sock="/run/user/$(id -u)/vietkey.sock"
+check_xkd_socket() {
+    log "=== xkd Daemon ==="
+    local sock="/run/user/$(id -u)/xrnikey.sock"
     if [ -S "$sock" ]; then
         ok "Socket exists: $sock"
         if echo '{"type":"stats"}' | nc -U "$sock" 2>/dev/null; then
             ok "Socket responds to queries"
         else
             issue "Socket exists but does not respond"
-            fix "Restart daemon: systemctl --user restart vkd"
+            fix "Restart daemon: systemctl --user restart xkd"
         fi
     else
-        issue "vkd socket not found at $sock"
-        fix "Start daemon: systemctl --user start vkd"
+        issue "xkd socket not found at $sock"
+        fix "Start daemon: systemctl --user start xkd"
     fi
 }
 
@@ -105,7 +105,7 @@ check_wayland() {
 
 check_data_files() {
     log "=== Data Files ==="
-    local data_dir="/usr/share/vietkey"
+    local data_dir="/usr/share/xrnikey"
     for f in dict/vi.dict ngram/vi.arpa emoji/emoji.json; do
         if [ -f "$data_dir/$f" ]; then
             ok "$data_dir/$f exists"
@@ -137,7 +137,7 @@ check_gtk_im_module() {
 }
 
 main() {
-    log "VietKey Diagnostic Report"
+    log "Xrnikey Diagnostic Report"
     log "Generated: $(date)"
     log "Hostname: $(hostname)"
     log "User: $(whoami)"
@@ -145,8 +145,8 @@ main() {
 
     check_env_vars
     check_imf_running
-    check_libvietkey
-    check_vkd_socket
+    check_libxrnikey
+    check_xkd_socket
     check_fonts
     check_wayland
     check_data_files
@@ -158,7 +158,7 @@ main() {
     log "Report saved to: $REPORT"
 
     if [ "$ISSUES" -gt 0 ]; then
-        log "Run vk-setup to fix common issues automatically."
+        log "Run xk-setup to fix common issues automatically."
         exit 1
     fi
     exit 0

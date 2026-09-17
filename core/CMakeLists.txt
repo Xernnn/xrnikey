@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.27)
-project(vietkey_core VERSION 1.0.0 LANGUAGES CXX)
+project(xrnikey_core VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_library(vietkey SHARED
-    vietkey.cpp
+add_library(xrnikey SHARED
+    xrnikey.cpp
     utf8_utils.cpp
     telex.cpp
     vni.cpp
@@ -18,21 +18,21 @@ add_library(vietkey SHARED
     emoji.cpp
 )
 
-target_include_directories(vietkey PUBLIC
+target_include_directories(xrnikey PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-    $<INSTALL_INTERFACE:include/vietkey>
+    $<INSTALL_INTERFACE:include/xrnikey>
 )
 
-set_target_properties(vietkey PROPERTIES
+set_target_properties(xrnikey PROPERTIES
     VERSION ${PROJECT_VERSION}
     SOVERSION 1
-    PUBLIC_HEADER vietkey.h
+    PUBLIC_HEADER xrnikey.h
 )
 
-target_link_libraries(vietkey PRIVATE pthread)
+target_link_libraries(xrnikey PRIVATE pthread)
 
-install(TARGETS vietkey
+install(TARGETS xrnikey
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
-    PUBLIC_HEADER DESTINATION include/vietkey
+    PUBLIC_HEADER DESTINATION include/xrnikey
 )

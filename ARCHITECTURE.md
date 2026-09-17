@@ -1,4 +1,4 @@
-# VietKey Architecture
+# Xrnikey Architecture
 
 ## Subsystem Overview
 
@@ -11,12 +11,12 @@
            ▼                                ▼
 ┌──────────────────────┐         ┌──────────────────────┐
 │   Fcitx5 Framework   │         │    IBus Daemon       │
-│  (vietkey5 addon)    │         │  (vietkey_engine.py) │
+│  (xrnikey5 addon)    │         │  (xrnikey_engine.py) │
 └──────────┬───────────┘         └──────────┬───────────┘
            │ ctypes / direct link            │ ctypes
            ▼                                ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                      libvietkey.so                           │
+│                      libxrnikey.so                           │
 │  ┌─────────┐ ┌────────┐ ┌──────┐ ┌────────┐ ┌───────────┐  │
 │  │ Telex/  │ │ Tone   │ │ Dict │ │ N-gram │ │ Autocorrect│  │
 │  │ VNI FSM │ │ Place  │ │ Trie │ │ Model  │ │ Engine     │  │
@@ -25,7 +25,7 @@
                            │ Unix socket (JSON)
                            ▼
                   ┌─────────────────┐
-                  │   vkd daemon    │
+                  │   xkd daemon    │
                   │  prediction /   │
                   │  emoji / stats  │
                   └─────────────────┘
@@ -35,19 +35,19 @@
 
 1. **Kernel** delivers key event via evdev to the compositor (Wayland) or X server (X11)
 2. **Fcitx5/IBus** receives the key through `input-method-v2` or XIM protocol
-3. **VietKey engine** calls `vk_process_key(state, keysym, modifiers)`
+3. **Xrnikey engine** calls `xk_process_key(state, keysym, modifiers)`
 4. **Telex/VNI FSM** processes the character:
    - Vowel modification (aa→â, dd→đ)
    - Tone mark application (s→sắc)
    - Bilingual check (English word → pass-through)
 5. **Tone placement** applies Unicode combining characters per Vietnamese orthographic rules
 6. **Candidate provider** queries dictionary + n-gram + autocorrect for suggestions
-7. **vkd daemon** (optional) provides enhanced prediction via Unix socket
+7. **xkd daemon** (optional) provides enhanced prediction via Unix socket
 8. **Preedit** rendered inline or in aux window; **commit** sent to application on Space
 
-## Core Library (libvietkey)
+## Core Library (libxrnikey)
 
-Pure C ABI (`vietkey.h`) — no C++ in public headers. Internal implementation in C++20.
+Pure C ABI (`xrnikey.h`) — no C++ in public headers. Internal implementation in C++20.
 
 | Module | File | Purpose |
 |--------|------|---------|
@@ -65,23 +65,23 @@ Pure C ABI (`vietkey.h`) — no C++ in public headers. Internal implementation i
 
 | Component | Target |
 |-----------|--------|
-| libvietkey core | < 8 MB |
+| libxrnikey core | < 8 MB |
 | Dictionary (mmap) | < 20 MB |
 | N-gram model | < 50 MB |
-| vkd daemon | < 80 MB |
+| xkd daemon | < 80 MB |
 
 Dictionary uses `mmap()` for zero-copy startup. N-gram scores use 4-bit quantization. Candidate generation uses arena allocation with a 512-entry LRU cache.
 
 ## Configuration Persistence
 
-- `~/.local/share/vietkey/state.json` — IME enabled/disabled state
-- `~/.config/vietkey/app-overrides.json` — per-app disable list
-- `~/.local/share/vietkey/user-dict.txt` — user dictionary (hot-reloaded)
-- `~/.config/fcitx5/conf/vietkey5.conf` — Fcitx5 addon settings
+- `~/.local/share/xrnikey/state.json` — IME enabled/disabled state
+- `~/.config/xrnikey/app-overrides.json` — per-app disable list
+- `~/.local/share/xrnikey/user-dict.txt` — user dictionary (hot-reloaded)
+- `~/.config/fcitx5/conf/xrnikey5.conf` — Fcitx5 addon settings
 
-## Socket Protocol (vkd)
+## Socket Protocol (xkd)
 
-Newline-delimited JSON over Unix domain socket at `/run/user/$UID/vietkey.sock`:
+Newline-delimited JSON over Unix domain socket at `/run/user/$UID/xrnikey.sock`:
 
 ```json
 {"type": "complete", "prefix": "hap", "context": ["tôi", "rất"], "max": 5}

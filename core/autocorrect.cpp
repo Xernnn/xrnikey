@@ -1,4 +1,4 @@
-#include "vietkey.h"
+#include "xrnikey.h"
 #include <string>
 #include <vector>
 #include <algorithm>
@@ -40,41 +40,41 @@ static bool phonetically_similar(const std::string& a, const std::string& b) {
 
 extern "C" {
 
-int vk_autocorrect(VKDict* dict, VKNgram* ng, const char* word,
+int xk_autocorrect(XKDict* dict, XKNgram* ng, const char* word,
                    const char** context, int ctx_len,
-                   VKCandidate* out, int max_out) {
+                   XKCandidate* out, int max_out) {
     if (!dict || !word || !out || max_out <= 0) return 0;
 
     int word_len = static_cast<int>(strlen(word));
     int max_dist = (word_len <= 6) ? 1 : 2;
 
     char* completions[64];
-    int n = vk_dict_complete(dict, word, completions, 64);
+    int n = xk_dict_complete(dict, word, completions, 64);
     if (n <= 0) {
         /* Try with shorter prefix */
         if (word_len > 2) {
             char prefix[64];
             strncpy(prefix, word, word_len - 1);
             prefix[word_len - 1] = '\0';
-            n = vk_dict_complete(dict, prefix, completions, 64);
+            n = xk_dict_complete(dict, prefix, completions, 64);
         }
     }
 
-    struct Scored { VKCandidate c; };
+    struct Scored { XKCandidate c; };
     std::vector<Scored> candidates;
 
     for (int i = 0; i < n; ++i) {
         int dist = damerau_levenshtein(word, completions[i], max_dist);
         if (dist > max_dist) { free(completions[i]); continue; }
 
-        VKCandidate c{};
+        XKCandidate c{};
         strncpy(c.text, completions[i], sizeof(c.text) - 1);
         c.edit_distance = dist;
 
-        int freq = vk_dict_lookup(dict, completions[i]);
+        int freq = xk_dict_lookup(dict, completions[i]);
         float freq_weight = freq > 0 ? std::log10(static_cast<float>(freq)) / 6.0f : 0.1f;
         float dist_penalty = 1.0f - (static_cast<float>(dist) / (max_dist + 1));
-        float ngram_score = ng ? vk_ngram_score(ng, context, ctx_len, completions[i]) : -5.0f;
+        float ngram_score = ng ? xk_ngram_score(ng, context, ctx_len, completions[i]) : -5.0f;
         float ngram_norm = (ngram_score + 10.0f) / 10.0f;
 
         c.score = freq_weight * 0.5f + dist_penalty * 0.3f + ngram_norm * 0.2f;

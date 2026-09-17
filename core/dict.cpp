@@ -1,4 +1,4 @@
-#include "vietkey.h"
+#include "xrnikey.h"
 #include <fstream>
 #include <vector>
 #include <string>
@@ -14,7 +14,7 @@ struct TrieNode {
     int32_t check;
 };
 
-struct VKDictImpl {
+struct XKDictImpl {
     void*  mmap_data;
     size_t mmap_size;
     int    fd;
@@ -31,7 +31,7 @@ static const int32_t TRIE_ROOT = 1;
  * real children-offset base on its own node -- see data/dict/build_dict.sh. */
 static const uint8_t TRIE_TERMINATOR = 0;
 
-static int32_t trie_walk(VKDictImpl* d, uint8_t c, int32_t s) {
+static int32_t trie_walk(XKDictImpl* d, uint8_t c, int32_t s) {
     if (d->base_array[s] < 0) return -1;  /* value leaf: no outgoing edges */
     int32_t next = d->base_array[s] + c;
     if (next >= 0 && next < d->num_nodes && d->check_array[next] == s)
@@ -39,17 +39,17 @@ static int32_t trie_walk(VKDictImpl* d, uint8_t c, int32_t s) {
     return -1;
 }
 
-static bool trie_has_value(VKDictImpl* d, int32_t s) {
+static bool trie_has_value(XKDictImpl* d, int32_t s) {
     return d->base_array[s] < 0;
 }
 
-static int trie_get_freq(VKDictImpl* d, int32_t s) {
+static int trie_get_freq(XKDictImpl* d, int32_t s) {
     return -d->base_array[s];
 }
 
 extern "C" {
 
-VKDict* vk_dict_load(const char* path) {
+XKDict* xk_dict_load(const char* path) {
     if (!path) return nullptr;
 
     int fd = open(path, O_RDONLY);
@@ -61,7 +61,7 @@ VKDict* vk_dict_load(const char* path) {
     void* data = mmap(nullptr, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
     if (data == MAP_FAILED) { close(fd); return nullptr; }
 
-    auto* d = new VKDictImpl{};
+    auto* d = new XKDictImpl{};
     d->fd = fd;
     d->mmap_data = data;
     d->mmap_size = st.st_size;
@@ -72,20 +72,20 @@ VKDict* vk_dict_load(const char* path) {
     d->check_array = d->base_array + d->num_nodes;
     d->tail = reinterpret_cast<char*>(d->check_array + d->num_nodes);
 
-    return reinterpret_cast<VKDict*>(d);
+    return reinterpret_cast<XKDict*>(d);
 }
 
-void vk_dict_free(VKDict* dict) {
+void xk_dict_free(XKDict* dict) {
     if (!dict) return;
-    auto* d = reinterpret_cast<VKDictImpl*>(dict);
+    auto* d = reinterpret_cast<XKDictImpl*>(dict);
     if (d->mmap_data) munmap(d->mmap_data, d->mmap_size);
     if (d->fd >= 0) close(d->fd);
     delete d;
 }
 
-int vk_dict_lookup(VKDict* dict, const char* word) {
+int xk_dict_lookup(XKDict* dict, const char* word) {
     if (!dict || !word) return 0;
-    auto* d = reinterpret_cast<VKDictImpl*>(dict);
+    auto* d = reinterpret_cast<XKDictImpl*>(dict);
     int32_t s = TRIE_ROOT;
     for (const char* p = word; *p; ++p) {
         s = trie_walk(d, static_cast<uint8_t>(*p), s);
@@ -96,9 +96,9 @@ int vk_dict_lookup(VKDict* dict, const char* word) {
     return 0;
 }
 
-int vk_dict_complete(VKDict* dict, const char* prefix, char** results, int max_results) {
+int xk_dict_complete(XKDict* dict, const char* prefix, char** results, int max_results) {
     if (!dict || !prefix || !results || max_results <= 0) return 0;
-    auto* d = reinterpret_cast<VKDictImpl*>(dict);
+    auto* d = reinterpret_cast<XKDictImpl*>(dict);
 
     int32_t s = TRIE_ROOT;
     for (const char* p = prefix; *p; ++p) {
@@ -140,15 +140,15 @@ int vk_dict_complete(VKDict* dict, const char* prefix, char** results, int max_r
     return count;
 }
 
-void vk_dict_add_word(VKDict* dict, const char* word, int freq) {
+void xk_dict_add_word(XKDict* dict, const char* word, int freq) {
     if (!dict || !word) return;
-    auto* d = reinterpret_cast<VKDictImpl*>(dict);
+    auto* d = reinterpret_cast<XKDictImpl*>(dict);
     d->user_words.push_back({word, freq});
 }
 
-void vk_dict_reload_user(VKDict* dict, const char* user_path) {
+void xk_dict_reload_user(XKDict* dict, const char* user_path) {
     if (!dict || !user_path) return;
-    auto* d = reinterpret_cast<VKDictImpl*>(dict);
+    auto* d = reinterpret_cast<XKDictImpl*>(dict);
     d->user_words.clear();
     std::ifstream f(user_path);
     std::string line;

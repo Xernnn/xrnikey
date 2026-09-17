@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
-  <schema id="com.vietkey" path="/com/vietkey/">
+  <schema id="com.xrnikey" path="/com/xrnikey/">
     <key name="input-mode" type="s">
       <default>'Telex'</default>
       <summary>Input mode</summary>

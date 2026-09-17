@@ -1,175 +1,175 @@
 #include <catch2/catch_test_macros.hpp>
-#include <vietkey.h>
+#include <xrnikey.h>
 #include <cstring>
 #include <string>
 
-static VKState* make_telex() { return vk_state_new(VK_MODE_TELEX); }
+static XKState* make_telex() { return xk_state_new(XK_MODE_TELEX); }
 
-static std::string process_string(VKState* s, const char* input) {
+static std::string process_string(XKState* s, const char* input) {
     std::string result;
     for (const char* p = input; *p; ++p) {
-        VKResult r = vk_process_key(s, static_cast<uint32_t>(*p), 0);
+        XKResult r = xk_process_key(s, static_cast<uint32_t>(*p), 0);
         if (r.commit[0]) result += r.commit;
     }
-    VKResult r = vk_process_key(s, 0x20, 0);
+    XKResult r = xk_process_key(s, 0x20, 0);
     if (r.commit[0]) result += r.commit;
     return result;
 }
 
 TEST_CASE("Telex basic vowels", "[telex]") {
-    VKState* s = make_telex();
+    XKState* s = make_telex();
 
     SECTION("aa -> â") {
-        VKResult r = vk_process_key(s, 'a', 0);
-        r = vk_process_key(s, 'a', 0);
+        XKResult r = xk_process_key(s, 'a', 0);
+        r = xk_process_key(s, 'a', 0);
         REQUIRE(r.consumed == 1);
-        vk_state_free(s);
+        xk_state_free(s);
     }
 
     SECTION("ee -> ê") {
         s = make_telex();
-        vk_process_key(s, 'e', 0);
-        VKResult r = vk_process_key(s, 'e', 0);
+        xk_process_key(s, 'e', 0);
+        XKResult r = xk_process_key(s, 'e', 0);
         REQUIRE(r.consumed == 1);
-        vk_state_free(s);
+        xk_state_free(s);
     }
 
     SECTION("oo -> ô") {
         s = make_telex();
-        vk_process_key(s, 'o', 0);
-        VKResult r = vk_process_key(s, 'o', 0);
+        xk_process_key(s, 'o', 0);
+        XKResult r = xk_process_key(s, 'o', 0);
         REQUIRE(r.consumed == 1);
-        vk_state_free(s);
+        xk_state_free(s);
     }
 
     SECTION("dd -> đ") {
         s = make_telex();
-        vk_process_key(s, 'd', 0);
-        VKResult r = vk_process_key(s, 'd', 0);
+        xk_process_key(s, 'd', 0);
+        XKResult r = xk_process_key(s, 'd', 0);
         REQUIRE(r.consumed == 1);
-        vk_state_free(s);
+        xk_state_free(s);
     }
 
     SECTION("ow -> ơ") {
         s = make_telex();
-        vk_process_key(s, 'o', 0);
-        VKResult r = vk_process_key(s, 'w', 0);
+        xk_process_key(s, 'o', 0);
+        XKResult r = xk_process_key(s, 'w', 0);
         REQUIRE(r.consumed == 1);
-        vk_state_free(s);
+        xk_state_free(s);
     }
 
     SECTION("aw -> ă") {
         s = make_telex();
-        vk_process_key(s, 'a', 0);
-        VKResult r = vk_process_key(s, 'w', 0);
+        xk_process_key(s, 'a', 0);
+        XKResult r = xk_process_key(s, 'w', 0);
         REQUIRE(r.consumed == 1);
-        vk_state_free(s);
+        xk_state_free(s);
     }
 }
 
 TEST_CASE("Telex tone marks", "[telex]") {
     SECTION("as -> á (sắc)") {
-        VKState* s = make_telex();
-        vk_process_key(s, 'a', 0);
-        VKResult r = vk_process_key(s, 's', 0);
+        XKState* s = make_telex();
+        xk_process_key(s, 'a', 0);
+        XKResult r = xk_process_key(s, 's', 0);
         REQUIRE(r.consumed == 1);
-        vk_state_free(s);
+        xk_state_free(s);
     }
 
     SECTION("af -> à (huyền)") {
-        VKState* s = make_telex();
-        vk_process_key(s, 'a', 0);
-        VKResult r = vk_process_key(s, 'f', 0);
+        XKState* s = make_telex();
+        xk_process_key(s, 'a', 0);
+        XKResult r = xk_process_key(s, 'f', 0);
         REQUIRE(r.consumed == 1);
-        vk_state_free(s);
+        xk_state_free(s);
     }
 
     SECTION("ar -> ả (hỏi)") {
-        VKState* s = make_telex();
-        vk_process_key(s, 'a', 0);
-        VKResult r = vk_process_key(s, 'r', 0);
+        XKState* s = make_telex();
+        xk_process_key(s, 'a', 0);
+        XKResult r = xk_process_key(s, 'r', 0);
         REQUIRE(r.consumed == 1);
-        vk_state_free(s);
+        xk_state_free(s);
     }
 
     SECTION("ax -> ã (ngã)") {
-        VKState* s = make_telex();
-        vk_process_key(s, 'a', 0);
-        VKResult r = vk_process_key(s, 'x', 0);
+        XKState* s = make_telex();
+        xk_process_key(s, 'a', 0);
+        XKResult r = xk_process_key(s, 'x', 0);
         REQUIRE(r.consumed == 1);
-        vk_state_free(s);
+        xk_state_free(s);
     }
 
     SECTION("aj -> ạ (nặng)") {
-        VKState* s = make_telex();
-        vk_process_key(s, 'a', 0);
-        VKResult r = vk_process_key(s, 'j', 0);
+        XKState* s = make_telex();
+        xk_process_key(s, 'a', 0);
+        XKResult r = xk_process_key(s, 'j', 0);
         REQUIRE(r.consumed == 1);
-        vk_state_free(s);
+        xk_state_free(s);
     }
 }
 
 TEST_CASE("Telex word composition", "[telex]") {
     SECTION("xin chao -> xin chào") {
-        VKState* s = make_telex();
+        XKState* s = make_telex();
         std::string result = process_string(s, "xin chao");
         REQUIRE(result.find("xin") != std::string::npos);
-        vk_state_free(s);
+        xk_state_free(s);
     }
 
     SECTION("viet nam") {
-        VKState* s = make_telex();
+        XKState* s = make_telex();
         std::string result = process_string(s, "viet nam");
         REQUIRE(result.find("viet") != std::string::npos);
-        vk_state_free(s);
+        xk_state_free(s);
     }
 }
 
 TEST_CASE("Telex backspace undo", "[telex]") {
-    VKState* s = make_telex();
-    vk_process_key(s, 'a', 0);
-    vk_process_key(s, 'a', 0);
-    VKResult r = vk_process_key(s, 0xFF08, 0);
+    XKState* s = make_telex();
+    xk_process_key(s, 'a', 0);
+    xk_process_key(s, 'a', 0);
+    XKResult r = xk_process_key(s, 0xFF08, 0);
     REQUIRE(r.consumed == 1);
-    vk_state_free(s);
+    xk_state_free(s);
 }
 
 TEST_CASE("Telex pass-through English", "[telex]") {
-    VKState* s = make_telex();
+    XKState* s = make_telex();
     std::string result = process_string(s, "hello");
     REQUIRE(result.find("hello") != std::string::npos);
-    vk_state_free(s);
+    xk_state_free(s);
 }
 
 TEST_CASE("Telex Ctrl+Shift toggle", "[telex]") {
-    VKState* s = make_telex();
-    VKResult r = vk_process_key(s, 0, 0x05);
+    XKState* s = make_telex();
+    XKResult r = xk_process_key(s, 0, 0x05);
     REQUIRE(r.consumed == 1);
     REQUIRE(r.reset == 1);
-    vk_state_free(s);
+    xk_state_free(s);
 }
 
 TEST_CASE("Telex multiple vowels", "[telex]") {
     SECTION("uuw -> ư") {
-        VKState* s = make_telex();
-        vk_process_key(s, 'u', 0);
-        vk_process_key(s, 'u', 0);
-        VKResult r = vk_process_key(s, 'w', 0);
+        XKState* s = make_telex();
+        xk_process_key(s, 'u', 0);
+        xk_process_key(s, 'u', 0);
+        XKResult r = xk_process_key(s, 'w', 0);
         REQUIRE(r.consumed == 1);
-        vk_state_free(s);
+        xk_state_free(s);
     }
 }
 
 TEST_CASE("Telex tone on multi-char syllable", "[telex]") {
     SECTION("tooi -> tôi with tone") {
-        VKState* s = make_telex();
-        vk_process_key(s, 't', 0);
-        vk_process_key(s, 'o', 0);
-        vk_process_key(s, 'o', 0);
-        vk_process_key(s, 'i', 0);
-        VKResult r = vk_process_key(s, 's', 0);
+        XKState* s = make_telex();
+        xk_process_key(s, 't', 0);
+        xk_process_key(s, 'o', 0);
+        xk_process_key(s, 'o', 0);
+        xk_process_key(s, 'i', 0);
+        XKResult r = xk_process_key(s, 's', 0);
         REQUIRE(r.consumed == 1);
-        vk_state_free(s);
+        xk_state_free(s);
     }
 }
 
@@ -181,33 +181,33 @@ TEST_CASE("Telex tone on multi-char syllable", "[telex]") {
 TEST_CASE("Telex w applies across the whole vowel nucleus", "[telex]") {
     /* process_string() finalizes with Space, so expectations carry it. */
     SECTION("uo takes a horn on both vowels") {
-        VKState* s = make_telex();
+        XKState* s = make_telex();
         REQUIRE(process_string(s, "uow") == "ươ "); /* ươ */
-        vk_state_free(s);
+        xk_state_free(s);
     }
 
     SECTION("w reaches the nucleus from after a later nucleus vowel") {
-        VKState* s = make_telex();
+        XKState* s = make_telex();
         REQUIRE(process_string(s, "nguoiwf") == "người "); /* người */
-        vk_state_free(s);
+        xk_state_free(s);
     }
 
     SECTION("w reaches the nucleus from behind the coda") {
-        VKState* s = make_telex();
+        XKState* s = make_telex();
         REQUIRE(process_string(s, "duongw") == "dương "); /* dương */
-        vk_state_free(s);
+        xk_state_free(s);
     }
 
     SECTION("canonical spelling still works") {
-        VKState* s = make_telex();
+        XKState* s = make_telex();
         REQUIRE(process_string(s, "nguwowif") == "người "); /* người */
-        vk_state_free(s);
+        xk_state_free(s);
     }
 
     SECTION("w stays literal when the nucleus takes no mark") {
-        VKState* s = make_telex();
+        XKState* s = make_telex();
         REQUIRE(process_string(s, "new") == "new ");
-        vk_state_free(s);
+        xk_state_free(s);
     }
 }
 
@@ -228,10 +228,10 @@ TEST_CASE("Telex leaves English words alone", "[telex]") {
         {"help", "help "},   {"first", "first "}, {"stress", "stress "},
     };
     for (const auto& c : cases) {
-        VKState* s = make_telex();
+        XKState* s = make_telex();
         INFO("typing " << c.keys);
         REQUIRE(process_string(s, c.keys) == c.want);
-        vk_state_free(s);
+        xk_state_free(s);
     }
 }
 
@@ -249,10 +249,10 @@ TEST_CASE("Telex still composes real Vietnamese syllables", "[telex]") {
         {"nghee", "nghê "},
     };
     for (const auto& c : cases) {
-        VKState* s = make_telex();
+        XKState* s = make_telex();
         INFO("typing " << c.keys);
         REQUIRE(process_string(s, c.keys) == c.want);
-        vk_state_free(s);
+        xk_state_free(s);
     }
 }
 
@@ -262,32 +262,32 @@ TEST_CASE("Telex still composes real Vietnamese syllables", "[telex]") {
  * character. */
 TEST_CASE("Enter registers the pending word", "[telex]") {
     SECTION("Enter commits the composed syllable with no trailing char") {
-        VKState* s = make_telex();
+        XKState* s = make_telex();
         for (const char* p = "chaof"; *p; ++p) {
-            vk_process_key(s, static_cast<uint32_t>(*p), 0);
+            xk_process_key(s, static_cast<uint32_t>(*p), 0);
         }
-        VKResult r = vk_process_key(s, 0xFF0D, 0); /* Return */
+        XKResult r = xk_process_key(s, 0xFF0D, 0); /* Return */
         REQUIRE(std::string(r.commit) == "chào");
         REQUIRE(r.consumed == 1);
-        vk_state_free(s);
+        xk_state_free(s);
     }
 
     SECTION("Space still appends its space") {
-        VKState* s = make_telex();
+        XKState* s = make_telex();
         for (const char* p = "chaof"; *p; ++p) {
-            vk_process_key(s, static_cast<uint32_t>(*p), 0);
+            xk_process_key(s, static_cast<uint32_t>(*p), 0);
         }
-        VKResult r = vk_process_key(s, 0x20, 0);
+        XKResult r = xk_process_key(s, 0x20, 0);
         REQUIRE(std::string(r.commit) == "chào ");
-        vk_state_free(s);
+        xk_state_free(s);
     }
 
     SECTION("Enter with nothing pending passes through unconsumed") {
-        VKState* s = make_telex();
-        VKResult r = vk_process_key(s, 0xFF0D, 0);
+        XKState* s = make_telex();
+        XKResult r = xk_process_key(s, 0xFF0D, 0);
         REQUIRE(r.consumed == 0);
         REQUIRE(r.commit[0] == '\0');
-        vk_state_free(s);
+        xk_state_free(s);
     }
 }
 
@@ -306,18 +306,18 @@ TEST_CASE("Telex tone lands correctly on open triphthongs", "[telex]") {
         {"toans", "toán "},
     };
     for (const auto& c : cases) {
-        VKState* s = make_telex();
+        XKState* s = make_telex();
         INFO("typing " << c.keys);
         REQUIRE(process_string(s, c.keys) == c.want);
-        vk_state_free(s);
+        xk_state_free(s);
     }
 }
 
 TEST_CASE("Telex DD keeps its case", "[telex]") {
-    VKState* s = make_telex();
+    XKState* s = make_telex();
     REQUIRE(process_string(s, "DDaf") == "Đà ");
-    vk_state_free(s);
+    xk_state_free(s);
     s = make_telex();
     REQUIRE(process_string(s, "ddaf") == "đà ");
-    vk_state_free(s);
+    xk_state_free(s);
 }

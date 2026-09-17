@@ -1,5 +1,5 @@
 #include "socket_server.h"
-#include <vietkey.h>
+#include <xrnikey.h>
 #include <iostream>
 #include <csignal>
 #include <atomic>
@@ -15,9 +15,9 @@ static std::atomic<bool> g_running{true};
 static void signal_handler(int) { g_running = false; }
 
 struct DaemonState {
-    VKDict* dict;
-    VKNgram* ngram;
-    VKEmojiDB* emoji;
+    XKDict* dict;
+    XKNgram* ngram;
+    XKEmojiDB* emoji;
     std::deque<std::string> recent_words;
     static constexpr size_t MAX_RECENT = 500;
     uint64_t keystrokes_saved;
@@ -36,18 +36,18 @@ static std::string handle_complete(const std::string& prefix,
                                     const std::vector<std::string>& context,
                                     int max) {
     char* results[32];
-    int n = vk_dict_complete(g_state.dict, prefix.c_str(), results, max);
+    int n = xk_dict_complete(g_state.dict, prefix.c_str(), results, max);
 
     std::string json = "{\"candidates\":[";
     for (int i = 0; i < n; ++i) {
         if (i > 0) json += ",";
-        int freq = vk_dict_lookup(g_state.dict, results[i]);
+        int freq = xk_dict_lookup(g_state.dict, results[i]);
         float score = freq > 0 ? static_cast<float>(freq) / 10000.0f : 0.5f;
 
         if (g_state.ngram && context.size() >= 2) {
             const char* ctx[] = {context[context.size()-2].c_str(),
                                   context[context.size()-1].c_str()};
-            float ng = vk_ngram_score(g_state.ngram, ctx, 2, results[i]);
+            float ng = xk_ngram_score(g_state.ngram, ctx, 2, results[i]);
             score = score * 0.6f + (ng + 10.0f) / 10.0f * 0.4f;
         }
 
@@ -63,7 +63,7 @@ static std::string handle_complete(const std::string& prefix,
 static std::string handle_emoji(const std::string& query) {
     char* chars[16];
     char* names[16];
-    int n = vk_emoji_search(g_state.emoji, query.c_str(), chars, names, 16);
+    int n = xk_emoji_search(g_state.emoji, query.c_str(), chars, names, 16);
 
     std::string json = "{\"emoji\":[";
     for (int i = 0; i < n; ++i) {
@@ -88,19 +88,19 @@ int main(int argc, char* argv[]) {
     std::signal(SIGINT, signal_handler);
     std::signal(SIGTERM, signal_handler);
 
-    const char* data_dir = VIETKEY_DATA_DIR;
+    const char* data_dir = XRNIKEY_DATA_DIR;
     std::string dict_path = std::string(data_dir) + "/dict/vi.dict";
     std::string ngram_path = std::string(data_dir) + "/ngram/vi.arpa";
     std::string emoji_path = std::string(data_dir) + "/emoji/emoji.json";
 
-    g_state.dict = vk_dict_load(dict_path.c_str());
-    g_state.ngram = vk_ngram_load(ngram_path.c_str());
-    g_state.emoji = vk_emoji_load(emoji_path.c_str());
+    g_state.dict = xk_dict_load(dict_path.c_str());
+    g_state.ngram = xk_ngram_load(ngram_path.c_str());
+    g_state.emoji = xk_emoji_load(emoji_path.c_str());
     g_state.keystrokes_saved = 0;
     g_state.language_switches = 0;
 
     uid_t uid = getuid();
-    std::string socket_path = "/run/user/" + std::to_string(uid) + "/vietkey.sock";
+    std::string socket_path = "/run/user/" + std::to_string(uid) + "/xrnikey.sock";
 
     SocketServer server(socket_path, [](const std::string& request) -> std::string {
         if (request.find("\"type\":\"complete\"") != std::string::npos) {
@@ -129,12 +129,12 @@ int main(int argc, char* argv[]) {
         return "{\"error\":\"unknown request\"}";
     });
 
-    std::cerr << "vkd: listening on " << socket_path << std::endl;
+    std::cerr << "xkd: listening on " << socket_path << std::endl;
     server.run(g_running);
 
-    if (g_state.dict) vk_dict_free(g_state.dict);
-    if (g_state.ngram) vk_ngram_free(g_state.ngram);
-    if (g_state.emoji) vk_emoji_free(g_state.emoji);
+    if (g_state.dict) xk_dict_free(g_state.dict);
+    if (g_state.ngram) xk_ngram_free(g_state.ngram);
+    if (g_state.emoji) xk_emoji_free(g_state.emoji);
 
     return 0;
 }

@@ -1,5 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
-#include <vietkey.h>
+#include <xrnikey.h>
 #include <cstring>
 #include <string>
 
@@ -8,32 +8,32 @@
  * previously lost its tone or vowel modification entirely. */
 
 static std::string type_telex(const char* input) {
-    VKState* s = vk_state_new(VK_MODE_TELEX);
+    XKState* s = xk_state_new(XK_MODE_TELEX);
     std::string doc;
     for (const char* p = input; *p; ++p) {
-        VKResult r = vk_process_key(s, static_cast<uint32_t>(static_cast<unsigned char>(*p)), 0);
+        XKResult r = xk_process_key(s, static_cast<uint32_t>(static_cast<unsigned char>(*p)), 0);
         if (!r.consumed) { doc += *p; continue; }
         if (r.commit[0]) doc += r.commit;
     }
-    vk_state_free(s);
+    xk_state_free(s);
     return doc;
 }
 
 static std::string type_vni(const char* input) {
-    VKState* s = vk_state_new(VK_MODE_VNI);
+    XKState* s = xk_state_new(XK_MODE_VNI);
     std::string doc;
     for (const char* p = input; *p; ++p) {
-        VKResult r = vk_process_key(s, static_cast<uint32_t>(static_cast<unsigned char>(*p)), 0);
+        XKResult r = xk_process_key(s, static_cast<uint32_t>(static_cast<unsigned char>(*p)), 0);
         if (!r.consumed) { doc += *p; continue; }
         if (r.commit[0]) doc += r.commit;
     }
-    vk_state_free(s);
+    xk_state_free(s);
     return doc;
 }
 
 TEST_CASE("Telex: triphthong/diphthong nucleus not misdetected as invalid", "[realwords]") {
     /* is_valid_vn_syllable used to reject "uoi"/"uou"/"ieu" shapes (missing
-     * from the old fixed nucleus table), which made vk_is_english_word
+     * from the old fixed nucleus table), which made xk_is_english_word
      * treat them as English and silently drop the tone/vowel modification. */
     CHECK(type_telex("nguwowif ") == "người ");
     CHECK(type_telex("ddieeuf ") == "điều ");

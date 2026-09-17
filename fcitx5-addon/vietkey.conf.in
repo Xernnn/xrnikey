@@ -1,8 +1,0 @@
-[InputMethod]
-Name=VietKey
-Name[vi]=VietKey
-Icon=vietkey
-Label=VN
-LangCode=vi
-Addon=vietkey5
-Configurable=True

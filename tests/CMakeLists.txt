@@ -13,19 +13,19 @@ if(NOT Catch2_FOUND)
 endif()
 
 add_executable(test_telex test_telex.cpp)
-target_link_libraries(test_telex PRIVATE vietkey Catch2::Catch2WithMain)
+target_link_libraries(test_telex PRIVATE xrnikey Catch2::Catch2WithMain)
 
 add_executable(test_tone_placement test_tone_placement.cpp)
-target_link_libraries(test_tone_placement PRIVATE vietkey Catch2::Catch2WithMain)
+target_link_libraries(test_tone_placement PRIVATE xrnikey Catch2::Catch2WithMain)
 
 add_executable(test_full_pipeline test_full_pipeline.cpp)
-target_link_libraries(test_full_pipeline PRIVATE vietkey Catch2::Catch2WithMain)
+target_link_libraries(test_full_pipeline PRIVATE xrnikey Catch2::Catch2WithMain)
 
 add_executable(test_instant_commit test_instant_commit.cpp)
-target_link_libraries(test_instant_commit PRIVATE vietkey Catch2::Catch2WithMain)
+target_link_libraries(test_instant_commit PRIVATE xrnikey Catch2::Catch2WithMain)
 
 add_executable(test_real_words test_real_words.cpp)
-target_link_libraries(test_real_words PRIVATE vietkey Catch2::Catch2WithMain)
+target_link_libraries(test_real_words PRIVATE xrnikey Catch2::Catch2WithMain)
 
 include(CTest)
 include(Catch)

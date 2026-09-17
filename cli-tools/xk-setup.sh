@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# vk-setup — interactive VietKey setup script
+# xk-setup — interactive Xrnikey setup script
 set -euo pipefail
 
-VIETKEY_SHARE="${VIETKEY_SHARE:-/usr/share/vietkey}"
-BACKUP_DIR="${HOME}/.local/share/vietkey/setup-backup"
-STATE_DIR="${HOME}/.local/share/vietkey"
-CONFIG_DIR="${HOME}/.config/vietkey"
+XRNIKEY_SHARE="${XRNIKEY_SHARE:-/usr/share/xrnikey}"
+BACKUP_DIR="${HOME}/.local/share/xrnikey/setup-backup"
+STATE_DIR="${HOME}/.local/share/xrnikey"
+CONFIG_DIR="${HOME}/.config/xrnikey"
 
-log() { echo "[vk-setup] $*"; }
-warn() { echo "[vk-setup] WARNING: $*" >&2; }
+log() { echo "[xk-setup] $*"; }
+warn() { echo "[xk-setup] WARNING: $*" >&2; }
 
 detect_display() {
     if [ -n "${WAYLAND_DISPLAY:-}" ]; then echo "wayland"
@@ -66,7 +66,7 @@ setup_env_vars() {
     else im_module="ibus"; fi
 
     local env_block="
-# VietKey IME environment
+# Xrnikey IME environment
 export GTK_IM_MODULE=${im_module}
 export QT_IM_MODULE=${im_module}
 export XMODIFIERS=@im=${im_module}
@@ -105,11 +105,11 @@ setup_autostart() {
     mkdir -p "$STATE_DIR" "$CONFIG_DIR"
     mkdir -p "$HOME/.config/systemd/user"
 
-    # vkd daemon
-    if [ -f /usr/lib/systemd/user/vkd.service ] || [ -f /lib/systemd/user/vkd.service ]; then
-        systemctl --user enable vkd.service 2>/dev/null || true
-        systemctl --user start vkd.service 2>/dev/null || true
-        log "Enabled vkd daemon"
+    # xkd daemon
+    if [ -f /usr/lib/systemd/user/xkd.service ] || [ -f /lib/systemd/user/xkd.service ]; then
+        systemctl --user enable xkd.service 2>/dev/null || true
+        systemctl --user start xkd.service 2>/dev/null || true
+        log "Enabled xkd daemon"
     fi
 
     if [ "$imf" = "fcitx5" ]; then
@@ -172,14 +172,14 @@ validate_setup() {
     log "Desktop: $(detect_de)"
     log "IMF: $(detect_imf)"
     log ""
-    log "Please type 'xin chào' in any text field to verify VietKey works."
+    log "Please type 'xin chào' in any text field to verify Xrnikey works."
     log "Switch input method with Ctrl+Space (Fcitx5) or Super+Space (IBus)."
 }
 
 main() {
     if [ "${1:-}" = "--rollback" ]; then rollback; fi
 
-    log "VietKey Setup v1.0.0"
+    log "Xrnikey Setup v1.0.0"
     log "===================="
 
     local display de shell imf

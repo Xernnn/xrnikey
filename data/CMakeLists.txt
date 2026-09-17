@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.27)
 
-set(VIETKEY_DATA_DIR "${CMAKE_INSTALL_PREFIX}/share/vietkey" CACHE PATH "Data install directory")
+set(XRNIKEY_DATA_DIR "${CMAKE_INSTALL_PREFIX}/share/xrnikey" CACHE PATH "Data install directory")
 
 # Build dictionary at configure time
 find_program(BASH_EXECUTABLE bash)
@@ -19,21 +19,21 @@ if(BASH_EXECUTABLE)
 endif()
 
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/ngram/
-        DESTINATION share/vietkey/ngram
+        DESTINATION share/xrnikey/ngram
         FILES_MATCHING PATTERN "*.arpa")
 
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/emoji/
-        DESTINATION share/vietkey/emoji
+        DESTINATION share/xrnikey/emoji
         FILES_MATCHING PATTERN "*.json")
 
 install(FILES dict/build_dict.sh dict/seed_wordlist.txt
-        DESTINATION share/vietkey/dict)
+        DESTINATION share/xrnikey/dict)
 
 if(BASH_EXECUTABLE)
     install(FILES ${CMAKE_BINARY_DIR}/data/dict/vi.dict
-            DESTINATION share/vietkey/dict
+            DESTINATION share/xrnikey/dict
             OPTIONAL)
 endif()
 
 install(PROGRAMS emoji/generate.py ngram/train.py
-        DESTINATION share/vietkey/scripts)
+        DESTINATION share/xrnikey/scripts)
