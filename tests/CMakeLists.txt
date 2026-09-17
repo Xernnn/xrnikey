@@ -21,8 +21,16 @@ target_link_libraries(test_tone_placement PRIVATE vietkey Catch2::Catch2WithMain
 add_executable(test_full_pipeline test_full_pipeline.cpp)
 target_link_libraries(test_full_pipeline PRIVATE vietkey Catch2::Catch2WithMain)
 
+add_executable(test_instant_commit test_instant_commit.cpp)
+target_link_libraries(test_instant_commit PRIVATE vietkey Catch2::Catch2WithMain)
+
+add_executable(test_real_words test_real_words.cpp)
+target_link_libraries(test_real_words PRIVATE vietkey Catch2::Catch2WithMain)
+
 include(CTest)
 include(Catch)
 catch_discover_tests(test_telex)
 catch_discover_tests(test_tone_placement)
 catch_discover_tests(test_full_pipeline)
+catch_discover_tests(test_instant_commit)
+catch_discover_tests(test_real_words)

@@ -5,8 +5,14 @@ set(VIETKEY_DATA_DIR "${CMAKE_INSTALL_PREFIX}/share/vietkey" CACHE PATH "Data in
 # Build dictionary at configure time
 find_program(BASH_EXECUTABLE bash)
 if(BASH_EXECUTABLE)
+    ## build_dict.sh defaults BUILD_DIR to a path relative to itself that
+    ## assumes the CMake binary dir is literally named "build" — pass the
+    ## real one explicitly, or any build dir with a different name (or
+    ## location) silently gets no dictionary (masked by install(... OPTIONAL)
+    ## below finding nothing at the expected path).
     add_custom_target(build_dict ALL
-        COMMAND ${BASH_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/dict/build_dict.sh
+        COMMAND ${CMAKE_COMMAND} -E env "BUILD_DIR=${CMAKE_BINARY_DIR}/data/dict"
+                ${BASH_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/dict/build_dict.sh
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dict
         COMMENT "Building Vietnamese dictionary"
     )

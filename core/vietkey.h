@@ -9,11 +9,18 @@ extern "C" {
 
 typedef struct VKState VKState;
 
+/* commit/delete_before drive instant (Unikey-style) commit: the caller should
+ * delete `delete_before` codepoints immediately before the cursor (text this
+ * engine previously committed for the syllable in progress), then insert
+ * `commit`. delete_before is 0 for a plain append. preedit mirrors the full
+ * current syllable for frontends that use a classic composition buffer
+ * instead (e.g. no surrounding-text support). */
 typedef struct VKResult {
     char commit[64];
     char preedit[64];
     int  consumed;
     int  reset;
+    int  delete_before;
 } VKResult;
 
 typedef struct VKDict VKDict;
@@ -37,6 +44,14 @@ VKState* vk_state_new(int mode);
 void     vk_state_free(VKState* state);
 void     vk_state_reset(VKState* state);
 char*    vk_state_get_preedit(VKState* state);
+
+/* Opt in to Unikey-style instant commit: every keystroke fills
+ * commit/delete_before to correct previously committed text in place,
+ * instead of only committing the finalized word on Space. Off by default —
+ * a frontend that only understands the classic commit-on-Space contract
+ * (e.g. relies on commit staying empty until the word is finished) must not
+ * enable this. */
+void vk_state_set_instant_commit(VKState* state, int enabled);
 
 /* Key processing — keysym is XKB keysym, modifiers bitmask */
 VKResult vk_process_key(VKState* state, uint32_t keysym, uint32_t modifiers);

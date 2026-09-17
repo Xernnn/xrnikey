@@ -26,8 +26,13 @@ struct VKDictImpl {
 };
 
 static const int32_t TRIE_ROOT = 1;
+/* Every word ends with a 0x00 edge to a leaf whose (negative) base carries the
+ * frequency. A word that is also a prefix of another word therefore keeps a
+ * real children-offset base on its own node -- see data/dict/build_dict.sh. */
+static const uint8_t TRIE_TERMINATOR = 0;
 
 static int32_t trie_walk(VKDictImpl* d, uint8_t c, int32_t s) {
+    if (d->base_array[s] < 0) return -1;  /* value leaf: no outgoing edges */
     int32_t next = d->base_array[s] + c;
     if (next >= 0 && next < d->num_nodes && d->check_array[next] == s)
         return next;
@@ -86,7 +91,8 @@ int vk_dict_lookup(VKDict* dict, const char* word) {
         s = trie_walk(d, static_cast<uint8_t>(*p), s);
         if (s < 0) return 0;
     }
-    if (trie_has_value(d, s)) return trie_get_freq(d, s);
+    int32_t t = trie_walk(d, TRIE_TERMINATOR, s);
+    if (t >= 0 && trie_has_value(d, t)) return trie_get_freq(d, t);
     return 0;
 }
 
@@ -111,8 +117,9 @@ int vk_dict_complete(VKDict* dict, const char* prefix, char** results, int max_r
         auto [node, word] = stack.back();
         stack.pop_back();
 
-        if (trie_has_value(node)) {
-            cands.push_back({word, trie_get_freq(node)});
+        int32_t term = trie_walk(d, TRIE_TERMINATOR, node);
+        if (term >= 0 && trie_has_value(d, term)) {
+            cands.push_back({word, trie_get_freq(d, term)});
         }
 
         for (int c = 1; c < 256; ++c) {

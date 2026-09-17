@@ -15,11 +15,14 @@ VK_MODE_TELEX = 0
 VK_MODE_VNI = 1
 
 class VKResult(ctypes.Structure):
+    # Field order/types must mirror VKResult in core/vietkey.h exactly —
+    # this struct is returned by value across the ctypes boundary.
     _fields_ = [
         ("commit", ctypes.c_char * 64),
         ("preedit", ctypes.c_char * 64),
         ("consumed", ctypes.c_int),
         ("reset", ctypes.c_int),
+        ("delete_before", ctypes.c_int),
     ]
 
 class VietKeyEngine(ibus.Engine):

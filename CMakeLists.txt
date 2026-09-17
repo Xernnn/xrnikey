@@ -8,7 +8,14 @@ option(VIETKEY_BUILD_IBUS "Build IBus engine" ON)
 option(VIETKEY_BUILD_FCITX5 "Build Fcitx5 addon" ON)
 option(VIETKEY_BUILD_DAEMON "Build vkd daemon" ON)
 option(VIETKEY_ENABLE_TESTS "Build test suite" OFF)
-option(VIETKEY_DATA_DIR "/usr/share/vietkey" "Data files install directory")
+## NOT option() — that declares a BOOL and takes its third argument as the
+## initial VALUE, so `option(VIETKEY_DATA_DIR "/usr/share/vietkey" "Data files
+## install directory")` cached a BOOL of OFF and the daemon got compiled with
+## VIETKEY_DATA_DIR="OFF", making every dict/ngram/emoji path load from ./OFF/.
+## Must also be defined here at top level, not in data/CMakeLists.txt:
+## add_subdirectory(daemon) runs before add_subdirectory(data).
+set(VIETKEY_DATA_DIR "${CMAKE_INSTALL_PREFIX}/share/vietkey"
+    CACHE PATH "Data files install directory")
 
 add_subdirectory(core)
 

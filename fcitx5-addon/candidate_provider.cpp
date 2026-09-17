@@ -1,5 +1,6 @@
 #include "candidate_provider.h"
 #include <fcitx-utils/i18n.h>
+#include <algorithm>
 #include <cstring>
 
 namespace fcitx {
@@ -17,17 +18,40 @@ void CandidateProvider::setConfig(std::shared_ptr<VietKeyConfig> config) {
     config_ = config;
 }
 
+void CandidateProvider::load(const std::string& dataDir) {
+    if (dict_) return;  /* idempotent: reloadConfig() may call this again */
+    dict_ = vk_dict_load((dataDir + "/dict/vi.dict").c_str());
+    ngram_ = vk_ngram_load((dataDir + "/ngram/vi.arpa").c_str());
+    emoji_ = vk_emoji_load((dataDir + "/emoji/emoji.json").c_str());
+}
+
 std::vector<VietKeyCandidate> CandidateProvider::getCandidates(
-    const std::string& prefix, int max) {
+    const std::string& prefix, int max,
+    const std::vector<std::string>& context) {
     std::vector<VietKeyCandidate> results;
     if (!dict_ || prefix.empty()) return results;
+
+    /* Raw C pointers for the C ABI; `context` outlives this call. */
+    std::vector<const char*> ctx;
+    ctx.reserve(context.size());
+    for (const auto& w : context) ctx.push_back(w.c_str());
 
     char* completions[32];
     int n = vk_dict_complete(dict_, prefix.c_str(), completions, max);
     for (int i = 0; i < n; ++i) {
         VietKeyCandidate c;
         c.text = completions[i];
-        c.score = static_cast<float>(vk_dict_lookup(dict_, completions[i])) / 10000.0f;
+        /* Dictionary frequency is the base score; the n-gram model then says
+         * how well the word follows what was just typed. Without this the
+         * ranking was frequency-only and the trained model went unused --
+         * "chúc" should outrank "chủ" right after "xin". */
+        float freq = static_cast<float>(vk_dict_lookup(dict_, completions[i]));
+        c.score = freq / 10000.0f;
+        if (ngram_ && !ctx.empty()) {
+            c.score += 0.5f * vk_ngram_score(ngram_, ctx.data(),
+                                             static_cast<int>(ctx.size()),
+                                             completions[i]);
+        }
         c.type = 0;
         c.gloss = "";
         results.push_back(c);
@@ -36,9 +60,12 @@ std::vector<VietKeyCandidate> CandidateProvider::getCandidates(
 
     if (config_ && config_->autoCorrect.value()) {
         VKCandidate corrections[8];
-        const char* ctx[] = {};
-        int nc = vk_autocorrect(dict_, ngram_, prefix.c_str(), ctx, 0, corrections, 8);
+        int nc = vk_autocorrect(dict_, ngram_, prefix.c_str(),
+                                ctx.empty() ? nullptr : ctx.data(),
+                                static_cast<int>(ctx.size()), corrections, 8);
         for (int i = 0; i < nc; ++i) {
+            if (corrections[i].score < config_->autoCorrectThreshold.value())
+                continue;
             VietKeyCandidate c;
             c.text = corrections[i].text;
             c.score = corrections[i].score;
@@ -48,6 +75,11 @@ std::vector<VietKeyCandidate> CandidateProvider::getCandidates(
         }
     }
 
+    std::sort(results.begin(), results.end(),
+              [](const VietKeyCandidate& a, const VietKeyCandidate& b) {
+                  return a.score > b.score;
+              });
+    if (static_cast<int>(results.size()) > max) results.resize(max);
     return results;
 }
 

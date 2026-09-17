@@ -7,6 +7,7 @@ VietKey provides Telex and VNI input methods with intelligent bilingual auto-swi
 ## Features
 
 - **Telex & VNI** — full Vietnamese input encoding with tone marks, vowel modifications, and backspace undo
+- **Unikey-style instant commit** — corrects tones in place as you type (no visible composition buffer), like Unikey on Windows, instead of holding the word in preedit until Space; opt-in via `InstantCommit=True`, falls back to classic preedit in apps without surrounding-text support
 - **Bilingual auto-switch** — type English without toggling the IME off
 - **Dictionary completion** — 800+ word seed dictionary with user dictionary hot-reload
 - **N-gram prediction** — context-aware word suggestions
@@ -15,6 +16,13 @@ VietKey provides Telex and VNI input methods with intelligent bilingual auto-swi
 - **Fcitx5 + IBus** — works on KDE, Sway, Hyprland, XFCE (Fcitx5) and GNOME (IBus)
 - **Wayland & X11** — full compositor compatibility
 
+## Download
+
+```bash
+git clone https://github.com/Xernnn/xernikey.git vietkey
+cd vietkey
+```
+
 ## Quick Start (Arch Linux / CachyOS)
 
 ```bash
@@ -22,16 +30,21 @@ VietKey provides Telex and VNI input methods with intelligent bilingual auto-swi
 sudo pacman -S cmake extra-cmake-modules fcitx5 fcitx5-gtk fcitx5-qt \
     boost python python-gobject noto-fonts noto-fonts-cjk
 
-# Build and install
-cmake -B build -DCMAKE_BUILD_TYPE=Release -DVIETKEY_ENABLE_TESTS=ON
+# Configure, build, install
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DVIETKEY_ENABLE_TESTS=ON
 cmake --build build -- -j$(nproc)
 sudo cmake --install build
+sudo ldconfig
 
 # Run setup
 vk-setup
 ```
 
-Log out and back in, then switch to VietKey with **Ctrl+Space** (Fcitx5) or **Super+Space** (IBus).
+`-DCMAKE_INSTALL_PREFIX=/usr` is required, not optional — it's what makes Fcitx5's own CMake config route the addon into the real system dirs (`/usr/lib/fcitx5`, `/usr/share/fcitx5/addon`) that the running `fcitx5` daemon actually scans. Any other prefix (including the CMake default, `/usr/local`) installs the addon somewhere Fcitx5 never looks, and it silently never loads.
+
+Log out and back in (so the env vars `vk-setup` writes take effect), then switch to VietKey with **Ctrl+Space** (Fcitx5) or **Super+Space** (IBus).
+
+To verify it actually loaded: `fcitx5-diagnose | grep -i vietkey`, or run `vk-diagnose`.
 
 ## Keybindings
 
@@ -75,6 +88,7 @@ Fcitx5: `~/.config/fcitx5/conf/vietkey5.conf`
 [General]
 InputMode=Telex
 AutoSwitch=True
+InstantCommit=False
 PredictionEnabled=True
 EmojiEnabled=True
 CandidateLayout=Vertical

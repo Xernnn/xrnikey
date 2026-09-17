@@ -1,5 +1,5 @@
 find_package(Fcitx5Core REQUIRED)
-find_package(Fcitx5Module REQUIRED COMPONENTS QuickPhrase)
+find_package(Fcitx5Module REQUIRED COMPONENTS QuickPhrase Notifications)
 
 add_library(vietkey5 MODULE
     vietkey5.cpp
@@ -9,16 +9,40 @@ add_library(vietkey5 MODULE
 target_link_libraries(vietkey5
     PRIVATE Fcitx5::Core
     PRIVATE vietkey
+    ## Header-only interface target: brings in the notifications module's
+    ## public header so the addon can show a tip when a setting is toggled.
+    ## The addon declares it as an OPTIONAL dependency, so a system without
+    ## the notifications addon still loads -- notifications() returns null.
+    PRIVATE Fcitx5::Module::Notifications
 )
 
 target_include_directories(vietkey5 PRIVATE
     ${CMAKE_SOURCE_DIR}/core
 )
 
-install(TARGETS vietkey5 DESTINATION "${FCITX_INSTALL_PKGDATADIR}/addon")
+target_compile_definitions(vietkey5 PRIVATE
+    VIETKEY_DATA_DIR="${VIETKEY_DATA_DIR}"
+)
+
+## The addon library goes in Fcitx5's addon lib dir (e.g. /usr/lib/fcitx5,
+## alongside libquickphrase.so, libclassicui.so, ...) — NOT under
+## FCITX_INSTALL_PKGDATADIR/addon, which is reserved for the .conf metadata
+## file below. Fcitx5 resolves the "Library=" key in that .conf against
+## this directory.
+install(TARGETS vietkey5 DESTINATION "${FCITX_INSTALL_ADDONDIR}")
 
 configure_file(vietkey5.conf.in vietkey5.conf @ONLY)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/vietkey5.conf
-        DESTINATION "${FCITX_INSTALL_PKGDATADIR}/inputmethod")
+        DESTINATION "${FCITX_INSTALL_PKGDATADIR}/addon")
 
-fcitx5_translate_desktop(vietkey5.conf.in vietkey5.conf)
+## The addon .conf above only tells Fcitx5 that a loadable addon exists; it
+## does NOT make an input method selectable. Fcitx5's InputMethodManager
+## discovers selectable input methods from a SEPARATE .conf under
+## FCITX_INSTALL_PKGDATADIR/inputmethod — the addon parser reads only the
+## [Addon] / [Addon/*] sections and silently ignores anything else, so an
+## [InputMethod] stanza placed in the addon .conf has no effect at all.
+## Without this file VietKey loads as an addon but never appears in
+## fcitx5-configtool's input method list.
+configure_file(vietkey.conf.in vietkey.conf @ONLY)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/vietkey.conf
+        DESTINATION "${FCITX_INSTALL_PKGDATADIR}/inputmethod")

@@ -2,6 +2,7 @@
 #include <vietkey.h>
 #include <iostream>
 #include <csignal>
+#include <atomic>
 #include <vector>
 #include <deque>
 #include <string>
@@ -9,7 +10,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
-static volatile bool g_running = true;
+static std::atomic<bool> g_running{true};
 
 static void signal_handler(int) { g_running = false; }
 
