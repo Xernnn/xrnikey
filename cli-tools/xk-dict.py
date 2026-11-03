@@ -102,7 +102,11 @@ def main():
     sub.add_parser("stats")
 
     args = parser.parse_args()
-    user_dict = os.path.expanduser("~/.local/share/xrnikey/user-dict.txt")
+    # Same place the Fcitx5 addon reads (candidate_provider.cpp, userDictPath).
+    data_home = os.environ.get("XDG_DATA_HOME", "")
+    if not data_home.startswith("/"):
+        data_home = os.path.expanduser("~/.local/share")
+    user_dict = os.path.join(data_home, "xrnikey", "user-dict.txt")
 
     if args.command == "lookup":
         lib = load_lib()

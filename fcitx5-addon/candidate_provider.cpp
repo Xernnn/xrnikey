@@ -1,4 +1,6 @@
 #include "candidate_provider.h"
+
+#include <cstdlib>
 #include <fcitx-utils/i18n.h>
 #include <algorithm>
 #include <cstring>
@@ -18,11 +20,23 @@ void CandidateProvider::setConfig(std::shared_ptr<XrnikeyConfig> config) {
     config_ = config;
 }
 
+/* Where xk-dict add writes the user's own words. */
+static std::string userDictPath() {
+    const char* xdg = std::getenv("XDG_DATA_HOME");
+    if (xdg && *xdg == '/') return std::string(xdg) + "/xrnikey/user-dict.txt";
+    const char* home = std::getenv("HOME");
+    return std::string(home ? home : "") + "/.local/share/xrnikey/user-dict.txt";
+}
+
 void CandidateProvider::load(const std::string& dataDir) {
-    if (dict_) return;  /* idempotent: reloadConfig() may call this again */
-    dict_ = xk_dict_load((dataDir + "/dict/vi.dict").c_str());
-    ngram_ = xk_ngram_load((dataDir + "/ngram/vi.arpa").c_str());
-    emoji_ = xk_emoji_load((dataDir + "/emoji/emoji.json").c_str());
+    /* Idempotent: reloadConfig() calls this again, which is when words added with
+     * xk-dict since Fcitx5 started are picked up ("Reload config", or fcitx5 -r). */
+    if (!dict_) {
+        dict_ = xk_dict_load((dataDir + "/dict/vi.dict").c_str());
+        ngram_ = xk_ngram_load((dataDir + "/ngram/vi.arpa").c_str());
+        emoji_ = xk_emoji_load((dataDir + "/emoji/emoji.json").c_str());
+    }
+    if (dict_) xk_dict_reload_user(dict_, userDictPath().c_str());
 }
 
 std::vector<XrnikeyCandidate> CandidateProvider::getCandidates(

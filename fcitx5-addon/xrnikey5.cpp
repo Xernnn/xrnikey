@@ -113,7 +113,6 @@ public:
             selectionKeys_.emplace_back(
                 static_cast<KeySym>(FcitxKey_1 + i));
         }
-        candidateProvider_.load(XRNIKEY_DATA_DIR);
         reloadConfig();
     }
 
@@ -379,6 +378,8 @@ public:
         readAsIni(*config_, StandardPathsType::PkgConfig,
                   "conf/xrnikey5.conf");
         candidateProvider_.setConfig(config_);
+        /* Loads the data once, then re-reads the user's words on every reload. */
+        candidateProvider_.load(XRNIKEY_DATA_DIR);
     }
 
     const Configuration *getConfig() const override { return config_.get(); }

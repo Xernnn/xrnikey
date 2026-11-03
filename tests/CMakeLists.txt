@@ -27,6 +27,13 @@ target_link_libraries(test_instant_commit PRIVATE xrnikey Catch2::Catch2WithMain
 add_executable(test_real_words test_real_words.cpp)
 target_link_libraries(test_real_words PRIVATE xrnikey Catch2::Catch2WithMain)
 
+add_executable(test_user_dict test_user_dict.cpp)
+target_link_libraries(test_user_dict PRIVATE xrnikey Catch2::Catch2WithMain)
+target_compile_definitions(test_user_dict PRIVATE
+    XRNIKEY_TEST_DICT="${CMAKE_BINARY_DIR}/data/dict/vi.dict"
+    XRNIKEY_TEST_TMP="${CMAKE_CURRENT_BINARY_DIR}")
+add_dependencies(test_user_dict build_dict)
+
 include(CTest)
 include(Catch)
 catch_discover_tests(test_telex)
@@ -34,3 +41,4 @@ catch_discover_tests(test_tone_placement)
 catch_discover_tests(test_full_pipeline)
 catch_discover_tests(test_instant_commit)
 catch_discover_tests(test_real_words)
+catch_discover_tests(test_user_dict)
