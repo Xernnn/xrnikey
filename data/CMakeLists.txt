@@ -37,3 +37,8 @@ endif()
 
 install(PROGRAMS emoji/generate.py ngram/train.py
         DESTINATION share/xrnikey/scripts)
+
+## fcitx5-addon/xrnikey.conf.in names its icon "xrnikey"; Fcitx5 looks that name up in the
+## icon theme, so it has to land in hicolor (the fallback every theme inherits from).
+install(FILES icons/xrnikey.svg
+        DESTINATION share/icons/hicolor/scalable/apps)
