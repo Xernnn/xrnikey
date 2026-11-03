@@ -85,11 +85,12 @@ fc-match :lang=vi
 
 ## 7. xkd daemon not running
 
-**Symptom:** Prediction and emoji search don't work.
+This is normal. The input method reads the dictionary, n-grams and emoji in process and never
+asks xkd, so prediction and emoji search work without it, and setup doesn't enable it. If they
+don't work, look at the addon instead (sections 1–6). Start xkd only to use its socket from
+another tool:
 
-**Fix:**
 ```bash
-systemctl --user enable xkd
 systemctl --user start xkd
 systemctl --user status xkd
 ```
@@ -143,11 +144,10 @@ Snap apps may not inherit host IME. Use native packages when possible.
 
 **Fix:**
 ```bash
-# Ensure xkd is running (handles hot-reload):
-systemctl --user restart xkd
-
-# Or manually reload:
+# Add the word (it goes to ~/.local/share/xrnikey/user-dict.txt), then have Fcitx5 reload
+# so the addon reads your words again: "Reload Config" in its tray menu, or
 xk-dict add "từ mới" 9000
+fcitx5-remote -r
 ```
 
 ## 13. Space commits instead of selecting candidate
@@ -172,9 +172,6 @@ Use number keys 1–9 to select candidates explicitly.
 
 **Fix:**
 ```bash
-# Check xkd socket latency:
-echo '{"type":"stats"}' | nc -U /run/user/$(id -u)/xrnikey.sock
-
 # Ensure dictionary is mmap'd (not loading from slow storage):
 ls -la /usr/share/xrnikey/dict/vi.dict
 ```
@@ -225,7 +222,7 @@ fcitx5-configtool   # remove Unikey, add Xrnikey
 ls /usr/share/xrnikey/emoji/emoji.json
 # Regenerate:
 python3 /usr/share/xrnikey/scripts/generate.py
-systemctl --user restart xkd
+fcitx5 -r -d   # restart Fcitx5 so the addon loads the new data
 ```
 
 ## 20. Build fails on missing Fcitx5 headers

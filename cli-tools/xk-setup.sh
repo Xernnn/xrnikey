@@ -105,12 +105,9 @@ setup_autostart() {
     mkdir -p "$STATE_DIR" "$CONFIG_DIR"
     mkdir -p "$HOME/.config/systemd/user"
 
-    # xkd daemon
-    if [ -f /usr/lib/systemd/user/xkd.service ] || [ -f /lib/systemd/user/xkd.service ]; then
-        systemctl --user enable xkd.service 2>/dev/null || true
-        systemctl --user start xkd.service 2>/dev/null || true
-        log "Enabled xkd daemon"
-    fi
+    # xkd daemon: not enabled. Neither the Fcitx5 addon nor the IBus engine queries it yet (both
+    # read the dictionary in process), so it would only sit idle. To try its socket API by hand:
+    #   systemctl --user start xkd.service
 
     if [ "$imf" = "fcitx5" ]; then
         mkdir -p "$HOME/.config/autostart"

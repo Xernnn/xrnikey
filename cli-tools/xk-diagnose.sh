@@ -66,8 +66,8 @@ check_xkd_socket() {
             fix "Restart daemon: systemctl --user restart xkd"
         fi
     else
-        issue "xkd socket not found at $sock"
-        fix "Start daemon: systemctl --user start xkd"
+        # Optional: the input method itself never queries xkd, so this isn't an issue.
+        ok "xkd not running (optional; typing, prediction and emoji don't need it)"
     fi
 }
 

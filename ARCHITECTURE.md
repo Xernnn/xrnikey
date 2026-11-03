@@ -42,7 +42,9 @@
    - Bilingual check (English word → pass-through)
 5. **Tone placement** applies Unicode combining characters per Vietnamese orthographic rules
 6. **Candidate provider** queries dictionary + n-gram + autocorrect for suggestions
-7. **xkd daemon** (optional) provides enhanced prediction via Unix socket
+7. **xkd daemon** (optional) answers the same dictionary, emoji and stats queries over a Unix
+   socket for other tools; the input method doesn't use it (step 6 reads the core in process),
+   so it isn't started by default
 8. **Preedit** rendered inline or in aux window; **commit** sent to application on Space
 
 ## Core Library (libxrnikey)
