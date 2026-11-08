@@ -1,4 +1,8 @@
-# Xrnikey
+<p align="center">
+  <img src="data/icons/xrnikey.svg" width="72" height="72" alt="">
+</p>
+
+<h1 align="center">Xrnikey</h1>
 
 Production-grade bilingual Vietnamese–English Input Method Engine for Linux.
 
