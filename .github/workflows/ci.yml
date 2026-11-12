@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Read-only: CI checks code and needs to change nothing on the repository.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ninja-build extra-cmake-modules catch2 \
+            libfcitx5core-dev libfcitx5config-dev libfcitx5utils-dev fcitx5-modules-dev
+
+      # CMakeLists.txt skips the Fcitx5 addon quietly when Fcitx5 isn't found; here that's an error.
+      - name: Configure
+        run: >-
+          cmake -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_INSTALL_PREFIX=/usr
+          -DXRNIKEY_ENABLE_TESTS=ON
+          -DCMAKE_REQUIRE_FIND_PACKAGE_Fcitx5Core=ON
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Unit tests
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Install into a staging folder
+        run: DESTDIR="$RUNNER_TEMP/stage" cmake --install build
+
+      # The IBus engine and the CLI tools are scripts, not compiled, so at least parse them.
+      - name: Syntax-check the scripts
+        run: |
+          python3 -m py_compile ibus-engine/*.py ibus-engine/xrnikey-ibus \
+            cli-tools/xk-dict.py data/emoji/generate.py data/ngram/train.py
+          for f in cli-tools/*.sh packaging/INSTALL.sh data/dict/build_dict.sh; do bash -n "$f"; done
