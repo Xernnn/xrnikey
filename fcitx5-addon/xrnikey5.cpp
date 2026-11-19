@@ -184,6 +184,17 @@ public:
         XKState *state = icState->state();
         if (!state) return;
 
+        /* Password and other sensitive fields get every key untouched: no
+         * Telex/VNI, no preedit (which would show the password), no
+         * suggestions. Fcitx5 itself already switches Password fields to
+         * the keyboard layout unless AllowInputMethodForPassword is set,
+         * but not Sensitive ones (text-input-v3 SENSITIVE_DATA), and with
+         * that option on, "maatj" in a password box used to become "mật". */
+        if (ic->capabilityFlags().testAny(CapabilityFlag::PasswordOrSensitive)) {
+            endWord(ic, icState);
+            return;
+        }
+
         /* The core composes with printable keys and BackSpace. Every other
          * key -- Return, Tab, Esc, arrows, Home/End, PageUp/Down, Delete,
          * F-keys, and Ctrl/Alt/Super shortcuts -- ends the word: finish it

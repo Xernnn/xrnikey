@@ -618,6 +618,40 @@ TEST_CASE("instant mode: leaving a word mid-way only forgets it", "[leave]") {
     }
 }
 
+TEST_CASE("password and sensitive fields get the keys untouched",
+          "[password]") {
+    for (const char *instant : {"False", "True"}) {
+        INFO("InstantCommit=" << instant);
+        configure({{"InstantCommit", instant}});
+        auto o = instantApp();
+        o.extra = CapabilityFlag::Sensitive;
+        FakeClient c(o);
+        c.type("maatj khaaur");
+        CHECK(c.text() == "maatj khaaur");
+        CHECK(c.preedit().empty());
+        CHECK_FALSE(c.lastKeyHandled());
+        c.key("BackSpace");
+        CHECK(c.text() == "maatj khaau");
+    }
+
+    /* Fcitx5 normally switches password fields to the keyboard layout
+     * itself; with AllowInputMethodForPassword the engine sees them. */
+    RawConfig allow;
+    allow.setValueByPath("Behavior/AllowInputMethodForPassword", "True");
+    gInstance->globalConfig().load(allow, true);
+    {
+        configure({{"InstantCommit", "False"}});
+        auto o = preeditApp();
+        o.extra = CapabilityFlag::Password;
+        FakeClient c(o);
+        REQUIRE(gInstance->inputMethod(&c) == "xrnikey");
+        c.type("ddaay");
+        CHECK(c.text() == "ddaay");
+    }
+    allow.setValueByPath("Behavior/AllowInputMethodForPassword", "False");
+    gInstance->globalConfig().load(allow, true);
+}
+
 int main(int argc, char *argv[]) {
     /* Nothing here may reach the user's session: no display, no session
      * bus, and every file the addon reads under a throwaway directory. */
