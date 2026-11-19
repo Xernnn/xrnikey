@@ -53,6 +53,13 @@ char*    xk_state_get_preedit(XKState* state);
  * enable this. */
 void xk_state_set_instant_commit(XKState* state, int enabled);
 
+/* Typing options, per state. Unknown options are ignored (get returns -1). */
+#define XK_OPT_AUTO_RESTORE 1  /* default 1: a word that is not Vietnamese
+                                  (or is a common English word that is not an
+                                  attested syllable) is committed as typed */
+void xk_state_set_option(XKState* state, int option, int value);
+int  xk_state_get_option(XKState* state, int option);
+
 /* Key processing — keysym is XKB keysym, modifiers bitmask */
 XKResult xk_process_key(XKState* state, uint32_t keysym, uint32_t modifiers);
 

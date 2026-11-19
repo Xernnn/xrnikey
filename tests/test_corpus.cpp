@@ -18,10 +18,16 @@ namespace {
 
 enum Mode { PREEDIT = 1, INSTANT = 2, BOTH = 3 };
 
+struct Opt {
+    int option;
+    int value;
+};
+
 struct Row {
     const char* keys;
     const char* want;
     int modes = BOTH;
+    std::vector<Opt> opts = {};
 };
 
 uint32_t keysym_for(char c) {
@@ -48,9 +54,11 @@ void app_key(std::string& doc, char c) {
     else doc += c;
 }
 
-std::string type(int mode, int instant, const char* keys) {
+std::string type(int mode, int instant, const Row& row) {
+    const char* keys = row.keys;
     XKState* s = xk_state_new(mode);
     xk_state_set_instant_commit(s, instant);
+    for (const Opt& o : row.opts) xk_state_set_option(s, o.option, o.value);
     std::string doc, preedit;
     for (const char* p = keys; *p; ++p) {
         XKResult r = xk_process_key(s, keysym_for(*p), 0);
@@ -69,7 +77,7 @@ void run(int im, const std::vector<Row>& rows) {
             if (!(row.modes & (instant ? INSTANT : PREEDIT))) continue;
             INFO((im == XK_MODE_VNI ? "VNI " : "Telex ")
                  << (instant ? "instant" : "preedit") << " typing \"" << row.keys << "\"");
-            CHECK(type(im, instant, row.keys) == row.want);
+            CHECK(type(im, instant, row) == row.want);
         }
     }
 }
@@ -98,17 +106,25 @@ TEST_CASE("corpus: words that already work", "[corpus]") {
     });
 }
 
-TEST_CASE("corpus: English words come back as typed", "[corpus][!mayfail]") {
+TEST_CASE("corpus: English words come back as typed", "[corpus]") {
     run(XK_MODE_TELEX, {
         {"password ", "password "}, {"user ", "user "}, {"text ", "text "},
         {"config ", "config "}, {"result ", "result "}, {"your ", "your "},
         {"good ", "good "}, {"push ", "push "}, {"use ", "use "},
-        {"more ", "more "}, {"now ", "now "}, {"her ", "her "},
+        {"more ", "more "}, {"her ", "her "},
+        // "tém" is not in core/data/vi-syllables.txt, so the English word wins.
         {"terms ", "terms "}, {"PASSWORD ", "PASSWORD "}, {"Result ", "Result "},
-        {"pass ", "pass "}, {"miss ", "miss "}, {"sorry ", "sorry "},
+        {"pass ", "pass "}, {"sorry ", "sorry "},
         {"issue ", "issue "}, {"coffee ", "coffee "}, {"add ", "add "},
         // A word that stops being Vietnamese shows as typed while still in progress.
         {"text", "text"}, {"push", "push"},
+        // Real syllables stay Vietnamese even when the keys spell English:
+        // nơ (a bow) is attested, as is mí (eyelid).
+        {"now ", "n\xC6\xA1 "}, {"longf ", "lòng "}, {"tooi ", "tôi "},
+        {"ddi ", "đi "}, {"ddc ", "đc "}, {"ddt ", "đt "},
+        // With auto-restore off, what the keys compose is what is committed.
+        {"terms ", "tém ", BOTH, {{XK_OPT_AUTO_RESTORE, 0}}},
+        {"text ", "tẽt ", BOTH, {{XK_OPT_AUTO_RESTORE, 0}}},
     });
 }
 
@@ -138,6 +154,7 @@ TEST_CASE("corpus: typing a key twice undoes it", "[corpus][!mayfail]") {
         {"ass ", "as "}, {"aff ", "af "}, {"aww ", "aw "}, {"oww ", "ow "},
         {"aaaa ", "aaa "}, {"asss ", "ass "}, {"dddd ", "ddd "},
         {"uss ", "us "}, {"off ", "of "}, {"xooong ", "xoong "},
+        {"miss ", "miss "}, {"noww ", "now "}, {"thiss ", "this "},
         {"toansz ", "toan "}, {"toanszz ", "toanz "}, {"asfs ", "á "},
         {"aaa<", "a"}, {"ass<", "a"},
     });
