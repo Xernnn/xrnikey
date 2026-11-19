@@ -652,6 +652,67 @@ TEST_CASE("password and sensitive fields get the keys untouched",
     gInstance->globalConfig().load(allow, true);
 }
 
+TEST_CASE("word suggestions are off by default", "[suggest]") {
+    configure();
+    FakeClient c(preeditApp());
+    c.type("ch");
+    CHECK_FALSE(c.inputPanel().candidateList());
+}
+
+TEST_CASE("digits are typed, never taken as a suggestion pick",
+          "[suggest]") {
+    for (const char *instant : {"False", "True"}) {
+        INFO("InstantCommit=" << instant);
+        configure({{"InstantCommit", instant}, {"PredictionEnabled", "True"}});
+        FakeClient c(instantApp());
+        c.type("ch");
+        REQUIRE(c.inputPanel().candidateList());
+        REQUIRE(c.inputPanel().candidateList()->size() > 0);
+        c.type("1");
+        CHECK(c.text() == "ch1");
+        c.type(" mp3 ");
+        CHECK(c.text() == "ch1 mp3 ");
+    }
+}
+
+TEST_CASE("Ctrl+1..9 picks a suggestion", "[suggest]") {
+    for (const char *instant : {"False", "True"}) {
+        INFO("InstantCommit=" << instant);
+        configure({{"InstantCommit", instant}, {"PredictionEnabled", "True"}});
+        FakeClient c(instantApp());
+        c.type("xin ch");
+        auto list = c.inputPanel().candidateList();
+        REQUIRE(list);
+        REQUIRE(list->size() >= 2);
+        std::string second = list->candidate(1).text().toString();
+        CHECK(c.key("Control+2"));
+        CHECK(c.text() == "xin " + second);
+        CHECK(c.preedit().empty());
+        CHECK_FALSE(c.inputPanel().candidateList());
+    }
+}
+
+TEST_CASE("Ctrl+digit with no suggestion showing stays a shortcut",
+          "[suggest]") {
+    configure({{"InstantCommit", "False"}});
+    FakeClient c(preeditApp());
+    c.type("ch");
+    CHECK_FALSE(c.key("Control+1"));
+    CHECK(c.text() == "ch");
+}
+
+TEST_CASE("fields that ask for no spell checking get no suggestions",
+          "[suggest]") {
+    configure({{"PredictionEnabled", "True"}});
+    auto o = preeditApp();
+    o.extra = CapabilityFlag::NoSpellCheck;
+    FakeClient c(o);
+    c.type("ch");
+    CHECK_FALSE(c.inputPanel().candidateList());
+    c.type("aof ");
+    CHECK(c.text() == "chào "); /* still Vietnamese */
+}
+
 int main(int argc, char *argv[]) {
     /* Nothing here may reach the user's session: no display, no session
      * bus, and every file the addon reads under a throwaway directory. */

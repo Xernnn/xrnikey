@@ -56,7 +56,7 @@ To verify it actually loaded: `fcitx5-diagnose | grep -i xrnikey`, or run `xk-di
 |--------|-------------|
 | Toggle IME on/off | Ctrl+Shift |
 | Commit word | Space |
-| Select candidate 1–9 | 1–9 |
+| Pick suggestion 1–9 (when `PredictionEnabled=True`) | Ctrl+1–9 (`CandidateSelectionKeys`) |
 | Page candidates | Tab / Shift+Tab |
 | Emoji trigger | `:` |
 | Undo composition | Backspace |
@@ -93,7 +93,7 @@ Fcitx5: `~/.config/fcitx5/conf/xrnikey5.conf`
 InputMode=Telex
 AutoSwitch=True
 InstantCommit=False
-PredictionEnabled=True
+PredictionEnabled=False
 EmojiEnabled=True
 CandidateLayout=Vertical
 ```

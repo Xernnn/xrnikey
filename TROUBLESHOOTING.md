@@ -150,15 +150,14 @@ xk-dict add "từ mới" 9000
 fcitx5-remote -r
 ```
 
-## 13. Space commits instead of selecting candidate
+## 13. Picking a word suggestion
 
-**Symptom:** Pressing Space commits preedit instead of selecting candidate #1.
+**Symptom:** Typing a digit does not pick the suggestion under it.
 
-**Fix:** Configure in `~/.config/fcitx5/conf/xrnikey5.conf`:
-```
-CommitKey=space
-```
-Use number keys 1–9 to select candidates explicitly.
+That is deliberate: digits are text in Telex (`mp3`, `a1`) and tone marks in VNI, so they are
+never taken as picks. Suggestions are off by default; with `PredictionEnabled=True`, pick one
+with **Ctrl+1–9**. Space always ends the word as typed. To use other keys, set
+`CandidateSelectionKeys` in `~/.config/fcitx5/conf/xrnikey5.conf` (or in Fcitx5's settings).
 
 ## 14. Ctrl+Shift toggle not working
 

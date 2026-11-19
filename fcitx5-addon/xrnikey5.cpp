@@ -109,10 +109,6 @@ public:
           }) {
         instance_->inputContextManager().registerProperty("xrnikeyState",
                                                             &factory_);
-        for (int i = 0; i < 9; ++i) {
-            selectionKeys_.emplace_back(
-                static_cast<KeySym>(FcitxKey_1 + i));
-        }
         reloadConfig();
     }
 
@@ -177,6 +173,19 @@ public:
             return;
         }
 
+        /* Pick a suggestion (Ctrl+1..9 by default). Checked before the
+         * word-ending keys below, which include every Ctrl chord; with no
+         * suggestion showing, the chord stays an app shortcut. */
+        if (auto candidateList = ic->inputPanel().candidateList()) {
+            int idx = keyEvent.key().keyListIndex(
+                config_->candidateSelectionKeys.value());
+            if (idx >= 0 && idx < candidateList->size()) {
+                candidateList->candidate(idx).select(ic);
+                keyEvent.filterAndAccept();
+                return;
+            }
+        }
+
         /* Modifier-only keys carry no character and do not end a word. */
         if (keyEvent.key().isModifier()) return;
 
@@ -212,20 +221,6 @@ public:
         if (!isComposingKey(keyEvent.key())) {
             endWord(ic, icState);
             return;
-        }
-
-        /* Number keys pick a candidate. Telex only: VNI spells its tones and
-         * vowel marks WITH digits ("a1" -> á), so 1-9 there belong to the
-         * engine and must never be stolen by the candidate window. */
-        if (config_->inputMode.value() == InputMode::Telex) {
-            if (auto candidateList = ic->inputPanel().candidateList()) {
-                int idx = keyEvent.key().keyListIndex(selectionKeys_);
-                if (idx >= 0 && idx < candidateList->size()) {
-                    candidateList->candidate(idx).select(ic);
-                    keyEvent.filterAndAccept();
-                    return;
-                }
-            }
         }
 
         uint32_t keysym = KeySym(keyEvent.key().sym());
@@ -308,7 +303,11 @@ public:
          * last ones visible. A one-character prefix is also skipped: it
          * matches most of the dictionary and is pure noise. */
         std::vector<XrnikeyCandidate> candidates;
-        if (config_->predictionEnabled.value() && result.preedit[0] &&
+        /* No suggestions where the app asked for no spell checking (code
+         * editors, URL and search boxes, identifiers). */
+        if (config_->predictionEnabled.value() &&
+            !ic->capabilityFlags().test(CapabilityFlag::NoSpellCheck) &&
+            result.preedit[0] &&
             utf8::length(std::string(result.preedit)) >= 2) {
             candidates = candidateProvider_.getCandidates(
                 result.preedit, config_->predictionMaxCandidates.value(),
@@ -317,7 +316,7 @@ public:
         {
             if (!candidates.empty()) {
                 auto list = std::make_unique<CommonCandidateList>();
-                list->setSelectionKey(selectionKeys_);
+                list->setSelectionKey(config_->candidateSelectionKeys.value());
                 list->setPageSize(config_->pageSize.value());
                 list->setLayoutHint(
                     config_->candidateLayout.value() == CandidateLayout::Vertical
@@ -507,7 +506,6 @@ private:
     std::shared_ptr<XrnikeyConfig> config_;
     CandidateProvider candidateProvider_;
     FactoryFor<XrnikeyState> factory_;
-    KeyList selectionKeys_;
     uint32_t notifyId_ = 0;
 };
 

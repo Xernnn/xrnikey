@@ -50,8 +50,21 @@ FCITX_CONFIGURATION(
     Option<bool> instantCommit{this, "InstantCommit", _("Instant Commit"),
                                 true};
     Option<bool> spellCheck{this, "SpellCheck", _("Spell Check"), true};
+    /* Off by default: the dictionary is a small seed list, and a
+     * suggestion window over every word is noise for most typing. */
     Option<bool> predictionEnabled{this, "PredictionEnabled",
-                                    _("Prediction Enabled"), true};
+                                    _("Prediction Enabled"), false};
+    /* Keys that pick suggestion 1-9 on the current page. Never plain
+     * digits: those are text (mp3, a1, 2024) in Telex and tone marks in
+     * VNI, and taking them for picks turned "ch1" into "chị". */
+    KeyListOption candidateSelectionKeys{
+        this,
+        "CandidateSelectionKeys",
+        _("Pick Suggestion 1-9"),
+        {Key("Control+1"), Key("Control+2"), Key("Control+3"),
+         Key("Control+4"), Key("Control+5"), Key("Control+6"),
+         Key("Control+7"), Key("Control+8"), Key("Control+9")},
+        KeyListConstrain()};
     Option<int, IntConstrain> predictionMaxCandidates{
         this, "PredictionMaxCandidates", _("Prediction Max Candidates"), 5,
         IntConstrain(1, 20)};
