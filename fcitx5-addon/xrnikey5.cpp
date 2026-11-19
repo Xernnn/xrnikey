@@ -34,12 +34,22 @@ namespace fcitx {
  * the input method engine itself. */
 class XrnikeyState : public InputContextProperty {
 public:
-    explicit XrnikeyState(int mode) : state_(xk_state_new(mode)) {}
+    explicit XrnikeyState(int mode) : state_(xk_state_new(mode)), mode_(mode) {}
     ~XrnikeyState() override {
         if (state_) xk_state_free(state_);
     }
 
     XKState *state() { return state_; }
+    int mode() const { return mode_; }
+    /* Telex/VNI is chosen when the core state is created, so a change of
+     * mode needs a new one. */
+    void setMode(int mode) {
+        if (mode == mode_) return;
+        if (state_) xk_state_free(state_);
+        state_ = xk_state_new(mode);
+        mode_ = mode;
+        composing_ = false;
+    }
     void reset() {
         if (state_) xk_state_reset(state_);
         composing_ = false;
@@ -72,6 +82,7 @@ public:
 
 private:
     XKState *state_;
+    int mode_;
     bool sawSurrounding_ = false;
     bool composing_ = false;
     bool instantForWord_ = false;
@@ -102,10 +113,7 @@ public:
     XrnikeyEngine(Instance *instance)
         : instance_(instance), config_(std::make_shared<XrnikeyConfig>()),
           factory_([this](InputContext &) {
-              return new XrnikeyState(config_->inputMode.value() ==
-                                               InputMode::VNI
-                                           ? XK_MODE_VNI
-                                           : XK_MODE_TELEX);
+              return new XrnikeyState(configuredMode());
           }) {
         instance_->inputContextManager().registerProperty("xrnikeyState",
                                                             &factory_);
@@ -190,6 +198,14 @@ public:
         if (keyEvent.key().isModifier()) return;
 
         auto *icState = ic->propertyFor(&factory_);
+        /* A mode changed in the settings (or by "Reload config") applies to
+         * fields that are already open, from their next key; it used to
+         * be fixed when the field was created, so it needed the app
+         * restarted. A word in progress is kept first. */
+        if (icState->mode() != configuredMode()) {
+            leaveWord(ic, icState, false);
+            icState->setMode(configuredMode());
+        }
         XKState *state = icState->state();
         if (!state) return;
 
@@ -343,6 +359,11 @@ public:
         icState->setComposing(result.preedit[0] != '\0');
 
         ic->updateUserInterface(UserInterfaceComponent::InputPanel);
+    }
+
+    int configuredMode() const {
+        return config_->inputMode.value() == InputMode::VNI ? XK_MODE_VNI
+                                                            : XK_MODE_TELEX;
     }
 
     static bool isComposingKey(const Key &key) {

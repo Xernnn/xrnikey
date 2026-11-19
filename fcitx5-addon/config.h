@@ -46,10 +46,8 @@ FCITX_CONFIGURATION(
     Option<InputMode, NoConstrain<InputMode>, DefaultMarshaller<InputMode>,
            InputModeI18NAnnotation>
         inputMode{this, "InputMode", _("Input Mode"), InputMode::Telex};
-    Option<bool> autoSwitch{this, "AutoSwitch", _("Auto Switch"), true};
     Option<bool> instantCommit{this, "InstantCommit", _("Instant Commit"),
                                 true};
-    Option<bool> spellCheck{this, "SpellCheck", _("Spell Check"), true};
     /* Off by default: the dictionary is a small seed list, and a
      * suggestion window over every word is noise for most typing. */
     Option<bool> predictionEnabled{this, "PredictionEnabled",
@@ -68,23 +66,15 @@ FCITX_CONFIGURATION(
     Option<int, IntConstrain> predictionMaxCandidates{
         this, "PredictionMaxCandidates", _("Prediction Max Candidates"), 5,
         IntConstrain(1, 20)};
-    Option<bool> emojiEnabled{this, "EmojiEnabled", _("Emoji Enabled"), true};
-    Option<std::string> emojiTrigger{this, "EmojiTrigger", _("Emoji Trigger"),
-                                      ":"};
     Option<bool> autoCorrect{this, "AutoCorrect", _("Auto Correct"), true};
     Option<double> autoCorrectThreshold{this, "AutoCorrectThreshold",
                                          _("Auto Correct Threshold"), 0.85};
-    Option<bool> showFrequencyHint{this, "ShowFrequencyHint",
-                                    _("Show Frequency Hint"), false};
     Option<CandidateLayout, NoConstrain<CandidateLayout>,
            DefaultMarshaller<CandidateLayout>, CandidateLayoutI18NAnnotation>
         candidateLayout{this, "CandidateLayout", _("Candidate Layout"),
                          CandidateLayout::Vertical};
     Option<int, IntConstrain> pageSize{this, "PageSize", _("Page Size"), 9,
                                         IntConstrain(1, 10)};
-    Option<Key> quickSwitch{this, "QuickSwitch", _("Quick Switch"),
-                             Key("Control+Shift")};
-    Option<Key> commitKey{this, "CommitKey", _("Commit Key"), Key("space")};
     /* Flips PredictionEnabled at runtime and writes it back to the config
      * file, so the candidate window can be turned off mid-sentence without
      * opening the settings UI. */

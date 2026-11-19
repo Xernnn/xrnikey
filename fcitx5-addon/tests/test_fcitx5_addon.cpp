@@ -713,6 +713,35 @@ TEST_CASE("fields that ask for no spell checking get no suggestions",
     CHECK(c.text() == "chào "); /* still Vietnamese */
 }
 
+TEST_CASE("changing the input mode applies to fields that are already open",
+          "[config]") {
+    configure({{"InputMode", "Telex"}, {"InstantCommit", "False"}});
+    FakeClient c(preeditApp());
+    c.type("a1 aa ");
+    CHECK(c.text() == "a1 â ");
+    configure({{"InputMode", "VNI"}, {"InstantCommit", "False"}});
+    c.type("a1 aa ");
+    CHECK(c.text() == "a1 â á aa ");
+    configure({{"InputMode", "Telex"}, {"InstantCommit", "False"}});
+    c.type("chaof");
+    /* Switching mid-word keeps the word, then types on in the new mode. */
+    configure({{"InputMode", "VNI"}, {"InstantCommit", "False"}});
+    c.type(" a1 ");
+    CHECK(c.text() == "a1 â á aa chào á ");
+}
+
+TEST_CASE("only options that do something are offered", "[config]") {
+    XrnikeyConfig config;
+    RawConfig raw;
+    config.save(raw);
+    for (const char *dead : {"AutoSwitch", "SpellCheck", "EmojiEnabled",
+                             "EmojiTrigger", "QuickSwitch", "CommitKey",
+                             "ShowFrequencyHint"}) {
+        INFO(dead);
+        CHECK_FALSE(raw.get(dead));
+    }
+}
+
 int main(int argc, char *argv[]) {
     /* Nothing here may reach the user's session: no display, no session
      * bus, and every file the addon reads under a throwaway directory. */

@@ -16,7 +16,6 @@ Xrnikey provides Telex and VNI input methods with intelligent bilingual auto-swi
 - **Dictionary completion** — 800+ word seed dictionary with user dictionary hot-reload
 - **N-gram prediction** — context-aware word suggestions
 - **Autocorrect** — Damerau-Levenshtein with Vietnamese phonetic similarity
-- **Emoji input** — fuzzy search with Vietnamese tags (`:cười` → 😊)
 - **Fcitx5 + IBus** — works on KDE, Sway, Hyprland, XFCE (Fcitx5) and GNOME (IBus)
 - **Wayland & X11** — full compositor compatibility
 
@@ -54,11 +53,10 @@ To verify it actually loaded: `fcitx5-diagnose | grep -i xrnikey`, or run `xk-di
 
 | Action | Default Key |
 |--------|-------------|
-| Toggle IME on/off | Ctrl+Shift |
+| Switch Vietnamese on/off | Fcitx5's trigger key (Ctrl+Space by default) |
 | Commit word | Space |
 | Pick suggestion 1–9 (when `PredictionEnabled=True`) | Ctrl+1–9 (`CandidateSelectionKeys`) |
 | Page candidates | Tab / Shift+Tab |
-| Emoji trigger | `:` |
 | Undo composition | Backspace |
 
 ## Input Methods
@@ -91,10 +89,8 @@ Fcitx5: `~/.config/fcitx5/conf/xrnikey5.conf`
 ```
 [General]
 InputMode=Telex
-AutoSwitch=True
 InstantCommit=False
 PredictionEnabled=False
-EmojiEnabled=True
 CandidateLayout=Vertical
 ```
 

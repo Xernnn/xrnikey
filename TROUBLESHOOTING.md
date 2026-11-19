@@ -159,11 +159,10 @@ never taken as picks. Suggestions are off by default; with `PredictionEnabled=Tr
 with **Ctrl+1–9**. Space always ends the word as typed. To use other keys, set
 `CandidateSelectionKeys` in `~/.config/fcitx5/conf/xrnikey5.conf` (or in Fcitx5's settings).
 
-## 14. Ctrl+Shift toggle not working
+## 14. Turning Vietnamese on and off
 
-**Symptom:** Cannot toggle IME on/off.
-
-**Fix:** Check for keybinding conflicts with desktop environment or window manager. Try rebinding in Fcitx5 global options.
+Xrnikey has no toggle key of its own: switch with Fcitx5's trigger key (Ctrl+Space by default,
+set in Fcitx5's global options), or `fcitx5-remote -s keyboard-us` / `fcitx5-remote -s xrnikey`.
 
 ## 15. High latency / slow candidate window
 
@@ -211,18 +210,10 @@ sudo pacman -R fcitx5-unikey
 fcitx5-configtool   # remove Unikey, add Xrnikey
 ```
 
-## 19. Emoji search returns no results
+## 19. Typing emoji
 
-**Symptom:** `:smile` shows no emoji candidates.
-
-**Fix:**
-```bash
-# Verify emoji data:
-ls /usr/share/xrnikey/emoji/emoji.json
-# Regenerate:
-python3 /usr/share/xrnikey/scripts/generate.py
-fcitx5 -r -d   # restart Fcitx5 so the addon loads the new data
-```
+Xrnikey has no emoji input of its own. Use Fcitx5's Unicode picker (Ctrl+Alt+Shift+U by default),
+which searches characters, emoji included, by name.
 
 ## 20. Build fails on missing Fcitx5 headers
 
