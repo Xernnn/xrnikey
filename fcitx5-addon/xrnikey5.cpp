@@ -124,8 +124,12 @@ public:
         event.inputContext()->updatePreedit();
     }
 
+    /* Called on focus-out and when the user switches input method. The
+     * word in progress is kept, never dropped (see leaveWord). */
     void deactivate(const InputMethodEntry &, InputContextEvent &event) override {
-        event.inputContext()->updatePreedit();
+        auto *ic = event.inputContext();
+        leaveWord(ic, ic->propertyFor(&factory_),
+                  event.type() == EventType::InputContextFocusOut);
     }
 
     void keyEvent(const InputMethodEntry &, KeyEvent &keyEvent) override {
@@ -260,9 +264,7 @@ public:
         }
 
         if (result.reset) {
-            icState->reset();
-            ic->inputPanel().reset();
-            ic->updateUserInterface(UserInterfaceComponent::InputPanel);
+            clearWord(ic, icState);
             return;
         }
 
@@ -278,22 +280,14 @@ public:
                 ic->commitString(result.commit);
             }
             ic->inputPanel().reset();
+            ic->updatePreedit();
         } else {
             if (result.commit[0]) {
                 ic->commitString(result.commit);
                 icState->reset();
             }
 
-            if (result.preedit[0] || result.commit[0]) {
-                Text preedit;
-                if (result.preedit[0]) {
-                    preedit.append(result.preedit);
-                    preedit.setCursor(static_cast<int>(utf8::length(result.preedit)));
-                }
-                ic->inputPanel().setPreedit(preedit);
-            } else {
-                ic->inputPanel().reset();
-            }
+            showPreedit(ic, result.preedit);
         }
 
         /* Update candidates if prediction enabled */
@@ -415,18 +409,64 @@ public:
             }
         }
         ic->commitString(word);
-        icState->reset();
-        ic->inputPanel().reset();
-        icState->setComposing(false);
-        ic->updateUserInterface(UserInterfaceComponent::InputPanel);
+        clearWord(ic, icState);
     }
 
+    /* A click in the field, or the app resetting the input method. */
     void reset(const InputMethodEntry &, InputContextEvent &event) override {
         auto *ic = event.inputContext();
-        auto *icState = ic->propertyFor(&factory_);
-        icState->reset();
-        ic->inputPanel().reset();
-        ic->updateUserInterface(UserInterfaceComponent::InputPanel);
+        leaveWord(ic, ic->propertyFor(&factory_),
+                  ic->capabilityFlags().test(
+                      CapabilityFlag::ClientUnfocusCommit));
+    }
+
+    /* The cursor or focus leaves the word in progress: keep it in the field
+     * and start the next key on a fresh word. Instant mode: it is already in
+     * the field, so only forget it -- and never delete anything, since the
+     * cursor may be somewhere else by now. Preedit mode: commit it, unless
+     * someone else already does. `inlineCommittedElsewhere` says whether a
+     * preedit shown inline is committed by the client or by Fcitx5:
+     *  - on Reset, clients with ClientUnfocusCommit (the fcitx5 GTK and Qt
+     *    modules) commit their inline preedit themselves first;
+     *  - on focus-out, those clients do the same, and for the others Fcitx5
+     *    commits the client preedit server-side before calling deactivate;
+     *  - on switching input method nobody does.
+     * A preedit the app could not show inline (no Preedit capability, so it
+     * sat in Fcitx5's popup) is always ours to commit. Previously all three
+     * paths dropped the word: click mid-word and it was gone, and on
+     * focus-out the core even kept it, so the next key landed on it. */
+    void leaveWord(InputContext *ic, XrnikeyState *icState,
+                   bool inlineCommittedElsewhere) {
+        bool shownInline = !ic->inputPanel().clientPreedit().empty();
+        if (!icState->instantForWord() &&
+            !(shownInline && inlineCommittedElsewhere)) {
+            endWord(ic, icState);
+        } else {
+            clearWord(ic, icState);
+        }
+    }
+
+    /* Show the word in progress inline in the app, underlined, where the
+     * app supports it (as fcitx5-bamboo and -unikey do); otherwise in
+     * Fcitx5's popup. Previously it always went to the popup: no inline
+     * text, and nothing for the client to commit on focus-out. */
+    void showPreedit(InputContext *ic, const std::string &text) {
+        auto &panel = ic->inputPanel();
+        Text preedit;
+        bool inlinePreedit = ic->capabilityFlags().test(CapabilityFlag::Preedit);
+        if (!text.empty()) {
+            preedit.append(text, inlinePreedit ? TextFormatFlag::Underline
+                                               : TextFormatFlag::NoFlag);
+            preedit.setCursor(static_cast<int>(preedit.textLength()));
+        }
+        if (inlinePreedit) {
+            panel.setClientPreedit(preedit);
+            panel.setPreedit(Text());
+        } else {
+            panel.setPreedit(preedit);
+            panel.setClientPreedit(Text());
+        }
+        ic->updatePreedit();
     }
 
     void filterKey(const InputMethodEntry &, KeyEvent &) override {}

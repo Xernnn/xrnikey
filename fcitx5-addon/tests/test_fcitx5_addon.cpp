@@ -159,12 +159,12 @@ public:
      * text-input-v3 client only reports the new cursor. */
     void click(size_t pos) {
         if (options_.frontend != "wayland_v2") {
-            commitOwnPreedit();
-        }
-        cursor_ = anchor_ = pos;
-        if (options_.frontend != "wayland_v2") {
+            if (options_.unfocusCommit) {
+                commitOwnPreedit();
+            }
             reset();
         }
+        cursor_ = anchor_ = pos;
         report();
         deliver(true);
     }
@@ -513,6 +513,109 @@ TEST_CASE("an arrow key mid-word never lets the next key edit the old word",
      * the (moved) cursor into ê. */
     c.type("e");
     CHECK(c.text() == "viee");
+}
+
+TEST_CASE("the word being composed is shown inline in the app, underlined",
+          "[leave]") {
+    configure({{"InstantCommit", "False"}});
+    FakeClient c(preeditApp());
+    c.type("xin chaof");
+    CHECK(c.preedit() == "chào");
+    CHECK(c.shown() == "xin chào");
+    REQUIRE(c.inputPanel().clientPreedit().size() == 1);
+    CHECK(c.inputPanel().clientPreedit().formatAt(0) &
+          TextFormatFlag::Underline);
+    CHECK(c.inputPanel().preedit().empty()); /* not also in the popup */
+}
+
+TEST_CASE("a click mid-word keeps the word and starts the next one fresh",
+          "[leave]") {
+    for (bool unfocusCommit : {true, false}) {
+        INFO("client commits its own preedit: " << unfocusCommit);
+        configure({{"InstantCommit", "False"}});
+        auto o = preeditApp();
+        o.unfocusCommit = unfocusCommit;
+        FakeClient c(o);
+        c.type("chaof");
+        c.click(0);
+        CHECK(c.text() == "chào"); /* once: committed by client OR engine */
+        CHECK(c.preedit().empty());
+        c.type("s ");
+        CHECK(c.text() == "s chào");
+    }
+}
+
+TEST_CASE("focus moving away mid-word keeps the word exactly once",
+          "[leave]") {
+    for (bool unfocusCommit : {true, false}) {
+        INFO("client commits its own preedit: " << unfocusCommit);
+        configure({{"InstantCommit", "False"}});
+        auto o = preeditApp();
+        o.unfocusCommit = unfocusCommit;
+        FakeClient c(o);
+        c.type("chaof");
+        c.focusAway();
+        CHECK(c.text() == "chào");
+        c.focusBack();
+        CHECK(c.preedit().empty());
+        c.type("s ");
+        CHECK(c.text() == "chàos ");
+    }
+}
+
+TEST_CASE("an app without inline preedit still gets the word on focus-out "
+          "and reset",
+          "[leave]") {
+    configure({{"InstantCommit", "False"}});
+    auto o = preeditApp();
+    o.preedit = false; /* the word sits in Fcitx5's popup */
+    {
+        FakeClient c(o);
+        c.type("chaof");
+        c.focusAway();
+        CHECK(c.text() == "chào");
+    }
+    {
+        FakeClient c(o);
+        c.type("chaof");
+        c.click(0);
+        CHECK(c.text() == "chào");
+    }
+}
+
+TEST_CASE("switching input method mid-word commits the word", "[leave]") {
+    configure({{"InstantCommit", "False"}});
+    FakeClient c(preeditApp());
+    c.type("chaof");
+    gInstance->setCurrentInputMethod(&c, "keyboard-us", true);
+    CHECK(c.text() == "chào");
+    CHECK(c.preedit().empty());
+}
+
+TEST_CASE("instant mode: leaving a word mid-way only forgets it", "[leave]") {
+    configure({{"InstantCommit", "True"}});
+    {
+        FakeClient c(instantApp());
+        c.type("chaof");
+        c.click(0);
+        CHECK(c.text() == "chào");
+        c.type("s ");
+        CHECK(c.text() == "s chào");
+    }
+    {
+        FakeClient c(instantApp());
+        c.type("chaof");
+        c.focusAway();
+        c.focusBack();
+        c.type("s ");
+        CHECK(c.text() == "chàos ");
+    }
+    {
+        FakeClient c(instantApp());
+        c.type("chaof");
+        gInstance->setCurrentInputMethod(&c, "keyboard-us", true);
+        CHECK(c.text() == "chào");
+    }
 }
 
 int main(int argc, char *argv[]) {
