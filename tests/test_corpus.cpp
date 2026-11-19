@@ -128,7 +128,7 @@ TEST_CASE("corpus: English words come back as typed", "[corpus]") {
     });
 }
 
-TEST_CASE("corpus: BackSpace deletes one character", "[corpus][!mayfail]") {
+TEST_CASE("corpus: BackSpace deletes one character", "[corpus]") {
     run(XK_MODE_TELEX, {
         {"toans<", "t\xC3\xB3" "a"},  // tóa: the tone stays, re-placed for "toa"
         {"toans<n ", "toán "}, {"window<", "windo"}, {"hello<", "hell"},

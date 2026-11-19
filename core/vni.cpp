@@ -26,11 +26,11 @@ static bool vowel_run(const Word& w, int* first, int* last) {
     return *last >= 0;
 }
 
-static bool mark_letter(Letter& l, uint8_t mark, int key) {
-    if (l.mark == mark) return false;
+static int mark_letter(Word& w, Letter& l, uint8_t mark, int key) {
     l.mark = mark;
     l.mark_key = key;
-    return true;
+    w.recs[static_cast<size_t>(key)].target = l.key;
+    return K_MARK;
 }
 
 /* Returns the key kind, or -1 when the digit has nothing to change. */
@@ -40,7 +40,6 @@ static int apply_digit(Word& w, int digit, int key) {
 
     if (digit >= 1 && digit <= 5) {
         if (!has_run) return -1;
-        if (w.tone == digit) return K_NOOP;
         w.tone = digit;
         return K_TONE;
     }
@@ -52,7 +51,7 @@ static int apply_digit(Word& w, int digit, int key) {
     if (digit == 9) {
         for (int k = static_cast<int>(w.letters.size()) - 1; k >= 0; --k) {
             Letter& l = w.letters[static_cast<size_t>(k)];
-            if (l.base == 'd') return mark_letter(l, MARK_BAR, key) ? K_MARK : K_NOOP;
+            if (l.base == 'd') return mark_letter(w, l, MARK_BAR, key);
         }
         return -1;
     }
@@ -63,9 +62,9 @@ static int apply_digit(Word& w, int digit, int key) {
             Letter& u = w.letters[static_cast<size_t>(k)];
             Letter& o = w.letters[static_cast<size_t>(k) + 1];
             if (u.base == 'u' && o.base == 'o') {
-                bool changed = mark_letter(o, MARK_HORN, key);
-                changed = mark_letter(u, MARK_HORN, key) || changed;
-                return changed ? K_MARK : K_NOOP;
+                mark_letter(w, u, MARK_HORN, key);
+                w.recs[static_cast<size_t>(key)].target2 = u.key;
+                return mark_letter(w, o, MARK_HORN, key);
             }
         }
     }
@@ -75,7 +74,7 @@ static int apply_digit(Word& w, int digit, int key) {
         if (digit == 6 && (l.base == 'a' || l.base == 'e' || l.base == 'o')) mark = MARK_HAT;
         if (digit == 7 && (l.base == 'o' || l.base == 'u')) mark = MARK_HORN;
         if (digit == 8 && l.base == 'a') mark = MARK_BREVE;
-        if (mark != MARK_NONE) return mark_letter(l, mark, key) ? K_MARK : K_NOOP;
+        if (mark != MARK_NONE) return mark_letter(w, l, mark, key);
     }
     return -1;
 }
@@ -85,11 +84,6 @@ void vni_apply_key(Word& w, int i, const Options&) {
     if (c >= '0' && c <= '9') {
         const Word saved = w;
         int kind = apply_digit(w, c - '0', i);
-        if (kind == K_NOOP) {
-            w = saved;
-            w.recs[static_cast<size_t>(i)].kind = K_NOOP;
-            return;
-        }
         if (kind >= 0 && word_prefix_ok(w)) {
             w.recs[static_cast<size_t>(i)].kind = static_cast<uint8_t>(kind);
             return;

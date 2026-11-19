@@ -40,11 +40,13 @@ enum KeyKind : uint8_t {
     K_LETTER,  /* added a letter */
     K_MARK,    /* put a mark on letters already typed */
     K_TONE,    /* set the word's tone */
-    K_NOOP,    /* changed nothing (the effect was already there) */
 };
 
 struct KeyRec {
     uint8_t kind = K_LETTER;
+    /* K_MARK: the letters it marked, by the index of the key that typed them. */
+    int target = -1;
+    int target2 = -1;
 };
 
 /* The word in progress. `keys` is the source of truth: everything else is
@@ -55,9 +57,15 @@ struct Word {
     std::vector<KeyRec> recs;     /* what each key did */
     std::vector<Letter> letters;  /* the composition */
     int tone = XK_TONE_NONE;
+    /* Set by BackSpace in a word shown as typed: from then on every key is
+     * just its letter, so editing "text" gives "tex", not "tẽ". */
+    bool literal = false;
 
     bool empty() const { return keys.empty(); }
-    void clear() { keys.clear(); recs.clear(); letters.clear(); tone = XK_TONE_NONE; }
+    void clear() {
+        keys.clear(); recs.clear(); letters.clear();
+        tone = XK_TONE_NONE; literal = false;
+    }
 };
 
 struct Options {
@@ -88,6 +96,9 @@ std::string word_raw(const Word& w);
 std::string word_display(const Word& w, const Options& o);
 /* What to commit when the word ends (auto-restore decided here). */
 std::string word_final(const Word& w, const Options& o);
+/* BackSpace: delete the last character shown and recompose from the keys
+ * that remain. */
+void word_backspace(Word& w, int mode, const Options& o);
 /* The composition can still become a Vietnamese syllable. Key handlers make
  * a change, ask this, and put the word back if not. */
 bool word_prefix_ok(const Word& w);

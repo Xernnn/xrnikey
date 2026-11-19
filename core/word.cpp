@@ -37,7 +37,8 @@ void word_replay(Word& w, int mode, const Options& o) {
     w.tone = XK_TONE_NONE;
     w.recs.assign(w.keys.size(), KeyRec{});
     for (int i = 0; i < static_cast<int>(w.keys.size()); ++i) {
-        if (mode == XK_MODE_VNI) vni_apply_key(w, i, o);
+        if (w.literal) word_add_letter(w, i);
+        else if (mode == XK_MODE_VNI) vni_apply_key(w, i, o);
         else telex_apply_key(w, i, o);
     }
 }
@@ -92,6 +93,7 @@ static bool has_vn_marks(const Word& w) {
 }
 
 std::string word_display(const Word& w, const Options& o) {
+    if (w.literal) return word_raw(w);
     std::string v = word_render(w);
     if (!o.auto_restore || !has_vn_marks(w) || word_prefix_ok(w)) return v;
     /* No more keys can make this Vietnamese ("tẽt"): show what was typed. */
@@ -99,6 +101,7 @@ std::string word_display(const Word& w, const Options& o) {
 }
 
 std::string word_final(const Word& w, const Options& o) {
+    if (w.literal) return word_raw(w);
     std::string v = word_render(w);
     if (!o.auto_restore) return v;
     std::string raw = word_raw(w);
@@ -118,6 +121,54 @@ std::string word_final(const Word& w, const Options& o) {
     if (lexicon_is_english(raw)) return raw;
     if (has_vn_marks(w)) return raw;
     return v;
+}
+
+/* Index into w.letters of the vowel that carries the tone, or -1. */
+static int tone_letter(const Word& w) {
+    if (w.tone == XK_TONE_NONE) return -1;
+    std::u32string letters = word_letters(w);
+    int off = find_tone_vowel_index(utf8_of(letters));
+    char buf[8];
+    int at = 0;
+    for (size_t i = 0; i < letters.size(); ++i) {
+        if (at == off) return static_cast<int>(i);
+        at += utf8_encode(static_cast<uint32_t>(letters[i]), buf);
+    }
+    return -1;
+}
+
+/* The old BackSpace undid the last transformation instead of deleting a
+ * character: "toans" BackSpace gave "toan" and typing n then gave "toann";
+ * in a word passed through as English it popped bytes off a buffer that
+ * also held the deleted keys' effects, so "window" BackSpace emptied the
+ * word and "hello" became "he". Now the last character shown goes, with
+ * every key that produced it -- the key that typed the letter, the keys that
+ * marked it, and the tone keys if it carried the tone -- and the word is
+ * recomposed from the keys that remain: "toán" -> "tóa" (the tone stays and
+ * moves where "toa" takes it), "được" -> "đượ", "thuở" -> "thu". */
+void word_backspace(Word& w, int mode, const Options& o) {
+    if (w.empty()) return;
+    if (w.literal || word_display(w, o) != word_render(w)) {
+        /* Shown as typed: BackSpace edits the keys themselves. */
+        w.keys = word_raw(w);
+        w.keys.pop_back();
+        w.literal = true;
+    } else if (!w.letters.empty()) {
+        const int last = static_cast<int>(w.letters.size()) - 1;
+        const int key = w.letters[static_cast<size_t>(last)].key;
+        const bool carries_tone = tone_letter(w) == last;
+        std::string keep;
+        for (size_t k = 0; k < w.keys.size(); ++k) {
+            const KeyRec& rec = w.recs[k];
+            bool drop = static_cast<int>(k) == key ||
+                        (rec.kind == K_MARK && (rec.target == key || rec.target2 == key)) ||
+                        (rec.kind == K_TONE && carries_tone);
+            if (!drop) keep += w.keys[k];
+        }
+        w.keys = keep;
+    }
+    if (w.keys.empty()) w.clear();
+    word_replay(w, mode, o);
 }
 
 } /* namespace xrnikey */

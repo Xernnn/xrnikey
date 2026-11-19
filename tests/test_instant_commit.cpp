@@ -100,16 +100,23 @@ TEST_CASE("Instant commit: tone retarget mid-word matches classic output", "[ins
     REQUIRE(instant_out == classic_out);
 }
 
-TEST_CASE("Instant commit: backspace deletes the last committed transform", "[instant]") {
+/* BackSpace deletes the character on screen (it used to undo the last
+ * transformation, turning "â" back into "a"). */
+TEST_CASE("Instant commit: backspace deletes the last character", "[instant]") {
     XKState* s = xk_state_new(XK_MODE_TELEX);
     xk_state_set_instant_commit(s, 1);
 
     xk_process_key(s, 'a', 0);
     xk_process_key(s, 'a', 0); /* buffer is now â, committed = "â" */
 
-    XKResult r = xk_process_key(s, 0xFF08, 0); /* backspace undoes aa->â */
+    XKResult r = xk_process_key(s, 0xFF08, 0);
+    REQUIRE(r.consumed == 1);
     REQUIRE(r.delete_before == 1);
-    REQUIRE(std::string(r.commit) == "a");
+    REQUIRE(std::string(r.commit) == "");
+
+    /* The next BackSpace has no word left to edit and reaches the app. */
+    r = xk_process_key(s, 0xFF08, 0);
+    REQUIRE(r.consumed == 0);
 
     xk_state_free(s);
 }

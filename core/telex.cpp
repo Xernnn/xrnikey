@@ -28,9 +28,9 @@ static int tone_of_key(char lc) {
  * ngươi / dương exactly as "nguwowi" does. It marks the rightmost run of
  * vowels (skipping a coda after it), treating u+o as one unit that takes a
  * horn on BOTH halves; otherwise the last vowel of the run that takes a w
- * mark (u -> ư, o -> ơ, a -> ă). Returns the key kind, or -1 when there is no
- * vowel to mark (leading "w", "new"). */
-static int apply_w(Word& w, int key) {
+ * mark (u -> ư, o -> ơ, a -> ă). Returns false when there is no vowel to
+ * mark (leading "w", "new"). */
+static bool apply_w(Word& w, int key) {
     std::vector<Letter>& L = w.letters;
     int last = -1, first = -1;
     for (int k = static_cast<int>(L.size()) - 1; k >= 0; --k) {
@@ -41,34 +41,39 @@ static int apply_w(Word& w, int key) {
             break;
         }
     }
-    if (last < 0) return -1;
+    if (last < 0) return false;
 
+    KeyRec& rec = w.recs[static_cast<size_t>(key)];
     auto takes_w = [](const Letter& l) {
         return (l.base == 'u' || l.base == 'o' || l.base == 'a') &&
                (l.mark == MARK_NONE || l.mark == MARK_HORN || l.mark == MARK_BREVE);
     };
     auto mark_for = [](char base) { return base == 'a' ? MARK_BREVE : MARK_HORN; };
     auto set = [&](Letter& l) {
-        bool changed = l.mark != mark_for(l.base);
         l.mark = mark_for(l.base);
         l.mark_key = key;
-        return changed;
     };
 
     for (int k = first; k < last; ++k) {
         Letter& u = L[static_cast<size_t>(k)];
         Letter& o = L[static_cast<size_t>(k) + 1];
         if (u.base == 'u' && o.base == 'o' && takes_w(u) && takes_w(o)) {
-            bool changed = set(o);
-            changed = set(u) || changed;
-            return changed ? K_MARK : K_NOOP;
+            set(o);
+            set(u);
+            rec.target = o.key;
+            rec.target2 = u.key;
+            return true;
         }
     }
     for (int k = last; k >= first; --k) {
         Letter& l = L[static_cast<size_t>(k)];
-        if (takes_w(l)) return set(l) ? K_MARK : K_NOOP;
+        if (takes_w(l)) {
+            set(l);
+            rec.target = l.key;
+            return true;
+        }
     }
-    return -1;
+    return false;
 }
 
 void telex_apply_key(Word& w, int i, const Options&) {
@@ -89,15 +94,12 @@ void telex_apply_key(Word& w, int i, const Options&) {
 
     int tone = tone_of_key(lc);
     if (tone > 0 && has_vowel) {
-        if (w.tone == tone) { w.recs[static_cast<size_t>(i)].kind = K_NOOP; return; }
         w.tone = tone;
         if (keep_if_ok(K_TONE)) return;
     }
 
     if (lc == 'w') {
-        int kind = apply_w(w, i);
-        if (kind == K_NOOP) { w = saved; w.recs[static_cast<size_t>(i)].kind = K_NOOP; return; }
-        if (kind == K_MARK && keep_if_ok(K_MARK)) return;
+        if (apply_w(w, i) && keep_if_ok(K_MARK)) return;
         w = saved;
     }
 
@@ -110,6 +112,7 @@ void telex_apply_key(Word& w, int i, const Options&) {
         if (mark != MARK_NONE) {
             prev.mark = mark;
             prev.mark_key = i;
+            w.recs[static_cast<size_t>(i)].target = prev.key;
             if (keep_if_ok(K_MARK)) return;
         }
     }

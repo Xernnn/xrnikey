@@ -74,8 +74,7 @@ static void word_key(XKStateImpl* s, XKResult* r, char c) {
 
 static void backspace(XKStateImpl* s, XKResult* r) {
     if (s->word.empty()) return;  /* nothing buffered: the app deletes */
-    s->word.keys.pop_back();
-    word_replay(s->word, s->mode, s->opt);
+    word_backspace(s->word, s->mode, s->opt);
     show_word(s, r);
 }
 
