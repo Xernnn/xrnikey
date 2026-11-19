@@ -148,7 +148,7 @@ TEST_CASE("corpus: capitals follow the keys that typed them", "[corpus]") {
     });
 }
 
-TEST_CASE("corpus: typing a key twice undoes it", "[corpus][!mayfail]") {
+TEST_CASE("corpus: typing a key twice undoes it", "[corpus]") {
     run(XK_MODE_TELEX, {
         {"aaa ", "aa "}, {"eee ", "ee "}, {"ooo ", "oo "}, {"ddd ", "dd "},
         {"ass ", "as "}, {"aff ", "af "}, {"aww ", "aw "}, {"oww ", "ow "},

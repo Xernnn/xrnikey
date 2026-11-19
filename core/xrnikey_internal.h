@@ -47,6 +47,10 @@ struct KeyRec {
     /* K_MARK: the letters it marked, by the index of the key that typed them. */
     int target = -1;
     int target2 = -1;
+    /* Typing a key twice undoes it: the second key is then a letter that
+     * `undoes` the first, and the first is `undone`. */
+    int undoes = -1;
+    bool undone = false;
 };
 
 /* The word in progress. `keys` is the source of truth: everything else is
@@ -57,6 +61,9 @@ struct Word {
     std::vector<KeyRec> recs;     /* what each key did */
     std::vector<Letter> letters;  /* the composition */
     int tone = XK_TONE_NONE;
+    int tone_key = -1;            /* the key that set `tone` */
+    uint64_t locked = 0;          /* keys (bit per a..z, 0..9) undone this word:
+                                     later presses of them are just letters */
     /* Set by BackSpace in a word shown as typed: from then on every key is
      * just its letter, so editing "text" gives "tex", not "tẽ". */
     bool literal = false;
@@ -64,7 +71,7 @@ struct Word {
     bool empty() const { return keys.empty(); }
     void clear() {
         keys.clear(); recs.clear(); letters.clear();
-        tone = XK_TONE_NONE; literal = false;
+        tone = XK_TONE_NONE; tone_key = -1; locked = 0; literal = false;
     }
 };
 
@@ -92,6 +99,12 @@ std::u32string word_letters(const Word& w);
 std::string word_render(const Word& w);
 /* The keys exactly as typed. */
 std::string word_raw(const Word& w);
+/* The keys as typed, less those a repeated key undid ("ass" -> "as"). */
+std::string word_raw_effective(const Word& w);
+/* Bit for `locked`: a..z, then 0..9. */
+uint64_t key_bit(char lc);
+/* Undo the effect of key `undone` by key `i`, which becomes a letter. */
+void word_undo(Word& w, int i, int undone);
 /* What to show while the word is still being typed. */
 std::string word_display(const Word& w, const Options& o);
 /* What to commit when the word ends (auto-restore decided here). */

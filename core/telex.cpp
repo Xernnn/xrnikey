@@ -1,4 +1,5 @@
 #include "xrnikey_internal.h"
+#include <algorithm>
 #include <cctype>
 
 namespace xrnikey {
@@ -25,13 +26,13 @@ static int tone_of_key(char lc) {
 
 /* Telex's `w` is a SYLLABLE-level modifier, not a previous-character one:
  * Unikey accepts it anywhere after the nucleus, so "nguoiw" and "duongw" reach
- * ngươi / dương exactly as "nguwowi" does. It marks the rightmost run of
+ * ngươi / dương exactly as "nguwowi" does. It acts on the rightmost run of
  * vowels (skipping a coda after it), treating u+o as one unit that takes a
- * horn on BOTH halves; otherwise the last vowel of the run that takes a w
- * mark (u -> ư, o -> ơ, a -> ă). Returns false when there is no vowel to
- * mark (leading "w", "new"). */
-static bool apply_w(Word& w, int key) {
-    std::vector<Letter>& L = w.letters;
+ * horn on BOTH halves; otherwise on the last vowel of the run that takes a w
+ * mark (u -> ư, o -> ơ, a -> ă). Returns the letters it acts on (indexes into
+ * w.letters), none when there is no vowel to mark (leading "w", "new"). */
+static std::vector<int> w_targets(const Word& w) {
+    const std::vector<Letter>& L = w.letters;
     int last = -1, first = -1;
     for (int k = static_cast<int>(L.size()) - 1; k >= 0; --k) {
         if (is_vowel(L[static_cast<size_t>(k)].base)) {
@@ -41,44 +42,35 @@ static bool apply_w(Word& w, int key) {
             break;
         }
     }
-    if (last < 0) return false;
+    if (last < 0) return {};
 
-    KeyRec& rec = w.recs[static_cast<size_t>(key)];
     auto takes_w = [](const Letter& l) {
         return (l.base == 'u' || l.base == 'o' || l.base == 'a') &&
                (l.mark == MARK_NONE || l.mark == MARK_HORN || l.mark == MARK_BREVE);
     };
-    auto mark_for = [](char base) { return base == 'a' ? MARK_BREVE : MARK_HORN; };
-    auto set = [&](Letter& l) {
-        l.mark = mark_for(l.base);
-        l.mark_key = key;
-    };
-
     for (int k = first; k < last; ++k) {
-        Letter& u = L[static_cast<size_t>(k)];
-        Letter& o = L[static_cast<size_t>(k) + 1];
-        if (u.base == 'u' && o.base == 'o' && takes_w(u) && takes_w(o)) {
-            set(o);
-            set(u);
-            rec.target = o.key;
-            rec.target2 = u.key;
-            return true;
-        }
+        const Letter& u = L[static_cast<size_t>(k)];
+        const Letter& o = L[static_cast<size_t>(k) + 1];
+        if (u.base == 'u' && o.base == 'o' && takes_w(u) && takes_w(o)) return {k, k + 1};
     }
-    for (int k = last; k >= first; --k) {
-        Letter& l = L[static_cast<size_t>(k)];
-        if (takes_w(l)) {
-            set(l);
-            rec.target = l.key;
-            return true;
-        }
-    }
-    return false;
+    for (int k = last; k >= first; --k)
+        if (takes_w(L[static_cast<size_t>(k)])) return {k};
+    return {};
+}
+
+static bool marked_by(const Word& w, const Letter& l, char key) {
+    return l.mark_key >= 0 &&
+           std::tolower(static_cast<unsigned char>(w.keys[static_cast<size_t>(l.mark_key)])) == key;
 }
 
 void telex_apply_key(Word& w, int i, const Options&) {
     const char c = w.keys[static_cast<size_t>(i)];
     const char lc = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    KeyRec& rec = w.recs[static_cast<size_t>(i)];
+    if (w.locked & key_bit(lc)) {
+        word_add_letter(w, i);
+        return;
+    }
     const Word saved = w;
     auto keep_if_ok = [&](int kind) {
         if (word_prefix_ok(w)) {
@@ -94,25 +86,70 @@ void telex_apply_key(Word& w, int i, const Options&) {
 
     int tone = tone_of_key(lc);
     if (tone > 0 && has_vowel) {
+        if (w.tone == tone) {  /* ass -> as */
+            int undone = w.tone_key;
+            w.tone = XK_TONE_NONE;
+            w.tone_key = -1;
+            word_undo(w, i, undone);
+            return;
+        }
         w.tone = tone;
+        w.tone_key = i;
         if (keep_if_ok(K_TONE)) return;
+    }
+    if (lc == 'z' && w.tone != XK_TONE_NONE) {  /* z takes the tone off */
+        w.tone = XK_TONE_NONE;
+        w.tone_key = -1;
+        rec.kind = K_TONE;
+        return;
     }
 
     if (lc == 'w') {
-        if (apply_w(w, i) && keep_if_ok(K_MARK)) return;
-        w = saved;
+        std::vector<int> t = w_targets(w);
+        bool all_w = !t.empty();
+        for (int k : t) all_w = all_w && marked_by(w, w.letters[static_cast<size_t>(k)], 'w');
+        if (all_w) {  /* aww -> aw, uoww -> uow */
+            int undone = -1;
+            for (int k : t) {
+                Letter& l = w.letters[static_cast<size_t>(k)];
+                if (l.mark_key >= 0) w.recs[static_cast<size_t>(l.mark_key)].undone = true;
+                undone = std::max(undone, l.mark_key);
+                l.mark = MARK_NONE;
+                l.mark_key = -1;
+            }
+            word_undo(w, i, undone);
+            return;
+        }
+        if (!t.empty()) {
+            for (int k : t) {
+                Letter& l = w.letters[static_cast<size_t>(k)];
+                if (l.mark == MARK_HORN || l.mark == MARK_BREVE) continue;  /* keep "uw" */
+                l.mark = l.base == 'a' ? MARK_BREVE : MARK_HORN;
+                l.mark_key = i;
+            }
+            rec.target = w.letters[static_cast<size_t>(t.back())].key;
+            if (t.size() == 2) rec.target2 = w.letters[static_cast<size_t>(t[0])].key;
+            if (keep_if_ok(K_MARK)) return;
+        }
     }
 
     if (!w.letters.empty()) {
         Letter& prev = w.letters.back();
         uint8_t mark = MARK_NONE;
-        if (lc == 'd' && prev.base == 'd' && prev.mark == MARK_NONE) mark = MARK_BAR;
-        if ((lc == 'a' || lc == 'e' || lc == 'o') && prev.base == lc && prev.mark == MARK_NONE)
-            mark = MARK_HAT;
-        if (mark != MARK_NONE) {
+        if (lc == 'd' && prev.base == 'd') mark = MARK_BAR;
+        if ((lc == 'a' || lc == 'e' || lc == 'o') && prev.base == lc) mark = MARK_HAT;
+        if (mark != MARK_NONE && prev.mark == mark && marked_by(w, prev, lc)) {
+            /* aaa -> aa, ddd -> dd */
+            int undone = prev.mark_key;
+            prev.mark = MARK_NONE;
+            prev.mark_key = -1;
+            word_undo(w, i, undone);
+            return;
+        }
+        if (mark != MARK_NONE && prev.mark == MARK_NONE) {
             prev.mark = mark;
             prev.mark_key = i;
-            w.recs[static_cast<size_t>(i)].target = prev.key;
+            rec.target = prev.key;
             if (keep_if_ok(K_MARK)) return;
         }
     }

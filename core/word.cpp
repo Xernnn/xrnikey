@@ -35,6 +35,8 @@ static char32_t glyph(char base, uint8_t mark) {
 void word_replay(Word& w, int mode, const Options& o) {
     w.letters.clear();
     w.tone = XK_TONE_NONE;
+    w.tone_key = -1;
+    w.locked = 0;
     w.recs.assign(w.keys.size(), KeyRec{});
     for (int i = 0; i < static_cast<int>(w.keys.size()); ++i) {
         if (w.literal) word_add_letter(w, i);
@@ -102,6 +104,30 @@ std::string word_raw(const Word& w) {
     return w.keys;
 }
 
+std::string word_raw_effective(const Word& w) {
+    std::string out;
+    for (size_t k = 0; k < w.keys.size(); ++k)
+        if (!w.recs[k].undone) out += w.keys[k];
+    return out;
+}
+
+uint64_t key_bit(char lc) {
+    if (lc >= 'a' && lc <= 'z') return uint64_t{1} << (lc - 'a');
+    if (lc >= '0' && lc <= '9') return uint64_t{1} << (26 + (lc - '0'));
+    return 0;
+}
+
+/* Bamboo's rule: pressing an effect key again takes the effect back and
+ * types the key as a letter (aaa -> aa, ass -> as, dd d -> dd), and for the
+ * rest of the word that key is only a letter (aaaa -> aaa). */
+void word_undo(Word& w, int i, int undone) {
+    const char lc = static_cast<char>(std::tolower(static_cast<unsigned char>(w.keys[static_cast<size_t>(i)])));
+    if (undone >= 0) w.recs[static_cast<size_t>(undone)].undone = true;
+    word_add_letter(w, i);
+    w.recs[static_cast<size_t>(i)].undoes = undone;
+    w.locked |= key_bit(lc);
+}
+
 /* Marks other than đ, or a tone: what makes text recognisably Vietnamese.
  * đ alone does not count -- "đc", "đt", "đk" are everyday abbreviations and
  * must stay as typed even though they are not syllables. */
@@ -117,15 +143,25 @@ std::string word_display(const Word& w, const Options& o) {
     std::string v = word_render(w);
     if (!o.auto_restore || !has_vn_marks(w) || word_prefix_ok(w)) return v;
     /* No more keys can make this Vietnamese ("tẽt"): show what was typed. */
-    return word_raw(w);
+    return word_raw_effective(w);
 }
 
 std::string word_final(const Word& w, const Options& o) {
     if (w.literal) return word_raw(w);
     std::string v = word_render(w);
     if (!o.auto_restore) return v;
+    /* Two readings of the keys as plain text: with keys a repeat undid left
+     * out ("ass" -> "as", "pass" -> "pas"), and exactly as typed ("pass").
+     * The first is what doubling a key means in Telex; the second is the
+     * English word when only it is one. */
+    std::string eff = word_raw_effective(w);
     std::string raw = word_raw(w);
-    if (v == raw) return v;  /* nothing was transformed */
+    if (v == eff && v == raw) return v;  /* nothing was transformed */
+    auto english = [&]() -> const std::string* {
+        if (lexicon_is_english(eff)) return &eff;
+        if (lexicon_is_english(raw)) return &raw;
+        return nullptr;
+    };
 
     std::u32string letters = word_letters(w);
     if (syllable_valid(letters, w.tone)) {
@@ -135,11 +171,12 @@ std::string word_final(const Word& w, const Options& o) {
          * attested stays Vietnamese even when the keys are English ("of" ->
          * "ò", "is" -> "í"), as in Bamboo: typing Vietnamese never turns
          * into English. */
-        if (!lexicon_is_attested(letters, w.tone) && lexicon_is_english(raw)) return raw;
+        if (!lexicon_is_attested(letters, w.tone))
+            if (const std::string* en = english()) return *en;
         return v;
     }
-    if (lexicon_is_english(raw)) return raw;
-    if (has_vn_marks(w)) return raw;
+    if (const std::string* en = english()) return *en;
+    if (has_vn_marks(w)) return eff;
     return v;
 }
 
@@ -156,17 +193,18 @@ void word_backspace(Word& w, int mode, const Options& o) {
     if (w.empty()) return;
     if (w.literal || word_display(w, o) != word_render(w)) {
         /* Shown as typed: BackSpace edits the keys themselves. */
-        w.keys = word_raw(w);
+        w.keys = w.literal ? word_raw(w) : word_raw_effective(w);
         w.keys.pop_back();
         w.literal = true;
     } else if (!w.letters.empty()) {
         const int last = static_cast<int>(w.letters.size()) - 1;
         const int key = w.letters[static_cast<size_t>(last)].key;
+        const int partner = w.recs[static_cast<size_t>(key)].undoes;  /* "aaa": the 2nd a */
         const bool carries_tone = tone_letter(w) == last;
         std::string keep;
         for (size_t k = 0; k < w.keys.size(); ++k) {
             const KeyRec& rec = w.recs[k];
-            bool drop = static_cast<int>(k) == key ||
+            bool drop = static_cast<int>(k) == key || static_cast<int>(k) == partner ||
                         (rec.kind == K_MARK && (rec.target == key || rec.target2 == key)) ||
                         (rec.kind == K_TONE && carries_tone);
             if (!drop) keep += w.keys[k];
