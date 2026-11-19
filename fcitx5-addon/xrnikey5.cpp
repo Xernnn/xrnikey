@@ -173,17 +173,31 @@ public:
             return;
         }
 
-        /* Modifier-only keys carry no character, and Ctrl/Alt/Super chords are
-         * application shortcuts — never consume either. (Ctrl+Space and other
-         * IME switch keys are handled by Fcitx5 before reaching an engine.) */
+        /* Modifier-only keys carry no character and do not end a word. */
         if (keyEvent.key().isModifier()) return;
-        if (keyEvent.key().states().testAny(
-                KeyStates{KeyState::Ctrl, KeyState::Alt, KeyState::Super}))
-            return;
 
         auto *icState = ic->propertyFor(&factory_);
         XKState *state = icState->state();
         if (!state) return;
+
+        /* The core composes with printable keys and BackSpace. Every other
+         * key -- Return, Tab, Esc, arrows, Home/End, PageUp/Down, Delete,
+         * F-keys, and Ctrl/Alt/Super shortcuts -- ends the word: finish it
+         * so the text the user sees stays in the field, then let the key
+         * through to the app. Return used to be swallowed whenever a word
+         * was pending, so every chat message needed Enter twice; the rest
+         * left the word buffered, and the next key edited a word the
+         * cursor had already moved away from.
+         *
+         * Letting the key through after the commit is ordered: both reach
+         * the app over the same connection (the D-Bus batch reply, the
+         * Wayland input-method + virtual-keyboard requests, the XIM
+         * connection), commit first. (Ctrl+Space and other IME switch keys
+         * are handled by Fcitx5 before reaching an engine.) */
+        if (!isComposingKey(keyEvent.key())) {
+            endWord(ic, icState);
+            return;
+        }
 
         /* Number keys pick a candidate. Telex only: VNI spells its tones and
          * vowel marks WITH digits ("a1" -> á), so 1-9 there belong to the
@@ -324,6 +338,49 @@ public:
         icState->setLastPreedit(result.preedit);
         icState->setComposing(result.preedit[0] != '\0');
 
+        ic->updateUserInterface(UserInterfaceComponent::InputPanel);
+    }
+
+    static bool isComposingKey(const Key &key) {
+        if (key.states().testAny(KeyStates{
+                KeyState::Ctrl, KeyState::Alt, KeyState::Super,
+                KeyState::Super2, KeyState::Hyper, KeyState::Hyper2,
+                KeyState::Meta})) {
+            return false;
+        }
+        uint32_t sym = static_cast<uint32_t>(key.sym());
+        return (sym >= 0x20 && sym <= 0x7e) || sym == FcitxKey_BackSpace;
+    }
+
+    /* Finish the word in progress, keeping what the user sees. In preedit
+     * mode that means committing it. In instant mode it is already in the
+     * field; the core still gets its end-of-word pass (fed Return, which it
+     * treats as "end the word, add no character") so a correction it makes
+     * only at word end is applied in place. */
+    void endWord(InputContext *ic, XrnikeyState *icState) {
+        XKState *state = icState->state();
+        char *pending = state ? xk_state_get_preedit(state) : nullptr;
+        std::string shown = pending ? pending : "";
+        std::free(pending);
+        if (!shown.empty()) {
+            XKResult r = xk_process_key(state, FcitxKey_Return, 0);
+            if (icState->instantForWord()) {
+                deleteCommitted(ic, r.delete_before);
+                if (r.commit[0]) ic->commitString(r.commit);
+            } else {
+                ic->commitString(r.commit[0] ? std::string(r.commit) : shown);
+            }
+            icState->noteWord(shown);
+        }
+        clearWord(ic, icState);
+    }
+
+    /* Forget the word in progress without touching the field. */
+    void clearWord(InputContext *ic, XrnikeyState *icState) {
+        icState->reset();
+        icState->setLastPreedit("");
+        ic->inputPanel().reset();
+        ic->updatePreedit();
         ic->updateUserInterface(UserInterfaceComponent::InputPanel);
     }
 

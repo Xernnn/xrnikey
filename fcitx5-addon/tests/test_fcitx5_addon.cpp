@@ -456,6 +456,65 @@ TEST_CASE("instant mode puts each word in the field as it is typed",
     CHECK(c.text() == "xin chào ");
 }
 
+TEST_CASE("Return commits the word and inserts the newline in one press",
+          "[keys]") {
+    for (const char *instant : {"False", "True"}) {
+        INFO("InstantCommit=" << instant);
+        configure({{"InstantCommit", instant}});
+        FakeClient c(instantApp());
+        c.type("chaof");
+        CHECK_FALSE(c.key("Return"));
+        CHECK(c.text() == "chào\n");
+        CHECK(c.preedit().empty());
+        /* The next word starts fresh: no tone lands on the last one. */
+        c.type("s ");
+        CHECK(c.text() == "chào\ns ");
+    }
+}
+
+TEST_CASE("every key the core does not compose with ends the word and "
+          "passes through",
+          "[keys]") {
+    /* key name, what the fake field does with it */
+    const std::vector<std::pair<std::string, std::string>> keys{
+        {"Tab", "chào\t"},          {"Escape", "chào"},
+        {"Up", "chào"},             {"Down", "chào"},
+        {"Page_Up", "chào"},        {"Page_Down", "chào"},
+        {"Home", "chào"},           {"End", "chào"},
+        {"Delete", "chào"},         {"F5", "chào"},
+        {"KP_Enter", "chào\n"},     {"Control+a", "chào"},
+        {"Control+Return", "chào"}, {"Alt+x", "chào"},
+        {"Super+d", "chào"},
+    };
+    for (const char *instant : {"False", "True"}) {
+        for (const auto &[name, expected] : keys) {
+            INFO("InstantCommit=" << instant << " key=" << name);
+            configure({{"InstantCommit", instant}});
+            FakeClient c(instantApp());
+            c.type("chaof");
+            CHECK_FALSE(c.key(name));
+            CHECK(c.passedKeys().back() == Key(name).toString());
+            CHECK(c.text() == expected);
+            CHECK(c.preedit().empty());
+            c.key("End");
+            c.type("s ");
+            CHECK(c.text() == expected + "s ");
+        }
+    }
+}
+
+TEST_CASE("an arrow key mid-word never lets the next key edit the old word",
+          "[keys]") {
+    configure({{"InstantCommit", "True"}});
+    FakeClient c(instantApp());
+    c.type("vie");
+    c.key("Left");
+    /* Starts a new word between i and e instead of turning the e before
+     * the (moved) cursor into ê. */
+    c.type("e");
+    CHECK(c.text() == "viee");
+}
+
 int main(int argc, char *argv[]) {
     /* Nothing here may reach the user's session: no display, no session
      * bus, and every file the addon reads under a throwaway directory. */
