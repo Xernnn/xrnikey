@@ -139,7 +139,7 @@ TEST_CASE("corpus: BackSpace deletes one character", "[corpus]") {
     });
 }
 
-TEST_CASE("corpus: capitals follow the keys that typed them", "[corpus][!mayfail]") {
+TEST_CASE("corpus: capitals follow the keys that typed them", "[corpus]") {
     run(XK_MODE_TELEX, {
         {"As ", "Á "}, {"AAn ", "Ân "}, {"OOng ", "Ông "}, {"HOAF ", "HÒA "},
         {"VIEETJ ", "VIỆT "}, {"Owr ", "Ở "}, {"TRUOWNGF ", "TRƯỜNG "},

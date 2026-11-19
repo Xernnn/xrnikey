@@ -65,17 +65,37 @@ bool word_prefix_ok(const Word& w) {
     return syllable_prefix_ok(word_letters(w), w.tone);
 }
 
+/* Index into w.letters of the vowel that carries the tone, or -1. */
+static int tone_letter(const Word& w) {
+    if (w.tone == XK_TONE_NONE) return -1;
+    std::u32string letters = word_letters(w);
+    int off = find_tone_vowel_index(utf8_of(letters));
+    char buf[8];
+    int at = 0;
+    for (size_t i = 0; i < letters.size(); ++i) {
+        if (at == off) return static_cast<int>(i);
+        at += utf8_encode(static_cast<uint32_t>(letters[i]), buf);
+    }
+    return -1;
+}
+
+/* Each letter takes the case of the key that typed it, whatever later keys
+ * marked or toned it: "As" is Á, "AAn" Ân, "HOAF" HÒA, "Owr" Ở. The old
+ * renderer took toned and marked vowels from lowercase-only tables (and
+ * lowercased doubled vowels), giving "á", "ân", "HòA", "Ơr". */
 std::string word_render(const Word& w) {
+    std::u32string lower = word_letters(w);
+    const int carrier = tone_letter(w);
     std::string s;
     char buf[8];
-    for (const Letter& l : w.letters) {
-        char32_t g = glyph(l.base, l.mark);
-        if (l.upper && g < 0x80) g = static_cast<char32_t>(std::toupper(static_cast<int>(g)));
-        else if (l.upper && g == U'đ') g = U'Đ';
+    for (size_t i = 0; i < lower.size(); ++i) {
+        char32_t g = lower[i];
+        if (static_cast<int>(i) == carrier) g = vn_toned(g, w.tone);
+        if (w.letters[i].upper) g = vn_upper(g);
         int n = utf8_encode(static_cast<uint32_t>(g), buf);
         s.append(buf, static_cast<size_t>(n));
     }
-    return nfc_compose(apply_tone_to_syllable(s, w.tone));
+    return s;
 }
 
 std::string word_raw(const Word& w) {
@@ -121,20 +141,6 @@ std::string word_final(const Word& w, const Options& o) {
     if (lexicon_is_english(raw)) return raw;
     if (has_vn_marks(w)) return raw;
     return v;
-}
-
-/* Index into w.letters of the vowel that carries the tone, or -1. */
-static int tone_letter(const Word& w) {
-    if (w.tone == XK_TONE_NONE) return -1;
-    std::u32string letters = word_letters(w);
-    int off = find_tone_vowel_index(utf8_of(letters));
-    char buf[8];
-    int at = 0;
-    for (size_t i = 0; i < letters.size(); ++i) {
-        if (at == off) return static_cast<int>(i);
-        at += utf8_encode(static_cast<uint32_t>(letters[i]), buf);
-    }
-    return -1;
 }
 
 /* The old BackSpace undid the last transformation instead of deleting a

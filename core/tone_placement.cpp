@@ -196,6 +196,38 @@ std::string apply_tone_to_syllable(const std::string& base, int tone) {
     return result;
 }
 
+char32_t vn_toned(char32_t vowel, int tone) {
+    static const char32_t PLAIN[V_COUNT] = {U'a', U'ă', U'â', U'e', U'ê', U'i',
+                                            U'o', U'ô', U'ơ', U'u', U'ư', U'y'};
+    for (int id = 0; id < V_COUNT; ++id) {
+        if (PLAIN[id] != vowel) continue;
+        uint32_t cp = static_cast<uint32_t>(vowel);
+        int len = 0;
+        utf8_decode(get_toned_vowel(id, tone), &cp, &len);
+        return static_cast<char32_t>(cp);
+    }
+    return vowel;
+}
+
+/* Uppercase of a Vietnamese letter (plain, marked or toned). The pairs are
+ * not one arithmetic rule: Latin-1 is -0x20, Latin Extended Additional
+ * (ạ..ỹ) is lower-odd/upper-even, and ă đ ĩ ũ ơ ư each sit apart. */
+char32_t vn_upper(char32_t c) {
+    if (c >= U'a' && c <= U'z') return c - 0x20;
+    if (c >= 0xE0 && c <= 0xFE && c != 0xF7) return c - 0x20;
+    switch (c) {
+        case 0x0103: return 0x0102;  /* ă */
+        case 0x0111: return 0x0110;  /* đ */
+        case 0x0129: return 0x0128;  /* ĩ */
+        case 0x0169: return 0x0168;  /* ũ */
+        case 0x01A1: return 0x01A0;  /* ơ */
+        case 0x01B0: return 0x01AF;  /* ư */
+        default: break;
+    }
+    if (c >= 0x1EA0 && c <= 0x1EF9 && (c & 1)) return c - 1;
+    return c;
+}
+
 std::string nfc_compose(const std::string& nfd) {
     return nfd;
 }

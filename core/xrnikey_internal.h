@@ -113,6 +113,9 @@ std::string apply_tone_to_syllable(const std::string& base, int tone);
 int find_tone_vowel_index(const std::string& syllable);
 bool is_vietnamese_vowel_glyph(const std::string& s, size_t pos, int* out_len);
 std::string nfc_compose(const std::string& nfd);
+/* `vowel` (lowercase, marked or not) carrying `tone`. */
+char32_t vn_toned(char32_t vowel, int tone);
+char32_t vn_upper(char32_t c);
 std::string nfd_decompose_char(uint32_t cp);
 int utf8_decode(const char* s, uint32_t* cp, int* len);
 int utf8_encode(uint32_t cp, char* out);
