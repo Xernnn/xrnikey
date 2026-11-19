@@ -22,11 +22,135 @@
 #include <cstring>
 #include <algorithm>
 #include <cstdlib>
+#include <deque>
+#include <fnmatch.h>
 #include <functional>
 #include <string>
 #include <vector>
 
 namespace fcitx {
+
+namespace {
+
+/* Codepoint-wise helpers on UTF-8 strings. */
+std::string lastChars(const std::string &s, size_t n) {
+    size_t len = utf8::length(s);
+    if (len <= n) return s;
+    return s.substr(utf8::ncharByteLength(s.begin(), len - n));
+}
+std::string dropLastChars(const std::string &s, size_t n) {
+    size_t len = utf8::length(s);
+    if (n >= len) return {};
+    return s.substr(0, utf8::ncharByteLength(s.begin(), len - n));
+}
+bool endsWith(const std::string &s, const std::string &suffix) {
+    return s.size() >= suffix.size() &&
+           s.compare(s.size() - suffix.size(), suffix.size(), suffix) == 0;
+}
+
+} // namespace
+
+/* What is before the cursor in the app, as far as instant commit needs to
+ * know: the app's own surrounding-text reports, plus the edits this engine
+ * sent since (which a fast typist outruns -- the app reports each change
+ * back some milliseconds later). Only the last kTail characters are kept.
+ *
+ * states_ runs from the last state the app confirmed (front) to the state
+ * once every edit sent so far is applied (back). A report matching one of
+ * them is the app catching up; a report matching none means something else
+ * changed the text or moved the cursor -- a click, the app editing its own
+ * text, a selection -- and the word in progress may no longer be ours to
+ * edit. */
+class ClientText {
+public:
+    static constexpr size_t kTail = 64;
+
+    /* Whether the app's text is known well enough to edit in place. */
+    bool known() const { return !states_.empty() && !stale_; }
+    /* Whether the app has said anything since this was created or since it
+     * stopped reporting. */
+    bool heardFrom() const { return !states_.empty() || stale_; }
+    bool diverged() const { return diverged_; }
+    bool selection() const { return selection_; }
+    void startWord() { diverged_ = false; }
+
+    /* A key the engine let through may have changed anything, so the text
+     * is unknown until the app reports a state that is not one of those
+     * expected before that key (reports still in flight from before it
+     * must not be taken for the new state). */
+    void forget() {
+        stale_ = true;
+        diverged_ = true;
+    }
+
+    void report(const SurroundingText &surrounding) {
+        if (!surrounding.isValid()) {
+            states_.clear();
+            stale_ = false;
+            diverged_ = true;
+            selection_ = false;
+            return;
+        }
+        const auto &text = surrounding.text();
+        std::string before = text.substr(
+            0, utf8::ncharByteLength(text.begin(), surrounding.cursor()));
+        State now{lastChars(before, kTail), utf8::length(before) <= kTail};
+        selection_ = surrounding.anchor() != surrounding.cursor();
+        if (!selection_) {
+            /* The earliest match: the same text can recur ("ti", "tie",
+             * then "ti" again on the way to "tiê"), and reports arrive in
+             * order, so a later report can still match a later state. */
+            for (size_t i = 0; i < states_.size(); ++i) {
+                if (matches(now, states_[i])) {
+                    states_.erase(states_.begin(), states_.begin() + i);
+                    return;
+                }
+            }
+        }
+        /* Not the app catching up with this engine's edits: something else
+         * changed the text or moved the cursor (or, after forget(), this is
+         * the first report from after that key). */
+        if (heardFrom() || selection_) diverged_ = true;
+        states_.assign(1, now);
+        stale_ = false;
+    }
+
+    /* This engine deleted `del` characters before the cursor and inserted
+     * `ins`. */
+    void edit(size_t del, const std::string &ins) {
+        if (!known()) return;
+        State next = states_.back();
+        if (del > utf8::length(next.tail)) {
+            forget();
+            return;
+        }
+        next.tail = dropLastChars(next.tail, del) + ins;
+        if (utf8::length(next.tail) > kTail) {
+            next.tail = lastChars(next.tail, kTail);
+            next.complete = false;
+        }
+        states_.push_back(std::move(next));
+        if (states_.size() > 32) states_.pop_front();
+    }
+
+private:
+    struct State {
+        std::string tail;
+        bool complete; /* tail is everything before the cursor */
+    };
+    static bool matches(const State &report, const State &expected) {
+        return expected.complete
+                   ? report.complete && report.tail == expected.tail
+                   : endsWith(report.tail, expected.tail);
+    }
+
+    /* From the last state the app confirmed (front) to the state once every
+     * edit sent so far is applied (back). */
+    std::deque<State> states_;
+    bool stale_ = false;
+    bool diverged_ = false;
+    bool selection_ = false;
+};
 
 /* Per-InputContext state, attached via InputContextProperty — this is how
  * addons carry custom state per IC in Fcitx5; a real InputContext is always
@@ -66,7 +190,17 @@ public:
     bool composing() const { return composing_; }
     void setComposing(bool v) { composing_ = v; }
     bool instantForWord() const { return instantForWord_; }
-    void setInstantForWord(bool v) { instantForWord_ = v; }
+    void startWord(bool instant) {
+        instantForWord_ = instant;
+        inField_.clear();
+        client_.startWord();
+    }
+
+    ClientText &client() { return client_; }
+    /* Instant mode: the characters of the word in progress that this
+     * engine has put in the field. Nothing outside it is ever deleted. */
+    const std::string &inField() const { return inField_; }
+    void setInField(std::string v) { inField_ = std::move(v); }
 
     /* The last couple of finished words, as n-gram context for ranking the
      * next one. Kept per input context so switching windows does not carry
@@ -86,6 +220,8 @@ private:
     bool sawSurrounding_ = false;
     bool composing_ = false;
     bool instantForWord_ = false;
+    ClientText client_;
+    std::string inField_;
     std::vector<std::string> history_;
     std::string lastPreedit_;
 };
@@ -117,6 +253,16 @@ public:
           }) {
         instance_->inputContextManager().registerProperty("xrnikeyState",
                                                             &factory_);
+        /* Every surrounding-text report from an app, to check that the text
+         * instant commit is about to edit is still the text it typed. */
+        surroundingWatcher_ = instance_->watchEvent(
+            EventType::InputContextSurroundingTextUpdated,
+            EventWatcherPhase::Default, [this](Event &event) {
+                auto *ic = static_cast<InputContextEvent &>(event).inputContext();
+                auto *icState = ic->propertyFor(&factory_);
+                icState->noteSurrounding(ic->surroundingText().isValid());
+                icState->client().report(ic->surroundingText());
+            });
         reloadConfig();
     }
 
@@ -209,6 +355,18 @@ public:
         XKState *state = icState->state();
         if (!state) return;
 
+        /* A key the engine lets through may change the app's text in any
+         * way (Return, BackSpace, a paste shortcut, an arrow key moving the
+         * cursor), so what instant commit knows of it is void until the app
+         * reports again. */
+        struct ForgetIfPassed {
+            KeyEvent &key;
+            XrnikeyState *icState;
+            ~ForgetIfPassed() {
+                if (!key.accepted()) icState->client().forget();
+            }
+        } forgetIfPassed{keyEvent, icState};
+
         /* Password and other sensitive fields get every key untouched: no
          * Telex/VNI, no preedit (which would show the password), no
          * suggestions. Fcitx5 itself already switches Password fields to
@@ -245,67 +403,71 @@ public:
         if (keyEvent.key().states() & KeyState::Shift) mods |= 0x01;
         if (keyEvent.key().states() & KeyState::Alt) mods |= 0x08;
 
-        /* Instant-commit (Unikey-style): correct previously committed text
-         * in place via surrounding-text deletion instead of buffering a
-         * visible preedit until the word is finished. Requires the focused
-         * app to support SurroundingText; otherwise fall back to the
-         * classic preedit/composition-buffer behavior. Re-evaluated every
-         * key since capability/config can change while the IC is alive. */
-        /* Unikey-style instant commit corrects already-committed text in
-         * place, which means deleting it again. That delete is only safe
-         * where the app supplies surrounding text: the text-input protocol
-         * then applies it atomically with the commit. Without it the only
-         * tool is synthesised BackSpace keys, and those reach the app by a
-         * different channel than the commit with no ordering guarantee --
-         * konsole reproducibly scrambled "chaof" into "choa" that way.
-         *
-         * So the mechanism is chosen per app, from whether surrounding text
-         * has actually been seen (not merely advertised -- konsole claims the
-         * capability and never sends any), and latched for the whole word so
-         * it cannot change mid-syllable. Apps that support it (Kate, browsers,
-         * most GUI toolkits) get the seamless in-place edit; terminals fall
-         * back to the classic preedit, which is the only thing correct there. */
-        icState->noteSurrounding(ic->surroundingText().isValid());
-        if (!icState->composing()) {
-            const auto &overrides = config_->appOverrideList.value();
-            bool forcedPreedit =
-                std::find(overrides.begin(), overrides.end(),
-                          ic->program()) != overrides.end();
-            icState->setInstantForWord(
-                !forcedPreedit && config_->instantCommit.value() &&
-                ic->capabilityFlags().test(CapabilityFlag::SurroundingText) &&
-                icState->sawSurrounding());
+        /* Instant commit (Unikey-style) puts each keystroke's result in the
+         * field at once and corrects it in place, instead of holding the word
+         * in a preedit until Space. Correcting means deleting what was typed,
+         * so it is only done where that is safe, decided at the start of each
+         * word and latched for it:
+         *  - the app has actually sent surrounding text (not merely claimed
+         *    the capability: the Wayland frontend claims it for every app,
+         *    and foot, Alacritty and kitty never send any), with no
+         *    selection;
+         *  - it is not a terminal (content purpose Terminal, or a name in
+         *    AppOverrideList): there "the text before the cursor" is a
+         *    shell's, and edits race the shell's echo;
+         * and, while the word is typed, the app's reports must keep matching
+         * what the engine typed (ClientText). If they stop -- a click
+         * elsewhere, the app rewriting or selecting text -- the word is left
+         * as it is and this key starts a new word, in preedit. Nothing is
+         * ever deleted that this engine did not put there, and BackSpace is
+         * never synthesised: it reaches the app by another path than the
+         * commit, and konsole scrambled "chaof" into "choa" that way. */
+        /* An app's first report can predate this addon being loaded. */
+        if (ic->surroundingText().isValid()) {
+            icState->noteSurrounding(true);
+            if (!icState->client().heardFrom()) {
+                icState->client().report(ic->surroundingText());
+            }
+        }
+        if (icState->composing() && icState->instantForWord() &&
+            !inPlaceEditSafe(icState)) {
+            clearWord(ic, icState);
+            icState->startWord(false);
+        } else if (!icState->composing()) {
+            icState->startWord(instantAllowed(ic, icState));
         }
         bool instantMode = icState->instantForWord();
         xk_state_set_instant_commit(state, instantMode ? 1 : 0);
 
         XKResult result = xk_process_key(state, keysym, mods);
 
-        if (result.consumed) {
-            keyEvent.filterAndAccept();
-        }
-
         if (result.reset) {
+            if (result.consumed) keyEvent.filterAndAccept();
             clearWord(ic, icState);
             return;
         }
 
+        if (instantMode &&
+            !editInPlace(ic, icState, result.delete_before, result.commit)) {
+            /* Not expected after the check above; if the edit still cannot
+             * be made safely, redo this key as the start of a preedit word. */
+            clearWord(ic, icState);
+            icState->startWord(false);
+            instantMode = false;
+            xk_state_set_instant_commit(state, 0);
+            result = xk_process_key(state, keysym, mods);
+        }
+
+        if (result.consumed) {
+            keyEvent.filterAndAccept();
+        }
+
         if (instantMode) {
-            /* Remove the characters this engine previously committed for the
-             * syllable in progress. deleteSurroundingText is the clean path --
-             * one atomic edit, no synthetic input -- but it needs the app to
-             * actually report what surrounds the cursor. Where it does not,
-             * forward real BackSpace keys instead; that works in every app and
-             * is what Unikey and ibus-bamboo's backspace mode do. */
-            deleteCommitted(ic, result.delete_before);
-            if (result.commit[0]) {
-                ic->commitString(result.commit);
-            }
             ic->inputPanel().reset();
             ic->updatePreedit();
         } else {
             if (result.commit[0]) {
-                ic->commitString(result.commit);
+                commitText(ic, icState, result.commit);
                 icState->reset();
             }
 
@@ -390,10 +552,11 @@ public:
         if (!shown.empty()) {
             XKResult r = xk_process_key(state, FcitxKey_Return, 0);
             if (icState->instantForWord()) {
-                deleteCommitted(ic, r.delete_before);
-                if (r.commit[0]) ic->commitString(r.commit);
+                /* A last correction is skipped if it cannot be made safely. */
+                editInPlace(ic, icState, r.delete_before, r.commit);
             } else {
-                ic->commitString(r.commit[0] ? std::string(r.commit) : shown);
+                commitText(ic, icState,
+                           r.commit[0] ? std::string(r.commit) : shown);
             }
             icState->noteWord(shown);
         }
@@ -409,21 +572,73 @@ public:
         ic->updateUserInterface(UserInterfaceComponent::InputPanel);
     }
 
-    /* Remove `count` codepoints of already-committed text before the cursor.
-     * deleteSurroundingText is atomic with the commit where the app supplies
-     * surrounding text; the BackSpace fallback is for apps that do not, and
-     * is why instant mode is only enabled where surrounding text exists. */
-    void deleteCommitted(InputContext *ic, int count) {
-        if (count <= 0) return;
-        if (ic->capabilityFlags().test(CapabilityFlag::SurroundingText) &&
-            ic->surroundingText().isValid()) {
-            ic->deleteSurroundingText(-count, count);
-        } else {
-            for (int i = 0; i < count; ++i) {
-                ic->forwardKey(Key(FcitxKey_BackSpace), false);
-                ic->forwardKey(Key(FcitxKey_BackSpace), true);
+    bool instantAllowed(InputContext *ic, XrnikeyState *icState) {
+        return config_->instantCommit.value() && !appForcesPreedit(ic) &&
+               !ic->capabilityFlags().test(CapabilityFlag::Terminal) &&
+               ic->capabilityFlags().test(CapabilityFlag::SurroundingText) &&
+               icState->sawSurrounding() && ic->surroundingText().isValid() &&
+               icState->client().known() && !icState->client().selection();
+    }
+
+    static bool inPlaceEditSafe(XrnikeyState *icState) {
+        return icState->client().known() && !icState->client().diverged() &&
+               !icState->client().selection();
+    }
+
+    /* AppOverrideList entries are shell-style patterns, matched without case
+     * against the program name and against its last dot-separated part:
+     * on Hyprland the Wayland frontend reports the app id from the
+     * compositor's window list ("org.wezfurlong.wezterm", "Alacritty"),
+     * the D-Bus one the process name ("konsole"). An empty name (no app id
+     * available) matches nothing; the surrounding-text checks still apply. */
+    bool appForcesPreedit(InputContext *ic) const {
+        const std::string &program = ic->program();
+        if (program.empty()) return false;
+        std::string lastPart = program.substr(program.rfind('.') + 1);
+        for (const auto &pattern : config_->appOverrideList.value()) {
+            if (fnmatch(pattern.c_str(), program.c_str(), FNM_CASEFOLD) == 0 ||
+                fnmatch(pattern.c_str(), lastPart.c_str(), FNM_CASEFOLD) == 0) {
+                return true;
             }
         }
+        return false;
+    }
+
+    void commitText(InputContext *ic, XrnikeyState *icState,
+                    const std::string &text) {
+        ic->commitString(text);
+        icState->client().edit(0, text);
+    }
+
+    /* Instant mode: replace the last `del` characters this engine put in
+     * the field for the word in progress with `commit`. Returns false,
+     * changing nothing, when that is not known to be safe. */
+    bool editInPlace(InputContext *ic, XrnikeyState *icState, int del,
+                     const char *commit) {
+        if (del > 0) {
+            const std::string &mine = icState->inField();
+            if (!inPlaceEditSafe(icState) ||
+                static_cast<size_t>(del) > utf8::length(mine)) {
+                return false;
+            }
+            /* The Wayland frontend turns this character count into bytes
+             * from its own copy of the surrounding text, which lags behind
+             * fast typing: "ê" counted as the "e" it replaced deleted half
+             * a character. The characters being deleted are exactly the
+             * end of what this engine typed, so hand it that. */
+            unsigned int len = utf8::length(mine);
+            SurroundingText reported = ic->surroundingText();
+            ic->surroundingText().setText(mine, len, len);
+            ic->deleteSurroundingText(-del, del);
+            ic->surroundingText() = reported;
+            icState->setInField(dropLastChars(mine, del));
+            icState->client().edit(del, "");
+        }
+        if (commit && commit[0]) {
+            commitText(ic, icState, commit);
+            icState->setInField(icState->inField() + commit);
+        }
+        return true;
     }
 
     /* Replace the syllable in progress with a chosen candidate. In instant
@@ -432,14 +647,12 @@ public:
     void commitCandidate(InputContext *ic, const std::string &word) {
         auto *icState = ic->propertyFor(&factory_);
         if (icState->instantForWord()) {
-            char *cur = xk_state_get_preedit(icState->state());
-            if (cur) {
-                std::string shown(cur);
-                std::free(cur);
-                deleteCommitted(ic, static_cast<int>(utf8::length(shown)));
-            }
+            editInPlace(ic, icState,
+                        static_cast<int>(utf8::length(icState->inField())),
+                        word.c_str());
+        } else {
+            commitText(ic, icState, word);
         }
-        ic->commitString(word);
         clearWord(ic, icState);
     }
 
@@ -527,6 +740,7 @@ private:
     std::shared_ptr<XrnikeyConfig> config_;
     CandidateProvider candidateProvider_;
     FactoryFor<XrnikeyState> factory_;
+    std::unique_ptr<HandlerTableEntry<EventHandler>> surroundingWatcher_;
     uint32_t notifyId_ = 0;
 };
 

@@ -108,17 +108,30 @@ sudo cmake --install build
 sudo ldconfig
 ```
 
-## 9. Terminal apps processing Vietnamese input
+## 9. Instant commit: which apps get it
 
-**Symptom:** Terminal receives raw Telex keys instead of composed characters.
+With `InstantCommit=True`, a word is typed straight into the field and corrected in place, with
+no underlined preedit. Xrnikey uses it only where that is safe, and falls back to the preedit
+otherwise:
 
-**Fix:** Add terminal WM_CLASS to app overrides:
-```json
-// ~/.config/xrnikey/app-overrides.json
-["code", "alacritty", "kitty", "foot", "wezterm", "terminal", "konsole"]
+- the app must send surrounding text (foot, Alacritty and kitty never do; X11 apps through XIM
+  cannot), with nothing selected;
+- the field must not be a terminal (Fcitx5 is told so by the app), and the app must not match
+  `AppOverrideList` (terminals, VS Code and its forks, LibreOffice by default);
+- while a word is typed, the text the app reports must still be the text Xrnikey typed. After a
+  click elsewhere, or when the app rewrites or selects text, the word is left as it is and the
+  next key starts a new word in preedit.
+
+`AppOverrideList` takes shell-style patterns, matched without case against the app id Fcitx5
+reports and against its last dot-separated part. To see the names, list Fcitx5's input contexts
+(`program:` on each line; the focused one has `focus:1`):
+
+```bash
+busctl --user call org.fcitx.Fcitx5 /controller org.fcitx.Fcitx.Controller1 DebugInfo
 ```
 
-Or disable Xrnikey in terminals via Fcitx5 config: `AppOverrideList`.
+Add one in `fcitx5-configtool` (Xrnikey's settings, "Force Preedit In These Apps"); it applies
+from the next word.
 
 ## 10. Flatpak/Snap app isolation
 

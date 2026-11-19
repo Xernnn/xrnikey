@@ -201,6 +201,19 @@ public:
     /* Deliver every surrounding-text report still in flight. */
     void flush() { deliver(true); }
 
+    /* The app stops reporting surrounding text (as the Wayland frontend
+     * does when the text-input is deactivated). */
+    void invalidateSurrounding() {
+        pending_.clear();
+        surroundingText().invalidate();
+        updateSurroundingText();
+    }
+
+    /* Keys the engine synthesised with forwardKey(). */
+    const std::vector<std::string> &forwardedKeys() const {
+        return forwarded_;
+    }
+
 protected:
     void commitStringImpl(const std::string &s) override {
         eraseSelection();
@@ -233,6 +246,7 @@ protected:
 
     void forwardKeyImpl(const ForwardKeyEvent &event) override {
         if (!event.isRelease()) {
+            forwarded_.push_back(event.rawKey().toString());
             applyKey(event.rawKey());
         }
     }
@@ -413,6 +427,7 @@ private:
     std::string preedit_;
     std::vector<std::string> commits_;
     std::vector<std::string> passed_;
+    std::vector<std::string> forwarded_;
     std::deque<Report> pending_;
     int keyCount_ = 0;
     bool lastHandled_ = false;
@@ -422,6 +437,18 @@ private:
 FakeClient::Options preeditApp() {
     FakeClient::Options o;
     o.program = "testapp";
+    return o;
+}
+
+/* A text-input-v3 app (GTK, Firefox, Chromium) on Hyprland: the Wayland
+ * frontend, and the program name is the app id fcitx5 gets from the
+ * compositor's toplevel list. */
+FakeClient::Options waylandApp(std::string appId = "org.example.Editor",
+                               int lag = 0) {
+    FakeClient::Options o;
+    o.program = std::move(appId);
+    o.frontend = "wayland_v2";
+    o.lag = lag;
     return o;
 }
 
@@ -740,6 +767,163 @@ TEST_CASE("only options that do something are offered", "[config]") {
         INFO(dead);
         CHECK_FALSE(raw.get(dead));
     }
+}
+
+TEST_CASE("instant commit is opt-in", "[instant]") {
+    configure();
+    FakeClient c(instantApp());
+    c.type("chaof");
+    CHECK(c.text().empty());
+    CHECK(c.preedit() == "chào");
+}
+
+TEST_CASE("instant commit survives an app that reports surrounding text "
+          "late",
+          "[instant]") {
+    /* Fast typing outruns the app's surrounding-text reports. On Wayland
+     * Fcitx5 converts each deletion to bytes from its stale copy, which
+     * used to delete half of an "ê" or the wrong letters. */
+    const std::string sentence = "tieengs vieetj ddepj quas nhuw thees ";
+    const std::string expected = "tiếng việt đẹp quá như thế ";
+    for (int lag : {0, 1, 2, 3}) {
+        for (const char *frontend : {"wayland_v2", "dbus"}) {
+            INFO("lag=" << lag << " frontend=" << frontend);
+            configure({{"InstantCommit", "True"}});
+            auto o = waylandApp("org.example.Editor", lag);
+            o.frontend = frontend;
+            FakeClient c(o);
+            c.type(sentence);
+            c.flush();
+            CHECK_FALSE(c.corrupted());
+            CHECK(c.text() == expected);
+            CHECK(c.forwardedKeys().empty());
+        }
+    }
+}
+
+/* Type `steps`: text, or a key name in <angle brackets>. */
+void play(FakeClient &c, const std::vector<std::string> &steps) {
+    for (const auto &step : steps) {
+        if (step.size() > 2 && step.front() == '<' && step.back() == '>') {
+            c.key(step.substr(1, step.size() - 2));
+        } else {
+            c.type(step);
+        }
+    }
+    c.flush();
+}
+
+TEST_CASE("instant commit gives the same text however late the app reports",
+          "[instant]") {
+    const std::vector<std::vector<std::string>> scripts{
+        {"vieetj", "<Return>", "nam ", "tieengs", "<BackSpace>",
+         "<BackSpace>", "s "},
+        {"ddaay laf", "<BackSpace>", "f ", "<Left>", "<Right>", "nhaf "},
+        {"thuwr nghieemj ", "<Return>", "<Return>", "xongs", "<Tab>",
+         "rooif."},
+        {"hello world, toi ddi hocj "},
+    };
+    for (const char *frontend : {"wayland_v2", "dbus"}) {
+        for (size_t n = 0; n < scripts.size(); ++n) {
+            std::string reference;
+            for (int lag : {0, 1, 2, 3, 5}) {
+                INFO("frontend=" << frontend << " script=" << n
+                                 << " lag=" << lag);
+                configure({{"InstantCommit", "True"}});
+                auto o = waylandApp("org.example.Editor", lag);
+                o.frontend = frontend;
+                FakeClient c(o);
+                play(c, scripts[n]);
+                CHECK_FALSE(c.corrupted());
+                CHECK(c.forwardedKeys().empty());
+                if (lag == 0) {
+                    reference = c.text();
+                } else {
+                    CHECK(c.text() == reference);
+                }
+            }
+        }
+    }
+}
+
+TEST_CASE("instant commit never deletes text the cursor moved onto",
+          "[instant]") {
+    configure({{"InstantCommit", "True"}});
+    SECTION("a click elsewhere (Wayland sends no reset, only the cursor)") {
+        FakeClient c(waylandApp());
+        c.type("xin vie");
+        c.click(3);
+        c.type("e ");
+        /* The e starts a new word where the cursor now is. Before, it was
+         * taken as the second e of "vie" and deleted the "n" of "xin". */
+        CHECK(c.text() == "xine  vie");
+    }
+    SECTION("the app rewrites the word (auto-capitalisation)") {
+        FakeClient c(waylandApp());
+        c.type("vie");
+        c.appSetsText("Vie", 3);
+        c.type("e ");
+        CHECK(c.text() == "Viee ");
+    }
+    SECTION("the app selects text (inline autocompletion)") {
+        FakeClient c(waylandApp());
+        c.type("vie");
+        c.appSetsText("vietnam", 3);
+        c.appSelects(7, 3);
+        c.type("e ");
+        CHECK(c.text() == "viee ");
+    }
+    SECTION("the app stops reporting surrounding text") {
+        FakeClient c(instantApp());
+        c.type("vie");
+        c.invalidateSurrounding();
+        c.type("e ");
+        CHECK(c.forwardedKeys().empty()); /* no synthesised BackSpace */
+        CHECK(c.text() == "viee ");
+    }
+}
+
+TEST_CASE("terminals and editors in the default list use preedit",
+          "[instant]") {
+    configure({{"InstantCommit", "True"}});
+    /* App ids as Hyprland reports them, plus one Fcitx5 learns only from
+     * the field's content purpose. */
+    for (const char *app :
+         {"Alacritty", "foot", "kitty", "org.wezfurlong.wezterm",
+          "com.mitchellh.ghostty", "org.kde.konsole", "org.gnome.Terminal",
+          "code", "libreoffice-writer"}) {
+        INFO(app);
+        FakeClient c(waylandApp(app));
+        c.type("chaof");
+        CHECK(c.text().empty());
+        CHECK(c.preedit() == "chào");
+    }
+    auto o = waylandApp("someterm");
+    o.extra = CapabilityFlag::Terminal;
+    FakeClient c(o);
+    c.type("chaof");
+    CHECK(c.text().empty());
+    CHECK(c.preedit() == "chào");
+}
+
+TEST_CASE("apps that report surrounding text get instant commit",
+          "[instant]") {
+    configure({{"InstantCommit", "True"}});
+    for (const char *app : {"zen", "chromium", "org.gnome.TextEditor"}) {
+        INFO(app);
+        FakeClient c(waylandApp(app));
+        c.type("chaof");
+        CHECK(c.text() == "chào");
+        CHECK(c.preedit().empty());
+    }
+    /* No surrounding text (foot, Alacritty, kitty never send any; XIM
+     * cannot): preedit, whatever the name. */
+    auto o = waylandApp("unknown");
+    o.surrounding = false;
+    FakeClient c(o);
+    c.type("chaof");
+    CHECK(c.text().empty());
+    CHECK(c.preedit() == "chào");
 }
 
 int main(int argc, char *argv[]) {

@@ -11,7 +11,7 @@ Xrnikey provides Telex and VNI input methods with intelligent bilingual auto-swi
 ## Features
 
 - **Telex & VNI** — full Vietnamese input encoding with tone marks, vowel modifications, and backspace undo
-- **Unikey-style instant commit** — corrects tones in place as you type (no visible composition buffer), like Unikey on Windows, instead of holding the word in preedit until Space; opt-in via `InstantCommit=True`, falls back to classic preedit in apps without surrounding-text support
+- **Unikey-style instant commit** — corrects tones in place as you type (no visible composition buffer), like Unikey on Windows, instead of holding the word in preedit until Space; opt-in via `InstantCommit=True`, and only where the app's surrounding text makes it safe (classic preedit in terminals and apps without it; see TROUBLESHOOTING.md §9)
 - **Bilingual auto-switch** — type English without toggling the IME off
 - **Dictionary completion** — 800+ word seed dictionary with user dictionary hot-reload
 - **N-gram prediction** — context-aware word suggestions

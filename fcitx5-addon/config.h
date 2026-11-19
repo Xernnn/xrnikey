@@ -46,8 +46,11 @@ FCITX_CONFIGURATION(
     Option<InputMode, NoConstrain<InputMode>, DefaultMarshaller<InputMode>,
            InputModeI18NAnnotation>
         inputMode{this, "InputMode", _("Input Mode"), InputMode::Telex};
+    /* Off by default until it has been tried in real apps: instant commit
+     * edits text the app already has, and only the addon tests (a model
+     * client) have exercised the safety checks so far. */
     Option<bool> instantCommit{this, "InstantCommit", _("Instant Commit"),
-                                true};
+                                false};
     /* Off by default: the dictionary is a small seed list, and a
      * suggestion window over every word is noise for most typing. */
     Option<bool> predictionEnabled{this, "PredictionEnabled",
@@ -86,14 +89,28 @@ FCITX_CONFIGURATION(
                                    * Shift held and plain Ctrl+Alt+p never
                                    * matched at all. */
                                   Key("Control+Alt+p")};
-    /* Programs that must use the classic preedit instead of correcting text
-     * in place: terminals and editors that report no usable surrounding
-     * text, where in-place edits race and scramble the word. Matched against
-     * the app's program name as Fcitx5 reports it. */
+    /* Apps that always get the classic preedit, even with InstantCommit:
+     * shell-style patterns, matched without case against the app id or
+     * program name and against its last dot-separated part (so "wezterm"
+     * covers org.wezfurlong.wezterm). Instant commit already falls back to
+     * preedit in any app that never reports surrounding text (foot,
+     * Alacritty and kitty send none; XIM cannot) or marks the field as a
+     * terminal; the list is for apps that do report some but where
+     * editing it in place is wrong or unreliable:
+     *  - terminals: the text before the cursor belongs to the shell, and
+     *    deleting it races the shell's own echo (konsole claims surrounding
+     *    text and scrambled "chaof" into "choa");
+     *  - VS Code and forks: Monaco's hidden textarea only mirrors part of
+     *    the line (fcitx5-lotus #338 needed Monaco-specific fixes);
+     *  - LibreOffice: its KDE backend's surrounding text is broken
+     *    (LibreOffice bug 152519, typing with Unikey).
+     * Browsers and Electron apps are left to the surrounding-text checks. */
     Option<std::vector<std::string>> appOverrideList{
         this, "AppOverrideList", _("Force Preedit In These Apps"),
-        {"code", "alacritty", "kitty", "foot", "wezterm", "terminal",
-         "konsole"}};
+        {"alacritty", "kitty", "foot", "footclient", "wezterm", "ghostty",
+         "konsole", "terminal", "*-terminal", "xterm", "urxvt", "st",
+         "st-256color", "terminator", "tilix", "kgx", "code", "code-*",
+         "codium", "vscodium", "cursor", "libreoffice*", "soffice*"}};
 );
 
 } // namespace fcitx
