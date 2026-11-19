@@ -17,6 +17,24 @@ option(XRNIKEY_ENABLE_TESTS "Build test suite" OFF)
 set(XRNIKEY_DATA_DIR "${CMAKE_INSTALL_PREFIX}/share/xrnikey"
     CACHE PATH "Data files install directory")
 
+## Before any add_subdirectory(): the addon's tests live in fcitx5-addon/,
+## the core's in tests/. Catch2 is found (or fetched) here, once, so its
+## targets and its Catch.cmake module are visible to both directories.
+if(XRNIKEY_ENABLE_TESTS)
+    enable_testing()
+    find_package(Catch2 3 QUIET)
+    if(NOT Catch2_FOUND)
+        include(FetchContent)
+        FetchContent_Declare(
+            Catch2
+            GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+            GIT_TAG v3.5.2
+        )
+        FetchContent_MakeAvailable(Catch2)
+        list(APPEND CMAKE_MODULE_PATH "${catch2_SOURCE_DIR}/extras")
+    endif()
+endif()
+
 add_subdirectory(core)
 
 if(XRNIKEY_BUILD_DAEMON)
@@ -39,8 +57,11 @@ endif()
 add_subdirectory(cli-tools)
 add_subdirectory(data)
 
+if(TARGET test_fcitx5_addon AND TARGET build_dict)
+    add_dependencies(test_fcitx5_addon build_dict)
+endif()
+
 if(XRNIKEY_ENABLE_TESTS)
-    enable_testing()
     add_subdirectory(tests)
 endif()
 

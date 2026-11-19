@@ -46,3 +46,7 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/xrnikey5.conf
 configure_file(xrnikey.conf.in xrnikey.conf @ONLY)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/xrnikey.conf
         DESTINATION "${FCITX_INSTALL_PKGDATADIR}/inputmethod")
+
+if(XRNIKEY_ENABLE_TESTS)
+    add_subdirectory(tests)
+endif()

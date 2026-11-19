@@ -20,7 +20,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             ninja-build extra-cmake-modules catch2 \
-            libfcitx5core-dev libfcitx5config-dev libfcitx5utils-dev fcitx5-modules-dev
+            libfcitx5core-dev libfcitx5config-dev libfcitx5utils-dev fcitx5-modules-dev \
+            fcitx5-modules
 
       # CMakeLists.txt skips the Fcitx5 addon quietly when Fcitx5 isn't found; here that's an error.
       - name: Configure
@@ -34,6 +35,8 @@ jobs:
       - name: Build
         run: cmake --build build
 
+      # Includes the addon's end-to-end tests, which load the built addon into an
+      # in-process Fcitx5 (fcitx5-modules ships the testim addon they need).
       - name: Unit tests
         run: ctest --test-dir build --output-on-failure
 
