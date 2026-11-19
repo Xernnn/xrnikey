@@ -486,8 +486,12 @@ public:
         readAsIni(*config_, StandardPathsType::PkgConfig,
                   "conf/xrnikey5.conf");
         candidateProvider_.setConfig(config_);
-        /* Loads the data once, then re-reads the user's words on every reload. */
-        candidateProvider_.load(XRNIKEY_DATA_DIR);
+        /* Loads the data once, then re-reads the user's words on every reload.
+         * XRNIKEY_DATA_DIR in the environment points it at an uninstalled
+         * build's data (the addon tests use this). */
+        const char *dataDir = std::getenv("XRNIKEY_DATA_DIR");
+        candidateProvider_.load(dataDir && *dataDir ? dataDir
+                                                    : XRNIKEY_DATA_DIR);
     }
 
     const Configuration *getConfig() const override { return config_.get(); }
