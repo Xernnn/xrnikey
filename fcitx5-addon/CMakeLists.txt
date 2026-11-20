@@ -4,6 +4,7 @@ find_package(Fcitx5Module REQUIRED COMPONENTS QuickPhrase Notifications)
 add_library(xrnikey5 MODULE
     xrnikey5.cpp
     candidate_provider.cpp
+    macro_table.cpp
 )
 
 target_link_libraries(xrnikey5

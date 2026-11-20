@@ -66,6 +66,13 @@ FCITX_CONFIGURATION(
          Key("Control+4"), Key("Control+5"), Key("Control+6"),
          Key("Control+7"), Key("Control+8"), Key("Control+9")},
         KeyListConstrain()};
+    /* Abbreviations from ~/.local/share/xrnikey/macros.txt (xk-macro),
+     * expanded when the word ends, as in Bamboo. */
+    Option<bool> macro{this, "Macro", _("Expand Abbreviations"), false};
+    /* "Ko" expands with a capital first letter, "KO" in capitals; "ko" as
+     * written. */
+    Option<bool> capitalizeMacro{this, "CapitalizeMacro",
+                                 _("Match the Abbreviation's Case"), true};
     Option<int, IntConstrain> predictionMaxCandidates{
         this, "PredictionMaxCandidates", _("Prediction Max Candidates"), 5,
         IntConstrain(1, 20)};

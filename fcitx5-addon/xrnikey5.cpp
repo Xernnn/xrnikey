@@ -1,5 +1,6 @@
 #include "candidate_provider.h"
 #include "config.h"
+#include "macro_table.h"
 #include <fcitx-config/iniparser.h>
 #include <fcitx-utils/capabilityflags.h>
 #include <fcitx-utils/key.h>
@@ -177,6 +178,7 @@ public:
     void reset() {
         if (state_) xk_state_reset(state_);
         composing_ = false;
+        raw_.clear();
     }
 
     /* Whether this input context has EVER handed us valid surrounding text.
@@ -193,7 +195,19 @@ public:
     void startWord(bool instant) {
         instantForWord_ = instant;
         inField_.clear();
+        raw_.clear();
         client_.startWord();
+    }
+
+    /* The keys typed for the word in progress, for matching
+     * abbreviations ("aa" stays "aa" here while the word shows "â"). */
+    const std::string &raw() const { return raw_; }
+    void typedKey(uint32_t keysym) {
+        if (keysym == FcitxKey_BackSpace) {
+            if (!raw_.empty()) raw_.pop_back();
+        } else if (keysym >= 0x20 && keysym <= 0x7e) {
+            raw_ += static_cast<char>(keysym);
+        }
     }
 
     ClientText &client() { return client_; }
@@ -222,6 +236,7 @@ private:
     bool instantForWord_ = false;
     ClientText client_;
     std::string inField_;
+    std::string raw_;
     std::vector<std::string> history_;
     std::string lastPreedit_;
 };
@@ -393,11 +408,28 @@ public:
          * connection), commit first. (Ctrl+Space and other IME switch keys
          * are handled by Fcitx5 before reaching an engine.) */
         if (!isComposingKey(keyEvent.key())) {
+            /* Return and Tab end an abbreviation too; Tab is then used up,
+             * as in Bamboo (it completes the word instead of moving on). */
+            if (isAbbreviationEnd(keyEvent.key()) &&
+                expandAbbreviation(ic, icState, "")) {
+                if (keyEvent.key().check(FcitxKey_Tab)) {
+                    keyEvent.filterAndAccept();
+                }
+                return;
+            }
             endWord(ic, icState);
             return;
         }
 
         uint32_t keysym = KeySym(keyEvent.key().sym());
+        /* Space or punctuation after an abbreviation: the expansion, then
+         * the character. */
+        if (endsWord(keysym) &&
+            expandAbbreviation(ic, icState,
+                               std::string(1, static_cast<char>(keysym)))) {
+            keyEvent.filterAndAccept();
+            return;
+        }
         uint32_t mods = 0;
         if (keyEvent.key().states() & KeyState::Ctrl) mods |= 0x04;
         if (keyEvent.key().states() & KeyState::Shift) mods |= 0x01;
@@ -460,6 +492,7 @@ public:
 
         if (result.consumed) {
             keyEvent.filterAndAccept();
+            icState->typedKey(keysym);
         }
 
         if (instantMode) {
@@ -526,6 +559,54 @@ public:
     int configuredMode() const {
         return config_->inputMode.value() == InputMode::VNI ? XK_MODE_VNI
                                                             : XK_MODE_TELEX;
+    }
+
+    /* A printable key the core takes as the end of a word: Space, and
+     * any non-letter except VNI's tone and mark digits. */
+    bool endsWord(uint32_t keysym) const {
+        if (keysym == ' ') return true;
+        if (keysym < 0x21 || keysym > 0x7e) return false;
+        bool letter = (keysym >= 'a' && keysym <= 'z') ||
+                      (keysym >= 'A' && keysym <= 'Z');
+        bool digit = keysym >= '0' && keysym <= '9';
+        return !letter && !(digit && configuredMode() == XK_MODE_VNI);
+    }
+
+    static bool isAbbreviationEnd(const Key &key) {
+        return (key.check(FcitxKey_Return) || key.check(FcitxKey_KP_Enter) ||
+                key.check(FcitxKey_Tab));
+    }
+
+    /* If Macro is on and the word in progress is an abbreviation, replace
+     * it with its expansion followed by `trailing`, and end the word. The
+     * keys as typed are tried first, then the word as shown (so both "aa"
+     * and "đc", typed "ddc", can be abbreviations). */
+    bool expandAbbreviation(InputContext *ic, XrnikeyState *icState,
+                            const std::string &trailing) {
+        if (!config_->macro.value() || !icState->composing()) return false;
+        macros_.refresh();
+        if (macros_.empty()) return false;
+        char *pending = xk_state_get_preedit(icState->state());
+        std::string shown = pending ? pending : "";
+        std::free(pending);
+        if (shown.empty()) return false;
+        bool matchCase = config_->capitalizeMacro.value();
+        auto expansion = macros_.expand(icState->raw(), matchCase);
+        if (!expansion) expansion = macros_.expand(shown, matchCase);
+        if (!expansion) return false;
+        std::string text = *expansion + trailing;
+        if (icState->instantForWord()) {
+            if (!editInPlace(ic, icState,
+                             static_cast<int>(utf8::length(icState->inField())),
+                             text.c_str())) {
+                return false;
+            }
+        } else {
+            commitText(ic, icState, text);
+        }
+        icState->noteWord(*expansion);
+        clearWord(ic, icState);
+        return true;
     }
 
     static bool isComposingKey(const Key &key) {
@@ -719,6 +800,7 @@ public:
         readAsIni(*config_, StandardPathsType::PkgConfig,
                   "conf/xrnikey5.conf");
         candidateProvider_.setConfig(config_);
+        macros_.refresh();
         /* Loads the data once, then re-reads the user's words on every reload.
          * XRNIKEY_DATA_DIR in the environment points it at an uninstalled
          * build's data (the addon tests use this). */
@@ -739,6 +821,7 @@ private:
     Instance *instance_;
     std::shared_ptr<XrnikeyConfig> config_;
     CandidateProvider candidateProvider_;
+    MacroTable macros_;
     FactoryFor<XrnikeyState> factory_;
     std::unique_ptr<HandlerTableEntry<EventHandler>> surroundingWatcher_;
     uint32_t notifyId_ = 0;

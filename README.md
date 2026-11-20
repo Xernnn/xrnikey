@@ -80,6 +80,8 @@ xk-setup --rollback  # Restore backed-up config files
 xk-diagnose       # Comprehensive diagnostic report
 xk-dict lookup "hạnh phúc"  # Dictionary lookup
 xk-dict add "từ mới" 9000   # Add to user dictionary
+xk-macro add ko không       # Abbreviation: "ko" + Space -> "không" (needs Macro=True)
+xk-macro list               # Show them; xk-macro remove ko to drop one
 ```
 
 ## Configuration
@@ -96,6 +98,7 @@ CandidateLayout=Vertical
 
 State file: `~/.local/share/xrnikey/state.json`
 User dictionary: `~/.local/share/xrnikey/user-dict.txt`
+Abbreviations: `~/.local/share/xrnikey/macros.txt` (`abbreviation<TAB>expansion` per line)
 
 ## Project Structure
 

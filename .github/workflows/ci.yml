@@ -49,7 +49,7 @@ jobs:
       - name: Syntax-check the scripts
         run: |
           python3 -m py_compile ibus-engine/*.py ibus-engine/xrnikey-ibus \
-            cli-tools/xk-dict.py data/emoji/generate.py data/ngram/train.py \
+            cli-tools/xk-dict.py cli-tools/xk-macro.py data/emoji/generate.py data/ngram/train.py \
             fcitx5-addon/tests/dbus_driver.py
           for f in cli-tools/*.sh packaging/INSTALL.sh data/dict/build_dict.sh \
                    fcitx5-addon/tests/*.sh; do bash -n "$f"; done

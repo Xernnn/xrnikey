@@ -33,6 +33,7 @@
 #include <cstdlib>
 #include <deque>
 #include <filesystem>
+#include <fstream>
 #include <map>
 #include <memory>
 #include <string>
@@ -924,6 +925,77 @@ TEST_CASE("apps that report surrounding text get instant commit",
     c.type("chaof");
     CHECK(c.text().empty());
     CHECK(c.preedit() == "chào");
+}
+
+/* Write the user's abbreviation file, as xk-macro does. */
+void writeMacros(const std::string &content) {
+    std::ofstream(std::string(std::getenv("XDG_DATA_HOME")) +
+                  "/xrnikey/macros.txt")
+        << content;
+}
+
+TEST_CASE("abbreviations are off by default", "[macro]") {
+    writeMacros("ko\tkhông\n");
+    configure();
+    FakeClient c(preeditApp());
+    c.type("ko ");
+    CHECK(c.text() == "ko ");
+}
+
+TEST_CASE("abbreviations expand when the word ends", "[macro]") {
+    writeMacros("# comment\n"
+                "ko\tkhông\n"
+                "vn\tViệt Nam\n"
+                "aa\tanh ấy\n"
+                "đc\tđược\n"
+                "\n"
+                "bad line without a tab\n");
+    for (const char *instant : {"False", "True"}) {
+        INFO("InstantCommit=" << instant);
+        configure({{"Macro", "True"}, {"InstantCommit", instant}});
+        FakeClient c(instantApp());
+        c.type("ko vn aa ddc ");
+        CHECK(c.text() == "không Việt Nam anh ấy được ");
+        c.type("ko, ");
+        CHECK(c.text() == "không Việt Nam anh ấy được không, ");
+        c.type("ko");
+        c.key("Return");
+        CHECK(c.text() == "không Việt Nam anh ấy được không, không\n");
+        c.type("ko");
+        CHECK(c.key("Tab")); /* Tab completes the abbreviation */
+        CHECK(c.text() == "không Việt Nam anh ấy được không, không\nkhông");
+        c.type(" kong ");
+        CHECK(c.text() ==
+              "không Việt Nam anh ấy được không, không\nkhông kong ");
+    }
+}
+
+TEST_CASE("an abbreviation's case carries over to the expansion",
+          "[macro]") {
+    writeMacros("ko\tkhông\nvn\tViệt Nam\n");
+    configure({{"Macro", "True"}});
+    {
+        FakeClient c(preeditApp());
+        c.type("ko Ko KO vn VN ");
+        CHECK(c.text() == "không Không KHÔNG Việt Nam VIỆT NAM ");
+    }
+    configure({{"Macro", "True"}, {"CapitalizeMacro", "False"}});
+    {
+        FakeClient c(preeditApp());
+        c.type("Ko KO ");
+        CHECK(c.text() == "không không ");
+    }
+}
+
+TEST_CASE("an edited abbreviation file applies from the next word",
+          "[macro]") {
+    writeMacros("ko\tkhông\n");
+    configure({{"Macro", "True"}});
+    FakeClient c(preeditApp());
+    c.type("ko dc ");
+    writeMacros("ko\tkhông\ndc\tđược nhé\n");
+    c.type("dc ");
+    CHECK(c.text() == "không dc được nhé ");
 }
 
 int main(int argc, char *argv[]) {
