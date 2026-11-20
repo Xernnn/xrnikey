@@ -29,37 +29,33 @@ killall fcitx5        # if using IBus
 
 Only one IMF should run. Use `xk-diagnose` to detect conflicts.
 
-## 3. Wrong GTK_IM_MODULE for desktop environment
+## 3. Wrong IM environment variables
 
 **Symptom:** Input method works in some apps but not others.
 
-**Fix:**
-```bash
-# KDE, Sway, Hyprland, XFCE:
-export GTK_IM_MODULE=fcitx
-export QT_IM_MODULE=fcitx
-export XMODIFIERS=@im=fcitx
+**Fix:** On a Wayland compositor with an input-method frontend (Hyprland, Sway, KDE), GTK apps
+reach Fcitx5 through text-input-v3, so **don't** set `GTK_IM_MODULE` (Fcitx5 wiki, "Using Fcitx 5
+on Wayland"). Set the others where your session gets its environment (Hyprland: `env = ...`
+lines in `hyprland.conf`):
 
-# GNOME:
-export GTK_IM_MODULE=ibus
-export QT_IM_MODULE=ibus
-export XMODIFIERS=@im=ibus
+```bash
+QT_IM_MODULE=fcitx
+XMODIFIERS=@im=fcitx      # X11 apps under XWayland
+SDL_IM_MODULE=fcitx
+# X11 sessions only:
+GTK_IM_MODULE=fcitx
 ```
 
-Run `xk-setup` to configure automatically.
+`xk-setup` checks these and offers to write the missing ones to
+`~/.config/environment.d/90-xrnikey.conf`; it asks first and never changes ones already set.
 
 ## 4. Electron/Chromium apps not accepting input
 
 **Symptom:** VS Code, Discord, Slack, Obsidian ignore the IME.
 
-**Fix:**
-```bash
-xk-setup   # auto-patches Electron app flags
-# Manual fix for VS Code:
-echo "--gtk-version=4" >> ~/.config/Code/flags.conf
-```
-
-For Chromium: launch with `--gtk-version=4` or set `GTK_IM_MODULE=fcitx`.
+**Fix:** Under XWayland they use XIM (`XMODIFIERS=@im=fcitx`). As native Wayland apps they need
+`--enable-wayland-ime` (with `--ozone-platform=wayland`), e.g. in `~/.config/code-flags.conf` for
+VS Code. Xrnikey uses its preedit in them unless they report surrounding text (§8).
 
 ## 5. Wayland compositor missing text-input protocol
 
@@ -191,14 +187,9 @@ ibus-daemon -drx
 
 **Symptom:** IME works in current session but not after reboot.
 
-**Fix:**
-```bash
-xk-setup   # writes to ~/.bashrc, ~/.pam_environment, etc.
-# Or manually add to ~/.pam_environment:
-GTK_IM_MODULE=fcitx
-QT_IM_MODULE=fcitx
-XMODIFIERS=@im=fcitx
-```
+**Fix:** Variables exported in `~/.bashrc` only reach programs started from a shell. Put them where
+the session reads them: Hyprland's `env = NAME,value` lines, or `~/.config/environment.d/*.conf`
+(what `xk-setup` offers to write). See §3 for which ones.
 
 ## 17. CachyOS-specific: fcitx5-unikey conflict
 

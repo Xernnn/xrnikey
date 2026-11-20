@@ -1,63 +1,41 @@
-# Maintainer: Xrnikey Team
+# Builds the Fcitx5 input method from the git checkout this file is in: its
+# committed HEAD, not uncommitted changes. From packaging/:
+#   makepkg -si          build, test and install (asks for sudo)
+#   makepkg              build and test only; install later with pacman -U
 pkgname=xrnikey
 pkgver=1.0.0
 pkgrel=1
-pkgdesc="Production-grade bilingual Vietnamese-English IME for Linux (Fcitx5 + IBus)"
+pkgdesc="Vietnamese (Telex/VNI) input method for Fcitx5"
 arch=('x86_64' 'aarch64')
-url="https://github.com/user/xrnikey"
-license=('GPL3')
-depends=(
-    'fcitx5'
-    'fcitx5-gtk'
-    'fcitx5-qt'
-    'libibus'
-    'python'
-    'python-gobject'
-    'boost'
-    'noto-fonts'
-)
-makedepends=(
-    'cmake'
-    'extra-cmake-modules'
-    'python-pip'
-    'catch2'
-)
-optdepends=(
-    'fcitx5-configtool: GUI configuration'
-    'noto-fonts-cjk: recommended Vietnamese font'
-    'noto-fonts-emoji: emoji rendering'
-)
-source=("$pkgname-$pkgver.tar.gz")
+url="https://github.com/Xernnn/xrnikey"
+license=('MIT')
+depends=('fcitx5' 'gcc-libs' 'glibc')
+makedepends=('catch2' 'cmake' 'extra-cmake-modules' 'git' 'ninja')
+# For the test that runs fcitx5 over D-Bus; it is skipped without them.
+checkdepends=('dbus' 'python-gobject')
+optdepends=('fcitx5-configtool: settings window'
+            'python: the xk-dict and xk-macro tools'
+            'fcitx5-gtk: GTK apps under X11/XWayland'
+            'fcitx5-qt: Qt apps')
+source=("$pkgname::git+file://${startdir%/packaging}")
 sha256sums=('SKIP')
 
 build() {
-    cd "$pkgname-$pkgver"
-    cmake -B build \
-        -DCMAKE_BUILD_TYPE=Release \
+    # The IBus engine is not built: it targets the long-gone python-ibus API.
+    cmake -S "$pkgname" -B build -G Ninja \
+        -DCMAKE_BUILD_TYPE=None \
         -DCMAKE_INSTALL_PREFIX=/usr \
-        -DXRNIKEY_ENABLE_TESTS=ON \
-        -DXRNIKEY_DATA_DIR=/usr/share/xrnikey
-    cmake --build build -- -j$(nproc)
+        -DCMAKE_REQUIRE_FIND_PACKAGE_Fcitx5Core=ON \
+        -DXRNIKEY_BUILD_IBUS=OFF \
+        -DXRNIKEY_ENABLE_TESTS=ON
+    cmake --build build
 }
 
 check() {
-    cd "$pkgname-$pkgver/build"
-    ctest --output-on-failure
+    ctest --test-dir build --output-on-failure
 }
 
 package() {
-    cd "$pkgname-$pkgver"
     DESTDIR="$pkgdir" cmake --install build
-
-    # Build dictionary if not already built
-    if [ ! -f "$pkgdir/usr/share/xrnikey/dict/vi.dict" ]; then
-        bash data/dict/build_dict.sh
-        install -Dm644 build/data/dict/vi.dict "$pkgdir/usr/share/xrnikey/dict/vi.dict"
-    fi
-
-    # Generate emoji data if needed
-    if [ ! -f "$pkgdir/usr/share/xrnikey/emoji/emoji.json" ]; then
-        python3 data/emoji/generate.py
-        install -Dm644 data/emoji/emoji.json "$pkgdir/usr/share/xrnikey/emoji/emoji.json"
-    fi
+    install -Dm644 "$pkgname/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }

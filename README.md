@@ -49,6 +49,27 @@ Log out and back in (so the env vars `xk-setup` writes take effect), then switch
 
 To verify it actually loaded: `fcitx5-diagnose | grep -i xrnikey`, or run `xk-diagnose`.
 
+## Switching from Bamboo (and back)
+
+Xrnikey and fcitx5-bamboo can both be in Fcitx5's input method list; only the current one types.
+With Fcitx5 running, add Xrnikey next to Bamboo (or use `fcitx5-configtool`):
+
+```bash
+# 1. See the current list of the "Default" group:
+busctl --user call org.fcitx.Fcitx5 /controller org.fcitx.Fcitx.Controller1 InputMethodGroupInfo s Default
+#    e.g.  "us" 2 "keyboard-us" "" "bamboo" ""
+# 2. Give the same list back with xrnikey added, and save it:
+busctl --user call org.fcitx.Fcitx5 /controller org.fcitx.Fcitx.Controller1 \
+    SetInputMethodGroupInfo 'ssa(ss)' Default us 3 keyboard-us '' bamboo '' xrnikey ''
+busctl --user call org.fcitx.Fcitx5 /controller org.fcitx.Fcitx.Controller1 Save
+# 3. Switch:
+fcitx5-remote -s xrnikey      # Xrnikey
+fcitx5-remote -s bamboo       # back to Bamboo
+```
+
+To take Xrnikey out again, repeat step 2 with the original list (`... Default us 2 keyboard-us ''
+bamboo ''`). Ctrl+Space toggles between the keyboard layout and the input method used last.
+
 ## Keybindings
 
 | Action | Default Key |
