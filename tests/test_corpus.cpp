@@ -307,13 +307,30 @@ TEST_CASE("xk_state_flush finishes the word", "[corpus]") {
     xk_state_free(s);
 }
 
-TEST_CASE("corpus: VNI does what Telex does", "[corpus][!mayfail]") {
+TEST_CASE("corpus: VNI does what Telex does", "[corpus]") {
+    const std::vector<Opt> strict = {{XK_OPT_FREE_MARKING, 0}};
     run(XK_MODE_VNI, {
-        {"a66 ", "a6 "}, {"a11 ", "a1 "}, {"d99 ", "d9 "}, {"toa1n0 ", "toan "},
-        {"A1 ", "Á "}, {"D9u7o7c5 ", "Được "}, {"VIE6T5 ", "VIỆT "},
-        {"thuo73 ", "thuở "}, {"luu7 ", "lưu "}, {"toa1n<", "t\xC3\xB3" "a"},
-        {"dang9 ", "đang "}, {"tieng61 ", "tiếng "}, {"password ", "password "},
-        {"a1<", ""}, {"chao2\n", "chào\n"},
+        // Typing a digit again undoes it, and it stays a digit after that.
+        {"a66 ", "a6 "}, {"a11 ", "a1 "}, {"d99 ", "d9 "}, {"o77 ", "o7 "},
+        {"a88 ", "a8 "}, {"a111 ", "a11 "}, {"dang99 ", "dang9 "},
+        // 0 removes the tone.
+        {"toa1n0 ", "toan "},
+        // Capitals.
+        {"A1 ", "Á "}, {"D9u7o7c5 ", "Được "}, {"VIE6T5 ", "VIỆT "}, {"D9I ", "ĐI "},
+        // uo / uu / ua.
+        {"thuo73 ", "thuở "}, {"huo7 ", "huơ "}, {"huong7 ", "hương "},
+        {"luu7 ", "lưu "}, {"mua7 ", "mưa "}, {"quo7 ", "quơ "},
+        {"nguoi72 ", "người "},
+        // BackSpace.
+        {"toa1n<", "t\xC3\xB3" "a"}, {"a1<", ""}, {"d9u7o7c5<", "đượ"},
+        // Free marking, and without it.
+        {"dang9 ", "đang "}, {"tieng61 ", "tiếng "},
+        {"dang9 ", "dang9 ", BOTH, strict}, {"toan1 ", "toan1 ", BOTH, strict},
+        {"toa1n ", "toán ", BOTH, strict}, {"d9i ", "đi ", BOTH, strict},
+        // Restore, modern style, and keys that end the word.
+        {"password ", "password "}, {"text ", "text "},
+        {"hoa2 ", "hoà ", BOTH, {{XK_OPT_MODERN_STYLE, 1}}}, {"hoa2 ", "hòa "},
+        {"chao2\n", "chào\n"},
     });
 }
 
