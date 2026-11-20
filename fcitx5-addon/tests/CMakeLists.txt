@@ -27,3 +27,14 @@ add_dependencies(test_fcitx5_addon xrnikey5)
 include(CTest)
 include(Catch)
 catch_discover_tests(test_fcitx5_addon TEST_PREFIX "addon: ")
+
+## The same addon in the real fcitx5 binary, typed into over D-Bus like the
+## GTK/Qt modules do (skipped where fcitx5, dbus-daemon or python3-gi is
+## missing).
+add_test(NAME "addon: real fcitx5 over D-Bus"
+         COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/dbus_session.sh
+                 $<TARGET_FILE_DIR:xrnikey5> ${CMAKE_CURRENT_BINARY_DIR}
+                 ${CMAKE_BINARY_DIR}/data ${CMAKE_CURRENT_BINARY_DIR}
+                 ${CMAKE_CURRENT_SOURCE_DIR}/dbus_driver.py)
+set_tests_properties("addon: real fcitx5 over D-Bus" PROPERTIES
+                     SKIP_RETURN_CODE 77 TIMEOUT 90)
