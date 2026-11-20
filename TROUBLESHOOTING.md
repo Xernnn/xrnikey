@@ -4,17 +4,13 @@
 
 **Symptom:** Xrnikey doesn't show up after installation.
 
-**Fix (Fcitx5):**
+**Fix (Fcitx5):** both files must exist, and Fcitx5 must have been restarted since:
 ```bash
-sudo cp /usr/share/fcitx5/addon/xrnikey5.conf /usr/share/fcitx5/inputmethod/
-fcitx5 -r
+ls /usr/lib/fcitx5/libxrnikey5.so /usr/share/fcitx5/addon/xrnikey5.conf \
+   /usr/share/fcitx5/inputmethod/xrnikey.conf
+fcitx5 -r -d
 ```
-
-**Fix (IBus):**
-```bash
-ibus write-cache
-ibus restart
-```
+If they are under `/usr/local`, reinstall with `-DCMAKE_INSTALL_PREFIX=/usr`.
 
 ## 2. Both Fcitx5 and IBus running
 
@@ -29,37 +25,33 @@ killall fcitx5        # if using IBus
 
 Only one IMF should run. Use `xk-diagnose` to detect conflicts.
 
-## 3. Wrong GTK_IM_MODULE for desktop environment
+## 3. Wrong IM environment variables
 
 **Symptom:** Input method works in some apps but not others.
 
-**Fix:**
-```bash
-# KDE, Sway, Hyprland, XFCE:
-export GTK_IM_MODULE=fcitx
-export QT_IM_MODULE=fcitx
-export XMODIFIERS=@im=fcitx
+**Fix:** On a Wayland compositor with an input-method frontend (Hyprland, Sway, KDE), GTK apps
+reach Fcitx5 through text-input-v3, so **don't** set `GTK_IM_MODULE` (Fcitx5 wiki, "Using Fcitx 5
+on Wayland"). Set the others where your session gets its environment (Hyprland: `env = ...`
+lines in `hyprland.conf`):
 
-# GNOME:
-export GTK_IM_MODULE=ibus
-export QT_IM_MODULE=ibus
-export XMODIFIERS=@im=ibus
+```bash
+QT_IM_MODULE=fcitx
+XMODIFIERS=@im=fcitx      # X11 apps under XWayland
+SDL_IM_MODULE=fcitx
+# X11 sessions only:
+GTK_IM_MODULE=fcitx
 ```
 
-Run `xk-setup` to configure automatically.
+`xk-setup` checks these and offers to write the missing ones to
+`~/.config/environment.d/90-xrnikey.conf`; it asks first and never changes ones already set.
 
 ## 4. Electron/Chromium apps not accepting input
 
 **Symptom:** VS Code, Discord, Slack, Obsidian ignore the IME.
 
-**Fix:**
-```bash
-xk-setup   # auto-patches Electron app flags
-# Manual fix for VS Code:
-echo "--gtk-version=4" >> ~/.config/Code/flags.conf
-```
-
-For Chromium: launch with `--gtk-version=4` or set `GTK_IM_MODULE=fcitx`.
+**Fix:** Under XWayland they use XIM (`XMODIFIERS=@im=fcitx`). As native Wayland apps they need
+`--enable-wayland-ime` (with `--ozone-platform=wayland`), e.g. in `~/.config/code-flags.conf` for
+VS Code. Xrnikey uses its preedit in them unless they report surrounding text (§8).
 
 ## 5. Wayland compositor missing text-input protocol
 
@@ -83,19 +75,7 @@ fc-cache -fv
 fc-match :lang=vi
 ```
 
-## 7. xkd daemon not running
-
-This is normal. The input method reads the dictionary, n-grams and emoji in process and never
-asks xkd, so prediction and emoji search work without it, and setup doesn't enable it. If they
-don't work, look at the addon instead (sections 1–6). Start xkd only to use its socket from
-another tool:
-
-```bash
-systemctl --user start xkd
-systemctl --user status xkd
-```
-
-## 8. libxrnikey.so not found
+## 7. libxrnikey.so not found
 
 **Symptom:** `xk-diagnose` reports missing library.
 
@@ -108,19 +88,32 @@ sudo cmake --install build
 sudo ldconfig
 ```
 
-## 9. Terminal apps processing Vietnamese input
+## 8. Instant commit: which apps get it
 
-**Symptom:** Terminal receives raw Telex keys instead of composed characters.
+With `InstantCommit=True`, a word is typed straight into the field and corrected in place, with
+no underlined preedit. Xrnikey uses it only where that is safe, and falls back to the preedit
+otherwise:
 
-**Fix:** Add terminal WM_CLASS to app overrides:
-```json
-// ~/.config/xrnikey/app-overrides.json
-["code", "alacritty", "kitty", "foot", "wezterm", "terminal", "konsole"]
+- the app must send surrounding text (foot, Alacritty and kitty never do; X11 apps through XIM
+  cannot), with nothing selected;
+- the field must not be a terminal (Fcitx5 is told so by the app), and the app must not match
+  `AppOverrideList` (terminals, VS Code and its forks, LibreOffice by default);
+- while a word is typed, the text the app reports must still be the text Xrnikey typed. After a
+  click elsewhere, or when the app rewrites or selects text, the word is left as it is and the
+  next key starts a new word in preedit.
+
+`AppOverrideList` takes shell-style patterns, matched without case against the app id Fcitx5
+reports and against its last dot-separated part. To see the names, list Fcitx5's input contexts
+(`program:` on each line; the focused one has `focus:1`):
+
+```bash
+busctl --user call org.fcitx.Fcitx5 /controller org.fcitx.Fcitx.Controller1 DebugInfo
 ```
 
-Or disable Xrnikey in terminals via Fcitx5 config: `AppOverrideList`.
+Add one in `fcitx5-configtool` (Xrnikey's settings, "Force Preedit In These Apps"); it applies
+from the next word.
 
-## 10. Flatpak/Snap app isolation
+## 9. Flatpak/Snap app isolation
 
 **Symptom:** IME doesn't work in Flatpak or Snap applications.
 
@@ -132,13 +125,13 @@ flatpak override --user --env=GTK_IM_MODULE=fcitx <app-id>
 **Fix (Snap):**
 Snap apps may not inherit host IME. Use native packages when possible.
 
-## 11. Tone marks on wrong vowel
+## 10. Tone marks on wrong vowel
 
 **Symptom:** `tuong` + hỏi produces incorrect tone placement.
 
 **Fix:** This follows Vietnamese orthographic rules. Report specific syllables as bugs. The tone placement algorithm implements Rules 1–4 from Vietnamese linguistics standards.
 
-## 12. User dictionary not updating
+## 11. User dictionary not updating
 
 **Symptom:** Added words don't appear in completions.
 
@@ -150,23 +143,21 @@ xk-dict add "từ mới" 9000
 fcitx5-remote -r
 ```
 
-## 13. Space commits instead of selecting candidate
+## 12. Picking a word suggestion
 
-**Symptom:** Pressing Space commits preedit instead of selecting candidate #1.
+**Symptom:** Typing a digit does not pick the suggestion under it.
 
-**Fix:** Configure in `~/.config/fcitx5/conf/xrnikey5.conf`:
-```
-CommitKey=space
-```
-Use number keys 1–9 to select candidates explicitly.
+That is deliberate: digits are text in Telex (`mp3`, `a1`) and tone marks in VNI, so they are
+never taken as picks. Suggestions are off by default; with `PredictionEnabled=True`, pick one
+with **Ctrl+1–9**. Space always ends the word as typed. To use other keys, set
+`CandidateSelectionKeys` in `~/.config/fcitx5/conf/xrnikey5.conf` (or in Fcitx5's settings).
 
-## 14. Ctrl+Shift toggle not working
+## 13. Turning Vietnamese on and off
 
-**Symptom:** Cannot toggle IME on/off.
+Xrnikey has no toggle key of its own: switch with Fcitx5's trigger key (Ctrl+Space by default,
+set in Fcitx5's global options), or `fcitx5-remote -s keyboard-us` / `fcitx5-remote -s xrnikey`.
 
-**Fix:** Check for keybinding conflicts with desktop environment or window manager. Try rebinding in Fcitx5 global options.
-
-## 15. High latency / slow candidate window
+## 14. High latency / slow candidate window
 
 **Symptom:** Noticeable delay between keypress and candidate display.
 
@@ -176,32 +167,22 @@ Use number keys 1–9 to select candidates explicitly.
 ls -la /usr/share/xrnikey/dict/vi.dict
 ```
 
-## 16. IBus engine crashes on startup
+## 15. IBus engine crashes on startup
 
 **Symptom:** `xrnikey-ibus` exits immediately.
 
-**Fix:**
-```bash
-# Check libxrnikey is loadable:
-python3 -c "import ctypes; ctypes.CDLL('/usr/lib/libxrnikey.so')"
-# Check IBus is running:
-ibus-daemon -drx
-```
+The IBus engine is old and unmaintained: it is written against the long-gone `python-ibus` API,
+and the PKGBUILD does not build it. Use Fcitx5.
 
-## 17. Environment variables not persisting
+## 16. Environment variables not persisting
 
 **Symptom:** IME works in current session but not after reboot.
 
-**Fix:**
-```bash
-xk-setup   # writes to ~/.bashrc, ~/.pam_environment, etc.
-# Or manually add to ~/.pam_environment:
-GTK_IM_MODULE=fcitx
-QT_IM_MODULE=fcitx
-XMODIFIERS=@im=fcitx
-```
+**Fix:** Variables exported in `~/.bashrc` only reach programs started from a shell. Put them where
+the session reads them: Hyprland's `env = NAME,value` lines, or `~/.config/environment.d/*.conf`
+(what `xk-setup` offers to write). See §3 for which ones.
 
-## 18. CachyOS-specific: fcitx5-unikey conflict
+## 17. CachyOS-specific: fcitx5-unikey conflict
 
 **Symptom:** Both unikey and Xrnikey active simultaneously.
 
@@ -212,20 +193,12 @@ sudo pacman -R fcitx5-unikey
 fcitx5-configtool   # remove Unikey, add Xrnikey
 ```
 
-## 19. Emoji search returns no results
+## 18. Typing emoji
 
-**Symptom:** `:smile` shows no emoji candidates.
+Xrnikey has no emoji input of its own. Use Fcitx5's Unicode picker (Ctrl+Alt+Shift+U by default),
+which searches characters, emoji included, by name.
 
-**Fix:**
-```bash
-# Verify emoji data:
-ls /usr/share/xrnikey/emoji/emoji.json
-# Regenerate:
-python3 /usr/share/xrnikey/scripts/generate.py
-fcitx5 -r -d   # restart Fcitx5 so the addon loads the new data
-```
-
-## 20. Build fails on missing Fcitx5 headers
+## 19. Build fails on missing Fcitx5 headers
 
 **Symptom:** CMake can't find Fcitx5Core.
 
@@ -243,4 +216,5 @@ Run the diagnostic tool for an automated report:
 xk-diagnose
 ```
 
-This checks all 12 common misconfiguration patterns and suggests exact fix commands.
+It checks the environment variables, the running input method framework, the library, fonts,
+the session type and the data files, and suggests fixes.
