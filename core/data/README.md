@@ -33,8 +33,10 @@ SCOWL's licence asks for this notice:
 
 ## vi-syllables.txt
 
-Vietnamese syllables seen in real use, lowercase, NFC, either tone style.
-A syllable is listed only if `xk_is_valid_syllable` accepts it.
+Vietnamese syllables seen in real use, lowercase, NFC, each once, with the
+tone where the engine puts it (the old style: hòa, già, quý), whatever the
+source wrote ("hoà", "gìa", "qúy"); lookups ignore where the tone sits. A
+syllable is listed only if `xk_is_valid_syllable` accepts it.
 
 - Unicode Unihan database 18.0 (`Unihan_Readings.txt`, field `kVietnamese`:
   the Sino-Vietnamese and Nôm readings of Han characters), under the Unicode

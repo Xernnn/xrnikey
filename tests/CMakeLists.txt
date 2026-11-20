@@ -17,6 +17,8 @@ target_link_libraries(test_telex PRIVATE xrnikey Catch2::Catch2WithMain)
 
 add_executable(test_tone_placement test_tone_placement.cpp)
 target_link_libraries(test_tone_placement PRIVATE xrnikey Catch2::Catch2WithMain)
+target_compile_definitions(test_tone_placement PRIVATE
+    XRNIKEY_VI_SYLLABLES="${CMAKE_CURRENT_SOURCE_DIR}/../core/data/vi-syllables.txt")
 
 add_executable(test_full_pipeline test_full_pipeline.cpp)
 target_link_libraries(test_full_pipeline PRIVATE xrnikey Catch2::Catch2WithMain)
