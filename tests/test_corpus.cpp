@@ -106,6 +106,27 @@ TEST_CASE("corpus: words that already work", "[corpus]") {
     });
 }
 
+// A word can start right after punctuation or a digit; the keys before it are
+// text of their own, not the first keys of the word.
+TEST_CASE("corpus: a word after punctuation or a digit still gets its marks", "[corpus]") {
+    run(XK_MODE_TELEX, {
+        {"(vieetj) ", "(việt) "}, {"\"chaof\" ", "\"chào\" "}, {"'chaof' ", "'chào' "},
+        {"-tieengs ", "-tiếng "}, {"2tieengs ", "2tiếng "}, {"((Vieetj ", "((Việt "},
+        {"(", "("}, {"(chaof", "(chào"}, {"(chaof<", "(chà"}, {"(<", ""},
+        // Text that only looks like words stays as typed.
+        {"mp3 ", "mp3 "}, {"x86 ", "x86 "}, {"h2o ", "h2o "}, {"a@b.com ", "a@b.com "},
+        {"don't ", "don't "}, {"e.g. ", "e.g. "}, {"C++ ", "C++ "}, {"10:30 ", "10:30 "},
+        {"https://example.com/a?b=c ", "https://example.com/a?b=c "},
+    });
+    run(XK_MODE_VNI, {
+        // A digit is a tone or mark key only after the letters it changes; a
+        // leading one is text.
+        {"(vie65t) ", "(việt) "}, {"\"cha2o\" ", "\"chào\" "}, {"2tie61ng ", "2tiếng "},
+        {"mp3 ", "mp3 "}, {"x86 ", "x86 "}, {"h2o ", "h2o "}, {"10:30 ", "10:30 "},
+        {"a@b.com ", "a@b.com "}, {"1a1 ", "1á "},
+    });
+}
+
 TEST_CASE("corpus: English words come back as typed", "[corpus]") {
     run(XK_MODE_TELEX, {
         {"password ", "password "}, {"user ", "user "}, {"text ", "text "},

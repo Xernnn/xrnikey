@@ -833,6 +833,25 @@ TEST_CASE("instant commit survives an app that reports surrounding text "
     }
 }
 
+TEST_CASE("a word right after punctuation or a digit gets its marks",
+          "[keys]") {
+    /* The punctuation is committed on its own, so instant commit keeps
+     * knowing the field and edits the word after it in place. */
+    const std::string sentence = "(vieetj) \"chaof\" 2tieengs mp3 ";
+    const std::string expected = "(việt) \"chào\" 2tiếng mp3 ";
+    for (const char *instant : {"False", "True"}) {
+        for (int lag : {0, 2}) {
+            INFO("InstantCommit=" << instant << " lag=" << lag);
+            configure({{"InstantCommit", instant}});
+            FakeClient c(waylandApp("org.example.Editor", lag));
+            c.type(sentence);
+            c.flush();
+            CHECK(c.text() == expected);
+            CHECK_FALSE(c.corrupted());
+        }
+    }
+}
+
 /* Type `steps`: text, or a key name in <angle brackets>. */
 void play(FakeClient &c, const std::vector<std::string> &steps) {
     for (const auto &step : steps) {

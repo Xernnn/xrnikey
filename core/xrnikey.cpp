@@ -223,6 +223,17 @@ XKResult xk_process_key(XKState* state, uint32_t keysym, uint32_t modifiers) {
             xrnikey::finalize_word(s, &r, c);
             return r;
         }
+        /* With no word in progress, a non-letter (in VNI also a digit: it
+         * has no letter to change yet) is text on its own, and the word
+         * starts at the next letter. It used to become the word's first
+         * key, so the word could never be a syllable: "(vieetj)" stayed
+         * "(vieetj)", "2tieengs" "2tieengs". */
+        if (!is_letter && s->word.empty()) {
+            r.commit[0] = c;
+            r.commit[1] = '\0';
+            r.consumed = 1;
+            return r;
+        }
 
         xrnikey::word_key(s, &r, c);
         return r;
