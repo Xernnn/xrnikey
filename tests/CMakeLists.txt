@@ -27,6 +27,9 @@ target_link_libraries(test_instant_commit PRIVATE xrnikey Catch2::Catch2WithMain
 add_executable(test_real_words test_real_words.cpp)
 target_link_libraries(test_real_words PRIVATE xrnikey Catch2::Catch2WithMain)
 
+add_executable(test_corpus test_corpus.cpp)
+target_link_libraries(test_corpus PRIVATE xrnikey Catch2::Catch2WithMain)
+
 add_executable(test_user_dict test_user_dict.cpp)
 target_link_libraries(test_user_dict PRIVATE xrnikey Catch2::Catch2WithMain)
 target_compile_definitions(test_user_dict PRIVATE
@@ -42,3 +45,4 @@ catch_discover_tests(test_full_pipeline)
 catch_discover_tests(test_instant_commit)
 catch_discover_tests(test_real_words)
 catch_discover_tests(test_user_dict)
+catch_discover_tests(test_corpus)

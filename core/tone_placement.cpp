@@ -107,7 +107,7 @@ bool is_vietnamese_vowel_glyph(const std::string& s, size_t pos, int* out_len) {
     return false;
 }
 
-int find_tone_vowel_index(const std::string& syllable) {
+int find_tone_vowel_index(const std::string& syllable, bool modern) {
     /* Rule 1: a modified vowel (â ê ô ơ ă ư) always takes the tone. When two
      * modified vowels are adjacent — the ươ diphthong ("được", "người",
      * "mười", "trường"...) — the tone goes on the second one, not the
@@ -158,22 +158,32 @@ int find_tone_vowel_index(const std::string& syllable) {
     if (positions.empty()) return -1;
     if (positions.size() == 1) return positions[0];
 
-    /* Modern Vietnamese orthography (1980 spelling standard) for a plain
-     * (unmodified) vowel cluster: tone goes on the LAST vowel when the
-     * syllable has a final consonant (closer to the coda, e.g. "toán"),
-     * and on the SECOND-TO-LAST vowel when the syllable is open.
+    /* A plain (unmodified) vowel cluster takes the tone on its LAST vowel
+     * when the syllable has a final consonant ("toán"), and on the
+     * SECOND-TO-LAST when the syllable is open. That is the traditional
+     * ("old") style, and the default.
      *
      * For the common two-vowel case that is simply the first vowel ("cõi",
-     * "của", "chào", "hòa"), which is what this used to return. But an open
-     * TRIPHTHONG has three: "oai" must take the tone on its middle vowel --
-     * ngoài, xoài, loại, thoại, ngoại -- and returning the first vowel gave
-     * "ngòai". Counting from the end is right for both lengths. */
+     * "của", "chào", "hòa"). But an open TRIPHTHONG has three: "oai" must
+     * take the tone on its middle vowel -- ngoài, xoài, loại, thoại, ngoại --
+     * and returning the first vowel gave "ngòai". Counting from the end is
+     * right for both lengths.
+     *
+     * The modern style (`modern`) differs only in the open glides oa, oe and
+     * uy, which put the tone on the vowel after the glide: hoà, khoẻ, thuý
+     * rather than hòa, khỏe, thúy. */
     bool has_coda = false;
     {
         int last_pos = positions.back();
         int vid, vlen;
         is_special_vowel(syllable, static_cast<size_t>(last_pos), &vid, &vlen);
         if (static_cast<size_t>(last_pos + vlen) < syllable.size()) has_coda = true;
+    }
+
+    if (modern && !has_coda && positions.size() == 2) {
+        char a = static_cast<char>(std::tolower(static_cast<unsigned char>(syllable[static_cast<size_t>(positions[0])])));
+        char b = static_cast<char>(std::tolower(static_cast<unsigned char>(syllable[static_cast<size_t>(positions[1])])));
+        if ((a == 'o' && (b == 'a' || b == 'e')) || (a == 'u' && b == 'y')) return positions[1];
     }
 
     return has_coda ? positions.back() : positions[positions.size() - 2];
@@ -194,6 +204,38 @@ std::string apply_tone_to_syllable(const std::string& base, int tone) {
     else result += base.substr(static_cast<size_t>(idx), static_cast<size_t>(vlen));
     result += base.substr(static_cast<size_t>(idx) + static_cast<size_t>(vlen));
     return result;
+}
+
+char32_t vn_toned(char32_t vowel, int tone) {
+    static const char32_t PLAIN[V_COUNT] = {U'a', U'ă', U'â', U'e', U'ê', U'i',
+                                            U'o', U'ô', U'ơ', U'u', U'ư', U'y'};
+    for (int id = 0; id < V_COUNT; ++id) {
+        if (PLAIN[id] != vowel) continue;
+        uint32_t cp = static_cast<uint32_t>(vowel);
+        int len = 0;
+        utf8_decode(get_toned_vowel(id, tone), &cp, &len);
+        return static_cast<char32_t>(cp);
+    }
+    return vowel;
+}
+
+/* Uppercase of a Vietnamese letter (plain, marked or toned). The pairs are
+ * not one arithmetic rule: Latin-1 is -0x20, Latin Extended Additional
+ * (ạ..ỹ) is lower-odd/upper-even, and ă đ ĩ ũ ơ ư each sit apart. */
+char32_t vn_upper(char32_t c) {
+    if (c >= U'a' && c <= U'z') return c - 0x20;
+    if (c >= 0xE0 && c <= 0xFE && c != 0xF7) return c - 0x20;
+    switch (c) {
+        case 0x0103: return 0x0102;  /* ă */
+        case 0x0111: return 0x0110;  /* đ */
+        case 0x0129: return 0x0128;  /* ĩ */
+        case 0x0169: return 0x0168;  /* ũ */
+        case 0x01A1: return 0x01A0;  /* ơ */
+        case 0x01B0: return 0x01AF;  /* ư */
+        default: break;
+    }
+    if (c >= 0x1EA0 && c <= 0x1EF9 && (c & 1)) return c - 1;
+    return c;
 }
 
 std::string nfc_compose(const std::string& nfd) {

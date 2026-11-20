@@ -49,6 +49,16 @@ FCITX_CONFIGURATION(
     Option<bool> autoSwitch{this, "AutoSwitch", _("Auto Switch"), true};
     Option<bool> instantCommit{this, "InstantCommit", _("Instant Commit"),
                                 true};
+    /* Typing rules, passed to the core (xk_state_set_option). */
+    Option<bool> autoRestore{this, "AutoRestore",
+                             _("Restore keys of words that are not Vietnamese"),
+                             true};
+    Option<bool> modernStyle{this, "ModernStyle",
+                             _("Use oà, uý (instead of òa, úy)"), false};
+    Option<bool> freeMarking{this, "FreeMarking",
+                             _("Allow marks and tones after the final consonant"),
+                             true};
+    Option<bool> wShortcut{this, "WShortcut", _("Type w alone as ư"), true};
     Option<bool> spellCheck{this, "SpellCheck", _("Spell Check"), true};
     Option<bool> predictionEnabled{this, "PredictionEnabled",
                                     _("Prediction Enabled"), true};

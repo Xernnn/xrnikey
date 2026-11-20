@@ -53,8 +53,34 @@ char*    xk_state_get_preedit(XKState* state);
  * enable this. */
 void xk_state_set_instant_commit(XKState* state, int enabled);
 
-/* Key processing — keysym is XKB keysym, modifiers bitmask */
+/* Typing options, per state. Unknown options are ignored (get returns -1). */
+#define XK_OPT_AUTO_RESTORE 1  /* default 1: a word that is not Vietnamese
+                                  (or is a common English word that is not an
+                                  attested syllable) is committed as typed */
+#define XK_OPT_MODERN_STYLE 2  /* default 0: hòa, khỏe, thúy; 1: hoà, khoẻ, thuý */
+#define XK_OPT_FREE_MARKING 3  /* default 1: tone and mark keys may follow the
+                                  final consonant (toans, dangd, tienge); 0: a
+                                  tone before it, a mark right after its letter */
+#define XK_OPT_W_SHORTCUT   4  /* default 1: Telex w with no vowel to mark is
+                                  ư (w -> ư, tw -> tư); ww -> w */
+void xk_state_set_option(XKState* state, int option, int value);
+int  xk_state_get_option(XKState* state, int option);
+
+/* Key processing — keysym is XKB keysym, modifiers bitmask.
+ *
+ * Apply every result, consumed or not: delete `delete_before` codepoints
+ * before the cursor, insert `commit`, and if `consumed` is 0 let the key
+ * through to the application. Keys that end a word but are not text --
+ * Return, Tab, Escape, arrows, Home/End, PageUp/PageDown, Delete, Ctrl/Alt
+ * chords -- finish the word (preedit mode: `commit` holds it) and come back
+ * with consumed = 0; they are never swallowed. A modifier key on its own
+ * changes nothing. BackSpace with no word in progress is not consumed. */
 XKResult xk_process_key(XKState* state, uint32_t keysym, uint32_t modifiers);
+
+/* Finish the word in progress as a word boundary would (auto-restore
+ * applied) and empty the state, for focus-out, reset and the like. The
+ * result is applied like xk_process_key's; consumed is 0. */
+XKResult xk_state_flush(XKState* state);
 
 /* Tone placement — returns newly allocated NFC string (caller frees) */
 char* xk_place_tone(const char* syllable, int tone);

@@ -1,160 +1,155 @@
 #include "xrnikey_internal.h"
 #include <cctype>
+#include <vector>
 
 namespace xrnikey {
 
-static void push_undo_vni(XKStateImpl* s) {
-    UndoEntry e;
-    e.buffer = s->buffer;
-    e.tone = s->tone;
-    s->undo_stack.push_back(e);
-    if (s->undo_stack.size() > 50) s->undo_stack.erase(s->undo_stack.begin());
+/* VNI: digits after the letters they change. 1-5 set the tone (sắc huyền
+ * hỏi ngã nặng), 0 removes it, 6 is the circumflex (â ê ô), 7 the horn (ơ ư,
+ * both halves of "uo"), 8 the breve (ă), 9 the bar (đ). A digit that has
+ * nothing to change is just a digit, and so is one typed again to undo it
+ * (a11 -> a1). The rules mirror Telex's: see telex.cpp. */
+
+static bool is_vowel(char b) {
+    return b == 'a' || b == 'e' || b == 'i' || b == 'o' || b == 'u' || b == 'y';
 }
 
-static void apply_vni_vowel_mod(XKStateImpl* s, char vowel, int mod) {
-    std::string& buf = s->buffer;
-    for (int i = static_cast<int>(buf.size()) - 1; i >= 0; --i) {
-        char c = std::tolower(static_cast<unsigned char>(buf[i]));
-        if (c == vowel) {
-            std::string repl;
-            if (mod == 6) {
-                if (vowel == 'a') repl = "\xC3\xA2";
-                else if (vowel == 'e') repl = "\xC3\xAA";
-                else if (vowel == 'o') repl = "\xC3\xB4";
-            } else if (mod == 7) {
-                /* o7 -> ơ, u7 -> ư */
-                if (vowel == 'o') repl = "\xC6\xA1";
-                else if (vowel == 'u') repl = "\xC6\xB0";
-            } else if (mod == 8 && vowel == 'a') {
-                repl = "\xC4\x83";
-            } else if (mod == 9 && vowel == 'd') {
-                repl = "\xC4\x91";
+/* The rightmost run of vowels, skipping a coda after it: [*first, *last].
+ * The u of "qu" belongs to the onset. */
+static bool vowel_run(const Word& w, int* first, int* last) {
+    const std::vector<Letter>& L = w.letters;
+    const int onset_u = (L.size() > 1 && L[0].base == 'q' && L[1].base == 'u') ? 1 : -1;
+    *first = *last = -1;
+    for (int k = static_cast<int>(L.size()) - 1; k >= 0; --k) {
+        if (is_vowel(L[static_cast<size_t>(k)].base) && k != onset_u) {
+            if (*last < 0) *last = k;
+            *first = k;
+        } else if (*last >= 0) {
+            break;
+        }
+    }
+    return *last >= 0;
+}
+
+static uint8_t mark_of_digit(int digit, char base) {
+    if (digit == 6 && (base == 'a' || base == 'e' || base == 'o')) return MARK_HAT;
+    if (digit == 7 && (base == 'o' || base == 'u')) return MARK_HORN;
+    if (digit == 8 && base == 'a') return MARK_BREVE;
+    if (digit == 9 && base == 'd') return MARK_BAR;
+    return MARK_NONE;
+}
+
+/* The letters a mark digit may act on, best first; each choice is a list of
+ * indexes into w.letters. */
+static std::vector<std::vector<int>> mark_choices(const Word& w, int digit, bool free) {
+    std::vector<std::vector<int>> out;
+    const int n = static_cast<int>(w.letters.size());
+    if (digit == 9) {
+        int k = free ? 0 : n - 1;
+        if (n > 0 && w.letters[static_cast<size_t>(k)].base == 'd') out.push_back({k});
+        return out;
+    }
+    int first, last;
+    if (!vowel_run(w, &first, &last)) return out;
+    if (!free && last != n - 1) return out;  /* the mark must follow its letter */
+    if (digit == 7) {
+        for (int k = first; k < last; ++k)
+            if (w.letters[static_cast<size_t>(k)].base == 'u' &&
+                w.letters[static_cast<size_t>(k) + 1].base == 'o')
+                out.push_back({k, k + 1});
+    }
+    for (int k = last; k >= first; --k)
+        if (mark_of_digit(digit, w.letters[static_cast<size_t>(k)].base) != MARK_NONE)
+            out.push_back({k});
+    return out;
+}
+
+static bool marked_by(const Word& w, const Letter& l, char key) {
+    return l.mark_key >= 0 && w.keys[static_cast<size_t>(l.mark_key)] == key;
+}
+
+void vni_apply_key(Word& w, int i, const Options& o) {
+    const char c = w.keys[static_cast<size_t>(i)];
+    if (c < '0' || c > '9' || (w.locked & key_bit(c))) {
+        word_add_letter(w, i);
+        return;
+    }
+    const int digit = c - '0';
+    KeyRec& rec = w.recs[static_cast<size_t>(i)];
+    const Word saved = w;
+    auto keep_if_ok = [&](int kind) {
+        if (word_prefix_ok(w)) {
+            w.recs[static_cast<size_t>(i)].kind = static_cast<uint8_t>(kind);
+            return true;
+        }
+        w = saved;
+        return false;
+    };
+    const bool after_coda = !w.letters.empty() && !is_vowel(w.letters.back().base);
+    int first, last;
+    const bool has_vowel = vowel_run(w, &first, &last);
+
+    if (digit >= 1 && digit <= 5) {
+        if (has_vowel && (o.free_marking || !after_coda)) {
+            if (w.tone == digit) {  /* a11 -> a1 */
+                int undone = w.tone_key;
+                w.tone = XK_TONE_NONE;
+                w.tone_key = -1;
+                word_undo(w, i, undone);
+                return;
             }
-            if (!repl.empty()) {
-                buf = buf.substr(0, i) + repl + buf.substr(i + 1);
-            }
+            w.tone = digit;
+            w.tone_key = i;
+            if (keep_if_ok(K_TONE)) return;
+        }
+        word_add_letter(w, i);
+        return;
+    }
+    if (digit == 0) {
+        if (w.tone != XK_TONE_NONE) {
+            w.tone = XK_TONE_NONE;
+            w.tone_key = -1;
+            rec.kind = K_TONE;
             return;
         }
-    }
-}
-
-void vni_backspace(XKStateImpl* s, XKResult* r) {
-    if (!s->undo_stack.empty()) {
-        UndoEntry e = s->undo_stack.back();
-        s->undo_stack.pop_back();
-        s->buffer = e.buffer;
-        s->tone = e.tone;
-    } else if (!s->buffer.empty()) {
-        s->buffer.pop_back();
-        if (s->buffer.empty()) s->tone = XK_TONE_NONE;
-    } else {
-        /* Nothing buffered — let the real backspace through to the app. */
+        word_add_letter(w, i);
         return;
     }
 
-    std::string display = nfc_compose(apply_tone_to_syllable(s->buffer, s->tone));
-    std::strncpy(r->preedit, display.c_str(), sizeof(r->preedit) - 1);
-    if (s->instant_commit) {
-        diff_commit(s->committed, display, r);
-        s->committed = display;
-    }
-    r->consumed = 1;
-}
-
-void vni_process_char(XKStateImpl* s, char c, XKResult* r) {
-    /* Decide English vs Vietnamese from the syllable shape typed SO FAR.
-     * Vietnamese cannot spell "wo-", "sh-", "hel-", so once the buffer has
-     * left the space of possible Vietnamese syllables, every later key is
-     * literal -- otherwise a tone key simply because a vowel precedes turns
-     * "word" into "wỏd" and "hello" into "helló".
-     *
-     * Deliberately tested against the buffer BEFORE this key is applied: the
-     * modifier keys build transient forms ("nguw" on the way to "ngư") that
-     * would be judged invalid mid-transform. */
-    if (!s->passthrough_word && !can_begin_vn_syllable(s->buffer)) {
-        s->passthrough_word = true;
-    }
-
-    if (s->passthrough_word) {
-        s->buffer += c;
-        std::strncpy(r->preedit, s->buffer.c_str(), sizeof(r->preedit) - 1);
-        if (s->instant_commit) {
-            diff_commit(s->committed, s->buffer, r);
-            s->committed = s->buffer;
+    std::vector<std::vector<int>> choices = mark_choices(w, digit, o.free_marking);
+    for (const std::vector<int>& t : choices) {
+        bool done = true;
+        for (int k : t) done = done && marked_by(w, w.letters[static_cast<size_t>(k)], c);
+        if (done) continue;
+        for (int k : t) {
+            Letter& l = w.letters[static_cast<size_t>(k)];
+            if (marked_by(w, l, c)) continue;  /* keep the horn of "u7o" */
+            l.mark = mark_of_digit(digit, l.base);
+            l.mark_key = i;
+            /* As with Telex w: thuo7 is thuơ, huong7 hương. */
+            l.soft = t.size() == 2 && l.base == 'u';
         }
-        r->consumed = 1;
+        rec.target = w.letters[static_cast<size_t>(t.back())].key;
+        if (t.size() == 2) rec.target2 = w.letters[static_cast<size_t>(t[0])].key;
+        if (keep_if_ok(K_MARK)) return;
+    }
+    for (const std::vector<int>& t : choices) {  /* a66 -> a6, d99 -> d9 */
+        bool done = true;
+        for (int k : t) done = done && marked_by(w, w.letters[static_cast<size_t>(k)], c);
+        if (!done) continue;
+        int undone = -1;
+        for (int k : t) {
+            Letter& l = w.letters[static_cast<size_t>(k)];
+            w.recs[static_cast<size_t>(l.mark_key)].undone = true;
+            if (l.mark_key > undone) undone = l.mark_key;
+            l.mark = MARK_NONE;
+            l.mark_key = -1;
+            l.soft = false;
+        }
+        word_undo(w, i, undone);
         return;
     }
-
-    if (c >= '1' && c <= '9') {
-        int digit = c - '0';
-
-        /* A tone digit can come right after the vowel or, just as
-         * naturally, after the whole syllable including its coda
-         * consonant ("duoc5" for "được") — so this must check for a vowel
-         * anywhere in the buffer, not only at its very end. */
-        if (digit >= 1 && digit <= 5 && find_tone_vowel_index(s->buffer) >= 0) {
-            push_undo_vni(s);
-            s->tone = digit;
-            goto update;
-        }
-
-        if (digit == 6 || digit == 7 || digit == 8) {
-            push_undo_vni(s);
-            char vowels[] = {'a', 'e', 'o', 'u', 'i', 'y', 'd'};
-            for (char v : vowels) {
-                for (int i = static_cast<int>(s->buffer.size()) - 1; i >= 0; --i) {
-                    if (std::tolower(static_cast<unsigned char>(s->buffer[i])) == v) {
-                        apply_vni_vowel_mod(s, v, digit);
-                        goto update;
-                    }
-                }
-            }
-            /* No vowel precedes — literal digit */
-            push_undo_vni(s);
-            s->buffer += c;
-            goto update;
-        }
-
-        if (digit == 9) {
-            push_undo_vni(s);
-            apply_vni_vowel_mod(s, 'd', 9);
-            goto update;
-        }
-
-        if (digit == 0) {
-            push_undo_vni(s);
-            s->tone = XK_TONE_NONE;
-            goto update;
-        }
-
-        /* Literal digit when no vowel context */
-        if (find_tone_vowel_index(s->buffer) < 0) {
-            push_undo_vni(s);
-            s->buffer += c;
-            goto update;
-        }
-    }
-
-    push_undo_vni(s);
-    s->buffer += c;
-
-    /* The "three characters and still no vowel means English" heuristic that
-     * used to live here fired on "ngh" -- a perfectly good Vietnamese onset --
-     * so "nghieeng" never composed to "nghiêng". can_begin_vn_syllable()
-     * above decides this properly from the real onset/coda tables. */
-
-update:
-    {
-        std::string display = apply_tone_to_syllable(s->buffer, s->tone);
-        display = nfc_compose(display);
-        std::strncpy(r->preedit, display.c_str(), sizeof(r->preedit) - 1);
-        if (s->instant_commit) {
-            diff_commit(s->committed, display, r);
-            s->committed = display;
-        }
-    }
-    r->consumed = 1;
+    word_add_letter(w, i);
 }
 
 } /* namespace xrnikey */

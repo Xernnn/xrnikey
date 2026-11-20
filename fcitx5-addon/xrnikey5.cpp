@@ -184,6 +184,7 @@ public:
         auto *icState = ic->propertyFor(&factory_);
         XKState *state = icState->state();
         if (!state) return;
+        applyOptions(state);
 
         /* Number keys pick a candidate. Telex only: VNI spells its tones and
          * vowel marks WITH digits ("a1" -> á), so 1-9 there belong to the
@@ -325,6 +326,15 @@ public:
         icState->setComposing(result.preedit[0] != '\0');
 
         ic->updateUserInterface(UserInterfaceComponent::InputPanel);
+    }
+
+    /* The typing options are read per key, so a settings change applies to
+     * every input context at once (setting an unchanged option is free). */
+    void applyOptions(XKState *state) {
+        xk_state_set_option(state, XK_OPT_AUTO_RESTORE, *config_->autoRestore);
+        xk_state_set_option(state, XK_OPT_MODERN_STYLE, *config_->modernStyle);
+        xk_state_set_option(state, XK_OPT_FREE_MARKING, *config_->freeMarking);
+        xk_state_set_option(state, XK_OPT_W_SHORTCUT, *config_->wShortcut);
     }
 
     /* Remove `count` codepoints of already-committed text before the cursor.

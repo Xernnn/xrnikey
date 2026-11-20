@@ -39,7 +39,9 @@
 4. **Telex/VNI FSM** processes the character:
    - Vowel modification (aa→â, dd→đ)
    - Tone mark application (s→sắc)
-   - Bilingual check (English word → pass-through)
+   - Auto-restore: the word's raw keystrokes are kept, and it is shown as typed when it
+     cannot be Vietnamese, or committed as typed when it is a common English word that is
+     not an attested Vietnamese syllable
 5. **Tone placement** applies Unicode combining characters per Vietnamese orthographic rules
 6. **Candidate provider** queries dictionary + n-gram + autocorrect for suggestions
 7. **xkd daemon** (optional) answers the same dictionary, emoji and stats queries over a Unix
@@ -53,14 +55,16 @@ Pure C ABI (`xrnikey.h`) — no C++ in public headers. Internal implementation i
 
 | Module | File | Purpose |
 |--------|------|---------|
+| Word model | `word.cpp` | Raw keystrokes of the word, replayed into the composition; display and auto-restore |
 | Telex FSM | `telex.cpp` | Telex input encoding |
 | VNI FSM | `vni.cpp` | VNI digit-based encoding |
 | Tone placement | `tone_placement.cpp` | Vietnamese orthographic tone rules |
-| Syllable validator | `syllable_validator.cpp` | Phonotactic validation |
+| Syllable validator | `syllable_validator.cpp` | Onset/rime/tone tables: valid syllable, valid prefix |
+| Lexicon | `lexicon.cpp`, `data/` | Common English words, attested Vietnamese syllables (compiled in) |
 | Dictionary | `dict.cpp` | Memory-mapped double-array trie |
 | N-gram | `ngram.cpp` | ARPA trigram model with 4-bit quantization |
 | Autocorrect | `autocorrect.cpp` | Damerau-Levenshtein + phonetic scoring |
-| Bilingual | `bilingual_switch.cpp` | English word detection + whitelist |
+| Bilingual | `bilingual_switch.cpp` | English word detection, enable state |
 | Emoji | `emoji.cpp` | Fuzzy emoji search |
 
 ## Memory Budget
