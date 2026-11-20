@@ -4,17 +4,13 @@
 
 **Symptom:** Xrnikey doesn't show up after installation.
 
-**Fix (Fcitx5):**
+**Fix (Fcitx5):** both files must exist, and Fcitx5 must have been restarted since:
 ```bash
-sudo cp /usr/share/fcitx5/addon/xrnikey5.conf /usr/share/fcitx5/inputmethod/
-fcitx5 -r
+ls /usr/lib/fcitx5/libxrnikey5.so /usr/share/fcitx5/addon/xrnikey5.conf \
+   /usr/share/fcitx5/inputmethod/xrnikey.conf
+fcitx5 -r -d
 ```
-
-**Fix (IBus):**
-```bash
-ibus write-cache
-ibus restart
-```
+If they are under `/usr/local`, reinstall with `-DCMAKE_INSTALL_PREFIX=/usr`.
 
 ## 2. Both Fcitx5 and IBus running
 
@@ -175,13 +171,8 @@ ls -la /usr/share/xrnikey/dict/vi.dict
 
 **Symptom:** `xrnikey-ibus` exits immediately.
 
-**Fix:**
-```bash
-# Check libxrnikey is loadable:
-python3 -c "import ctypes; ctypes.CDLL('/usr/lib/libxrnikey.so')"
-# Check IBus is running:
-ibus-daemon -drx
-```
+The IBus engine is old and unmaintained: it is written against the long-gone `python-ibus` API,
+and the PKGBUILD does not build it. Use Fcitx5.
 
 ## 16. Environment variables not persisting
 
@@ -225,4 +216,5 @@ Run the diagnostic tool for an automated report:
 xk-diagnose
 ```
 
-This checks all 12 common misconfiguration patterns and suggests exact fix commands.
+It checks the environment variables, the running input method framework, the library, fonts,
+the session type and the data files, and suggests fixes.

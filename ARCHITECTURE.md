@@ -27,15 +27,26 @@
 ## Keypress Data Flow
 
 1. **Kernel** delivers key event via evdev to the compositor (Wayland) or X server (X11)
-2. **Fcitx5/IBus** receives the key through `input-method-v2` or XIM protocol
-3. **Xrnikey engine** calls `xk_process_key(state, keysym, modifiers)`
-4. **Telex/VNI FSM** processes the character:
+2. **Fcitx5** receives the key through `input-method-v2` (Wayland apps), its D-Bus frontend (the
+   GTK/Qt IM modules) or XIM (X11 apps), and hands it to the addon (`fcitx5-addon/xrnikey5.cpp`)
+3. **The addon** decides what the key is: a pick from the suggestion window (Ctrl+1–9), a key in a
+   password or sensitive field (passed through untouched), a key that ends the word (Return, Tab,
+   arrows, shortcuts: the word is finished, then the key goes to the app), or a key for the core
+4. **Xrnikey core** (`xk_process_key(state, keysym, modifiers)`) runs the Telex/VNI state machine:
    - Vowel modification (aa→â, dd→đ)
    - Tone mark application (s→sắc)
    - Bilingual check (English word → pass-through)
 5. **Tone placement** applies Unicode combining characters per Vietnamese orthographic rules
-6. **Candidate provider** queries dictionary + n-gram + autocorrect for suggestions
-7. **Preedit** rendered inline or in aux window; **commit** sent to application on Space
+6. **Candidate provider** queries dictionary + n-gram + autocorrect for suggestions (when on)
+7. **Output**, chosen per word:
+   - *preedit*: the word is shown inline (underlined) and committed when it ends;
+   - *instant commit*: each result goes into the field at once; a correction deletes what the
+     addon typed for the word (`deleteSurroundingText`) and types the new form. The addon only does
+     this where the app reports surrounding text, and keeps a model of what should be before the
+     cursor (its own edits, which the app reports back late when typing is fast). When a report
+     does not match — a click elsewhere, the app changing or selecting text — it stops editing
+     that word in place. On Wayland, Fcitx5 converts the deletion to bytes from its copy of the
+     surrounding text, so the addon hands it exactly the characters it typed.
 
 ## Core Library (libxrnikey)
 
@@ -65,7 +76,16 @@ Dictionary uses `mmap()` for zero-copy startup. N-gram scores use 4-bit quantiza
 
 ## Configuration Persistence
 
-- `~/.local/share/xrnikey/state.json` — IME enabled/disabled state
-- `~/.config/xrnikey/app-overrides.json` — per-app disable list
-- `~/.local/share/xrnikey/user-dict.txt` — user dictionary (hot-reloaded)
-- `~/.config/fcitx5/conf/xrnikey5.conf` — Fcitx5 addon settings
+- `~/.config/fcitx5/conf/xrnikey5.conf` — Fcitx5 addon settings (re-read on "Reload Config")
+- `~/.local/share/xrnikey/user-dict.txt` — user dictionary (re-read on "Reload Config")
+- `~/.local/share/xrnikey/macros.txt` — abbreviations (re-read when the file changes)
+
+## Tests
+
+- `tests/` — Catch2 tests of the core's C API.
+- `fcitx5-addon/tests/test_fcitx5_addon.cpp` — the built addon inside an in-process
+  `fcitx::Instance`, typed into by a fake client (D-Bus, Wayland input-method-v2 or XIM style, with
+  optional late surrounding-text reports) that applies commits, deletions and unhandled keys to a
+  text buffer.
+- `fcitx5-addon/tests/dbus_session.sh` — the real `fcitx5` binary on a private D-Bus, driven over
+  `org.fcitx.Fcitx.InputContext1` by `dbus_driver.py`.

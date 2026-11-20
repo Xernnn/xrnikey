@@ -138,7 +138,7 @@ def main():
         ""
     )
     factory = XrnikeyFactory()
-    component.add_engine("xrnikey", "Xrnikey", "vi", "GPL-3.0")
+    component.add_engine("xrnikey", "Xrnikey", "vi", "MIT")
     component.set_engine_factory(factory)
     return component
 

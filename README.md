@@ -4,50 +4,57 @@
 
 <h1 align="center">Xrnikey</h1>
 
-Production-grade bilingual Vietnamese–English Input Method Engine for Linux.
-
-Xrnikey provides Telex and VNI input methods with intelligent bilingual auto-switching, dictionary completion, n-gram prediction, autocorrect, and emoji input. It ships as a Fcitx5 addon (primary) and IBus engine (GNOME fallback).
+A Vietnamese input method (Telex and VNI) for Fcitx5 on Linux, with an optional instant-commit
+mode that types each word straight into the field, without an underlined preedit.
 
 ## Features
 
-- **Telex & VNI** — full Vietnamese input encoding with tone marks, vowel modifications, and backspace undo
-- **Unikey-style instant commit** — corrects tones in place as you type (no visible composition buffer), like Unikey on Windows, instead of holding the word in preedit until Space; opt-in via `InstantCommit=True`, and only where the app's surrounding text makes it safe (classic preedit in terminals and apps without it; see TROUBLESHOOTING.md §8)
-- **Bilingual auto-switch** — type English without toggling the IME off
-- **Dictionary completion** — 800+ word seed dictionary with user dictionary hot-reload
-- **N-gram prediction** — context-aware word suggestions
-- **Autocorrect** — Damerau-Levenshtein with Vietnamese phonetic similarity
-- **Fcitx5 + IBus** — works on KDE, Sway, Hyprland, XFCE (Fcitx5) and GNOME (IBus)
-- **Wayland & X11** — full compositor compatibility
+- **Telex & VNI** — tone marks and vowel marks, placed by Vietnamese spelling rules
+- **Instant commit (opt-in)** — like Unikey on Windows: each keystroke goes into the field at once
+  and the word is corrected in place, so there is no underlined preedit, and the app sees the text
+  as it is typed. Used only where the app's surrounding text makes it safe;
+  terminals and apps without surrounding text keep the classic preedit (TROUBLESHOOTING.md §8)
+- **English passes through** — words that cannot be Vietnamese are left as typed
+- **Abbreviations** — `ko` + Space → `không`, from your own list (`xk-macro`)
+- **Word suggestions (opt-in)** — dictionary completion ranked by an n-gram model, plus a user
+  dictionary; picked with Ctrl+1–9 so digits always stay text
+- **Fcitx5 on Wayland and X11** — input-method-v2 (Hyprland, Sway), the GTK/Qt modules, and XIM
 
 ## Download
 
 ```bash
-git clone https://github.com/Xernnn/xernikey.git xrnikey
+git clone https://github.com/Xernnn/xrnikey.git
 cd xrnikey
 ```
 
-## Quick Start (Arch Linux / CachyOS)
+## Build and install (Arch Linux)
 
 ```bash
-# Install dependencies
-sudo pacman -S cmake extra-cmake-modules fcitx5 fcitx5-gtk fcitx5-qt \
-    boost python python-gobject noto-fonts noto-fonts-cjk
-
-# Configure, build, install
-cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DXRNIKEY_ENABLE_TESTS=ON
-cmake --build build -- -j$(nproc)
+sudo pacman -S --needed cmake extra-cmake-modules ninja fcitx5 fcitx5-configtool python
+cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
+cmake --build build
 sudo cmake --install build
-sudo ldconfig
-
-# Run setup
-xk-setup
 ```
 
-`-DCMAKE_INSTALL_PREFIX=/usr` is required, not optional — it's what makes Fcitx5's own CMake config route the addon into the real system dirs (`/usr/lib/fcitx5`, `/usr/share/fcitx5/addon`) that the running `fcitx5` daemon actually scans. Any other prefix (including the CMake default, `/usr/local`) installs the addon somewhere Fcitx5 never looks, and it silently never loads.
+`-DCMAKE_INSTALL_PREFIX=/usr` is required: it makes Fcitx5's own CMake config put the addon in the
+directories the running `fcitx5` scans (`/usr/lib/fcitx5`, `/usr/share/fcitx5/addon` and
+`/usr/share/fcitx5/inputmethod`). Any other prefix, including the default `/usr/local`, installs it
+where Fcitx5 never looks.
 
-Log out and back in (so the env vars `xk-setup` writes take effect), then switch to Xrnikey with **Ctrl+Space** (Fcitx5) or **Super+Space** (IBus).
+Or as a package, from the commit checked out here (tests run in `check()`; `pacman -R xrnikey`
+removes it again):
 
-To verify it actually loaded: `fcitx5-diagnose | grep -i xrnikey`, or run `xk-diagnose`.
+```bash
+cd packaging && makepkg -si
+```
+
+Tests: configure with `-DXRNIKEY_ENABLE_TESTS=ON` (needs `catch2`), then `ctest --test-dir build`.
+They include the addon running in an in-process Fcitx5 and in the real `fcitx5` binary on a private
+D-Bus; neither touches a running Fcitx5 or its config.
+
+Then restart Fcitx5 (`fcitx5 -r -d`) so it finds the new addon, add Xrnikey to its input methods
+(next section), and check the environment with `xk-setup` (it reports, and asks before changing
+anything) and `xk-diagnose`.
 
 ## Switching from Bamboo (and back)
 
@@ -70,70 +77,101 @@ fcitx5-remote -s bamboo       # back to Bamboo
 To take Xrnikey out again, repeat step 2 with the original list (`... Default us 2 keyboard-us ''
 bamboo ''`). Ctrl+Space toggles between the keyboard layout and the input method used last.
 
-## Keybindings
+## Typing
 
-| Action | Default Key |
-|--------|-------------|
-| Switch Vietnamese on/off | Fcitx5's trigger key (Ctrl+Space by default) |
-| Commit word | Space |
-| Pick suggestion 1–9 (when `PredictionEnabled=True`) | Ctrl+1–9 (`CandidateSelectionKeys`) |
-| Page candidates | Tab / Shift+Tab |
-| Undo composition | Backspace |
-
-## Input Methods
-
-| Method | Example | Output |
-|--------|---------|--------|
-| Telex | `aas` | `âs` → `ấ` (with tone) |
+| Method | Keys | Gives |
+|--------|------|-------|
+| Telex | `aa` `ee` `oo` | `â` `ê` `ô` |
+| Telex | `aw` `ow` `uw` | `ă` `ơ` `ư` |
 | Telex | `dd` | `đ` |
-| Telex | `ow` | `ơ` |
-| VNI | `a1` | `á` |
-| VNI | `o6` | `ô` |
-| VNI | `d9` | `đ` |
+| Telex | `s` `f` `r` `x` `j` after a vowel | sắc, huyền, hỏi, ngã, nặng |
+| VNI | `a1` `o6` `d9` | `á` `ô` `đ` |
 
-Type `xin chao` in Telex mode → `xin chào`.
+`xin chaof` → `xin chào`, `tieengs vieetj` → `tiếng việt`.
+
+| Key | What it does |
+|-----|--------------|
+| Space, punctuation | end the word |
+| Return, Tab, Esc, arrows, Home/End, any Ctrl/Alt/Super shortcut | end the word (kept as shown), then act as usual: one Return both finishes the word and sends the newline |
+| Backspace | edits the word being typed; with no word in progress, deletes as usual |
+| Ctrl+1–9 | pick suggestion 1–9 (when suggestions are on) |
+| Ctrl+Alt+P | turn suggestions on/off |
+| Ctrl+Space (Fcitx5's trigger key) | Vietnamese on/off |
+
+A click elsewhere, focus moving to another window, or switching input method keeps the word that
+was being typed. Password and other sensitive fields get every key as typed.
+
+## Options
+
+In `fcitx5-configtool` (Xrnikey's settings), or in `~/.config/fcitx5/conf/xrnikey5.conf` as
+`Name=Value` lines with no section header, followed by `fcitx5-remote -r` (or "Reload Config"). A
+changed option applies to fields that are already open.
+
+| Option | Default | |
+|--------|---------|---|
+| `InputMode` | `Telex` | `Telex` or `VNI` |
+| `InstantCommit` | `False` | type into the field directly instead of a preedit, where safe |
+| `AppOverrideList` | terminals, VS Code, LibreOffice | apps that always get the preedit (patterns, matched against the app id; TROUBLESHOOTING.md §8) |
+| `Macro` | `False` | expand abbreviations from `~/.local/share/xrnikey/macros.txt` |
+| `CapitalizeMacro` | `True` | `Ko` → `Không`, `KO` → `KHÔNG` (`ko` → as written) |
+| `PredictionEnabled` | `False` | show word suggestions |
+| `CandidateSelectionKeys` | Ctrl+1 … Ctrl+9 | keys that pick suggestion 1–9 |
+| `PredictionMaxCandidates` | `5` | how many suggestions |
+| `AutoCorrect` | `True` | add spelling corrections to the suggestions |
+| `AutoCorrectThreshold` | `0.85` | how close a correction must be |
+| `CandidateLayout` | `Vertical` | suggestion window layout |
+| `PageSize` | `9` | suggestions per page |
+| `TogglePrediction` | Ctrl+Alt+P | key that turns suggestions on/off |
+
+Example:
+
+```
+InputMode=Telex
+InstantCommit=True
+Macro=True
+```
+
+Files: user dictionary `~/.local/share/xrnikey/user-dict.txt` (`xk-dict`), abbreviations
+`~/.local/share/xrnikey/macros.txt` (`abbreviation<TAB>expansion` per line, `xk-macro`). Both follow
+`$XDG_DATA_HOME`.
+
+## How it differs from Bamboo
+
+- **Instant commit.** fcitx5-bamboo always holds the word in an underlined preedit. Xrnikey can type
+  it into the field and correct it in place (opt-in), and checks the app's surrounding text before
+  every correction, so it never deletes text it did not type; where it cannot check, it uses the
+  preedit like Bamboo.
+- **Suggestions and a user dictionary** (optional); Bamboo has none.
+- **Abbreviations** work like Bamboo's macros (expand at word end; Tab completes one), but live in a
+  plain text file edited with `xk-macro`, and with `CapitalizeMacro` a lowercase abbreviation gives
+  the expansion as written (Bamboo lowercases it, so `vn` → `Việt Nam` became `việt nam`).
+- **Not (yet) in Xrnikey:** Bamboo's other input methods (Telex 2, Telex W, VIQR, …), output
+  charsets other than Unicode (TCVN3, VNI-Win, …), and the restore-keystrokes key.
 
 ## CLI Tools
 
 ```bash
-xk-setup          # Interactive setup and configuration
-xk-setup --rollback  # Restore backed-up config files
-xk-diagnose       # Comprehensive diagnostic report
+xk-setup                    # Check the Fcitx5 setup; asks before each change (--dry-run, --rollback)
+xk-diagnose                 # Diagnostic report
 xk-dict lookup "hạnh phúc"  # Dictionary lookup
-xk-dict add "từ mới" 9000   # Add to user dictionary
+xk-dict add "từ mới" 9000   # Add to the user dictionary (then fcitx5-remote -r)
 xk-macro add ko không       # Abbreviation: "ko" + Space -> "không" (needs Macro=True)
-xk-macro list               # Show them; xk-macro remove ko to drop one
+xk-macro list               # Show them; xk-macro remove ko drops one
 ```
-
-## Configuration
-
-Fcitx5: `~/.config/fcitx5/conf/xrnikey5.conf`
-
-```
-[General]
-InputMode=Telex
-InstantCommit=False
-PredictionEnabled=False
-CandidateLayout=Vertical
-```
-
-State file: `~/.local/share/xrnikey/state.json`
-User dictionary: `~/.local/share/xrnikey/user-dict.txt`
-Abbreviations: `~/.local/share/xrnikey/macros.txt` (`abbreviation<TAB>expansion` per line)
 
 ## Project Structure
 
 ```
 xrnikey/
-├── core/           libxrnikey C++20 engine
-├── fcitx5-addon/   Fcitx5 input method plugin
-├── ibus-engine/    IBus fallback (Python + ctypes)
-├── cli-tools/      xk-setup, xk-diagnose, xk-dict
-├── data/           Dictionary, n-gram, emoji data
-├── tests/          Catch2 unit and integration tests
+├── core/           libxrnikey: the C++20 engine behind a C API
+├── fcitx5-addon/   the Fcitx5 input method, and its end-to-end tests (tests/)
+├── ibus-engine/    an old IBus engine (not built by the PKGBUILD; targets python-ibus)
+├── cli-tools/      xk-setup, xk-diagnose, xk-dict, xk-macro
+├── data/           dictionary, n-gram and emoji data, icon
+├── tests/          Catch2 tests of the core
 └── packaging/      PKGBUILD and INSTALL.sh
 ```
 
 ## License
 
-GPL-3.0
+MIT — see [LICENSE](LICENSE).
