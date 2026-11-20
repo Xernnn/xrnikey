@@ -184,11 +184,19 @@ TEST_CASE("corpus: w on its own is u-horn", "[corpus]") {
     });
 }
 
-TEST_CASE("corpus: marks and tones may follow the final consonant", "[corpus][!mayfail]") {
+TEST_CASE("corpus: marks and tones may follow the final consonant", "[corpus]") {
+    const std::vector<Opt> strict = {{XK_OPT_FREE_MARKING, 0}};
     run(XK_MODE_TELEX, {
         {"dangd ", "đang "}, {"tienge ", "tiêng "}, {"tiengse ", "tiếng "},
         {"tienges ", "tiếng "}, {"khongo ", "không "}, {"duongwf ", "dường "},
-        {"chana ", "chân "}, {"vietje ", "việt "},
+        {"chana ", "chân "}, {"vietje ", "việt "}, {"dangdd ", "dangd "},
+        {"caawn ", "căn "}, {"cawan ", "cân "},
+        // Without free marking: a tone before the final consonant, a mark
+        // right after its letter.
+        {"dangd ", "dangd ", BOTH, strict}, {"toans ", "toans ", BOTH, strict},
+        {"toasn ", "toán ", BOTH, strict}, {"ddi ", "đi ", BOTH, strict},
+        {"khongo ", "khongo ", BOTH, strict}, {"khoong ", "không ", BOTH, strict},
+        {"duongw ", "duongw ", BOTH, strict}, {"nguoiwf ", "người ", BOTH, strict},
     });
 }
 

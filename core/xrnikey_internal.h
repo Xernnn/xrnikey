@@ -79,6 +79,7 @@ struct Word {
 
 struct Options {
     bool auto_restore = true;
+    bool free_marking = true;
     bool w_shortcut = true;
 };
 

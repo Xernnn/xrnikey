@@ -48,9 +48,9 @@ static std::vector<std::vector<int>> w_choices(const Word& w) {
     }
     if (last < 0) return {};
 
+    /* Any mark on a, o, u can become the w mark: aaw -> ă, as in Bamboo. */
     auto takes_w = [](const Letter& l) {
-        return (l.base == 'u' || l.base == 'o' || l.base == 'a') &&
-               (l.mark == MARK_NONE || l.mark == MARK_HORN || l.mark == MARK_BREVE);
+        return l.base == 'u' || l.base == 'o' || l.base == 'a';
     };
     std::vector<std::vector<int>> out;
     for (int k = first; k < last; ++k) {
@@ -61,6 +61,19 @@ static std::vector<std::vector<int>> w_choices(const Word& w) {
     for (int k = last; k >= first; --k)
         if (takes_w(L[static_cast<size_t>(k)])) out.push_back({k});
     return out;
+}
+
+/* The rightmost run of vowels, skipping a final consonant after it. */
+static void vowel_run(const Word& w, int* first, int* last) {
+    *first = *last = -1;
+    for (int k = static_cast<int>(w.letters.size()) - 1; k >= 0; --k) {
+        if (is_vowel(w.letters[static_cast<size_t>(k)].base)) {
+            if (*last < 0) *last = k;
+            *first = k;
+        } else if (*last >= 0) {
+            break;
+        }
+    }
 }
 
 static bool marked_by(const Word& w, const Letter& l, char key) {
@@ -88,9 +101,15 @@ void telex_apply_key(Word& w, int i, const Options& o) {
 
     bool has_vowel = false;
     for (const Letter& l : w.letters) has_vowel = has_vowel || is_vowel(l.base);
+    /* Free marking (the default): a tone or mark key may follow the final
+     * consonant or later vowels -- toans -> toán, dangd -> đang,
+     * tienge -> tiêng, khongo -> không. Without it a tone must come before
+     * the final consonant and a mark right after its letter. */
+    const bool after_coda = !w.letters.empty() && !is_vowel(w.letters.back().base);
+    const bool may_reach = o.free_marking || !after_coda;
 
     int tone = tone_of_key(lc);
-    if (tone > 0 && has_vowel) {
+    if (tone > 0 && has_vowel && may_reach) {
         if (w.tone == tone) {  /* ass -> as */
             int undone = w.tone_key;
             w.tone = XK_TONE_NONE;
@@ -110,14 +129,15 @@ void telex_apply_key(Word& w, int i, const Options& o) {
     }
 
     if (lc == 'w') {
-        std::vector<std::vector<int>> choices = w_choices(w);
+        std::vector<std::vector<int>> choices;
+        if (may_reach) choices = w_choices(w);
         for (const std::vector<int>& t : choices) {
             bool done = true;
             for (int k : t) done = done && marked_by(w, w.letters[static_cast<size_t>(k)], 'w');
             if (done) continue;
             for (int k : t) {
                 Letter& l = w.letters[static_cast<size_t>(k)];
-                if (l.mark == MARK_HORN || l.mark == MARK_BREVE) continue;  /* keep "uw" */
+                if (marked_by(w, l, 'w')) continue;  /* keep the horn of "uw" */
                 l.mark = l.base == 'a' ? MARK_BREVE : MARK_HORN;
                 l.mark_key = i;
                 /* A single w on "uo" leaves it to the spelling whether the u
@@ -162,23 +182,42 @@ void telex_apply_key(Word& w, int i, const Options& o) {
         }
     }
 
-    if (!w.letters.empty()) {
-        Letter& prev = w.letters.back();
-        uint8_t mark = MARK_NONE;
-        if (lc == 'd' && prev.base == 'd') mark = MARK_BAR;
-        if ((lc == 'a' || lc == 'e' || lc == 'o') && prev.base == lc) mark = MARK_HAT;
-        if (mark != MARK_NONE && prev.mark == mark && marked_by(w, prev, lc)) {
+    /* dd is đ; aa, ee, oo put the circumflex on. With free marking the d
+     * reaches the onset and a/e/o the same vowel anywhere in the vowel
+     * group, so they can follow the final consonant. */
+    int target = -1;
+    uint8_t mark = MARK_NONE;
+    const int last = static_cast<int>(w.letters.size()) - 1;
+    if (lc == 'd' && last >= 0) {
+        mark = MARK_BAR;
+        if (o.free_marking) target = w.letters[0].base == 'd' ? 0 : -1;
+        else target = w.letters[static_cast<size_t>(last)].base == 'd' ? last : -1;
+    } else if ((lc == 'a' || lc == 'e' || lc == 'o') && last >= 0) {
+        mark = MARK_HAT;
+        if (o.free_marking) {
+            int first, end;
+            vowel_run(w, &first, &end);
+            for (int k = end; k >= 0 && k >= first; --k)
+                if (w.letters[static_cast<size_t>(k)].base == lc) { target = k; break; }
+        } else if (w.letters[static_cast<size_t>(last)].base == lc) {
+            target = last;
+        }
+    }
+    if (target >= 0) {
+        Letter& t = w.letters[static_cast<size_t>(target)];
+        if (t.mark == mark && marked_by(w, t, lc)) {
             /* aaa -> aa, ddd -> dd */
-            int undone = prev.mark_key;
-            prev.mark = MARK_NONE;
-            prev.mark_key = -1;
+            int undone = t.mark_key;
+            t.mark = MARK_NONE;
+            t.mark_key = -1;
             word_undo(w, i, undone);
             return;
         }
-        if (mark != MARK_NONE && prev.mark == MARK_NONE) {
-            prev.mark = mark;
-            prev.mark_key = i;
-            rec.target = prev.key;
+        if (t.mark != mark) {  /* ă/ơ from w become â/ô: awa -> â */
+            t.mark = mark;
+            t.mark_key = i;
+            t.soft = false;
+            rec.target = t.key;
             if (keep_if_ok(K_MARK)) return;
         }
     }
