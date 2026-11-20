@@ -193,9 +193,13 @@ bool tone_needs_open(int tone) {
 
 }  // namespace
 
+/* A finished syllable that ends in a stop (c ch p t) carries sắc or nặng;
+ * no tone at all is as impossible there as huyền ("bat", "bàt"). While the
+ * word is still being typed the tone can come later, so the prefix check
+ * only rules out huyền, hỏi and ngã. */
 bool syllable_valid(const std::u32string& letters, int tone) {
     if (!syllables().all.count(letters)) return false;
-    return !(tone_needs_open(tone) && is_stop_end(letters));
+    return !is_stop_end(letters) || tone == XK_TONE_SAC || tone == XK_TONE_NANG;
 }
 
 bool syllable_prefix_ok(const std::u32string& letters, int tone) {

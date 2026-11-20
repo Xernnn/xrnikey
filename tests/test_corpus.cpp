@@ -209,3 +209,18 @@ TEST_CASE("corpus: VNI does what Telex does", "[corpus][!mayfail]") {
         {"a1<", ""}, {"chao2\n", "chào\n"},
     });
 }
+
+// A syllable that ends in a stop (c ch p t) takes only sắc or nặng: "bát",
+// "bạt", never "bat", "bàt", "bảt", "bãt".
+TEST_CASE("syllables: stop codas take only sắc or nặng", "[corpus]") {
+    CHECK(xk_is_valid_syllable("bát") == 1);
+    CHECK(xk_is_valid_syllable("bạt") == 1);
+    CHECK(xk_is_valid_syllable("thích") == 1);
+    CHECK(xk_is_valid_syllable("bat") == 0);
+    CHECK(xk_is_valid_syllable("bàt") == 0);
+    CHECK(xk_is_valid_syllable("tẽt") == 0);
+    CHECK(xk_is_valid_syllable("thich") == 0);
+    CHECK(xk_is_valid_syllable("ban") == 1);
+    CHECK(xk_is_valid_syllable("bàn") == 1);
+    run(XK_MODE_TELEX, {{"xoot ", "xoot "}, {"tieep ", "tieep "}, {"tieeps ", "tiếp "}});
+}

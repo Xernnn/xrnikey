@@ -315,7 +315,6 @@ can
 cang
 canh
 cao
-cap
 cau
 cay
 cha
@@ -1058,7 +1057,6 @@ em
 en
 eng
 eo
-et
 ga
 gai
 gan
@@ -1916,7 +1914,6 @@ lan
 lang
 lanh
 lao
-lat
 lau
 lay
 laỉ
@@ -2526,7 +2523,6 @@ ne
 nem
 nen
 neo
-net
 nga
 ngai
 ngan
@@ -2585,7 +2581,6 @@ nghịu
 ngo
 ngoa
 ngoan
-ngoc
 ngoe
 ngoen
 ngoi
@@ -2793,7 +2788,6 @@ nham
 nhan
 nhang
 nhanh
-nhat
 nhau
 nhay
 nhaủ
@@ -2851,7 +2845,6 @@ nhát
 nháy
 nhâm
 nhân
-nhât
 nhây
 nhã
 nhãi
@@ -3114,7 +3107,6 @@ nơ
 nơi
 nưa
 nưng
-nươc
 nươm
 nương
 nước
@@ -4318,7 +4310,6 @@ triệu
 tro
 trong
 tru
-truc
 trun
 trung
 truy
@@ -4772,7 +4763,6 @@ vin
 vinh
 viêm
 viên
-viêt
 viếng
 viết
 viền
