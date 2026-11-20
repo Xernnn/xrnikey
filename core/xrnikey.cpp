@@ -53,6 +53,26 @@ static void finalize_word(XKStateImpl* s, XKResult* r, char trailing) {
     r->consumed = 1;
 }
 
+/* A key that ends the word but is the application's to handle (Enter, Tab,
+ * Escape, arrows, Home/End, Delete, shortcuts): finish the word and let the
+ * key through. Preedit mode commits the word first, so Enter sends the line
+ * with the word in it; instant mode already has the word in the document,
+ * so `commit`/`delete_before` stay empty unless auto-restore changes the
+ * word as it ends ("terms" shown as "tém" becomes "terms"). Either way the
+ * state is empty afterwards: after vie <Left> et, "et" is a new word, not a
+ * stale "viee". */
+static void end_word(XKStateImpl* s, XKResult* r) {
+    if (!s->word.empty()) finalize_word(s, r, 0);
+    r->consumed = 0;
+}
+
+static bool is_modifier_keysym(uint32_t keysym) {
+    return keysym == 0 ||
+           (keysym >= 0xFFE1 && keysym <= 0xFFEE) ||  /* Shift, Control, Caps, Meta, Alt, Super, Hyper */
+           (keysym >= 0xFE01 && keysym <= 0xFE13) ||  /* ISO_Level3_Shift, ISO_Level5_Shift, groups */
+           keysym == 0xFF7E || keysym == 0xFF7F;      /* Mode_switch, Num_Lock */
+}
+
 static void word_key(XKStateImpl* s, XKResult* r, char c) {
     if (s->word.keys.size() >= kMaxWordKeys) {
         /* Close the long word and start a new one with this key. */
@@ -160,6 +180,16 @@ XKResult xk_process_key(XKState* state, uint32_t keysym, uint32_t modifiers) {
         return r;
     }
 
+    /* A modifier on its own (Shift for a capital, Ctrl before a shortcut)
+     * changes nothing. */
+    if (xrnikey::is_modifier_keysym(keysym)) return r;
+
+    /* Ctrl/Alt/Super chords belong to the application. */
+    if (modifiers & (0x04 | 0x08 | 0x40 | (1u << 26))) {
+        xrnikey::end_word(s, &r);
+        return r;
+    }
+
     /* Backspace */
     if (keysym == 0xFF08) {
         xrnikey::backspace(s, &r);
@@ -170,26 +200,6 @@ XKResult xk_process_key(XKState* state, uint32_t keysym, uint32_t modifiers) {
     if (keysym == 0x20) {
         if (!s->word.empty()) {
             xrnikey::finalize_word(s, &r, ' ');
-        }
-        return r;
-    }
-
-    /* Return/Enter registers the pending syllable exactly as Space does, but
-     * contributes no character of its own. Previously Enter was not handled
-     * at all: the composing block was abandoned and the word never committed.
-     *
-     * The key is CONSUMED when it actually finalized something, so a second
-     * Enter is needed to insert the newline. That is deliberate rather than
-     * passing the Enter straight through: a commit travels to the client over
-     * the text-input channel while a forwarded key travels over the keyboard
-     * one, with no ordering guarantee between them -- the same gap that
-     * scrambles in-place edits in terminals. An Enter that overtook its own
-     * commit would run a half-typed command line, so the word is registered
-     * first and the newline is left to the next press. With nothing pending,
-     * Enter passes through untouched as normal. */
-    if (keysym == 0xFF0D || keysym == 0xFF8D) { /* Return, KP_Enter */
-        if (!s->word.empty()) {
-            xrnikey::finalize_word(s, &r, 0);
         }
         return r;
     }
@@ -213,6 +223,19 @@ XKResult xk_process_key(XKState* state, uint32_t keysym, uint32_t modifiers) {
         return r;
     }
 
+    /* Enter, Tab, Escape, arrows, Home/End, PageUp/Down, Delete, Insert, and
+     * any other key without a character here. Enter used to be consumed when
+     * a word was pending, so every chat message needed Enter twice, and the
+     * cursor keys left the word buffered: after vie <Left> et the engine
+     * still edited "vie" and in instant mode deleted the wrong characters. */
+    xrnikey::end_word(s, &r);
+    return r;
+}
+
+XKResult xk_state_flush(XKState* state) {
+    XKResult r{};
+    if (!state) return r;
+    xrnikey::end_word(reinterpret_cast<xrnikey::XKStateImpl*>(state), &r);
     return r;
 }
 

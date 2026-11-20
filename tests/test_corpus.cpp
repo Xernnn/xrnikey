@@ -216,12 +216,95 @@ TEST_CASE("corpus: modern tone style moves the tone in oa oe uy", "[corpus]") {
     });
 }
 
-TEST_CASE("corpus: Enter Tab and Escape end the word and reach the app", "[corpus][!mayfail]") {
+TEST_CASE("corpus: Enter Tab and Escape end the word and reach the app", "[corpus]") {
     run(XK_MODE_TELEX, {
         {"chaof\n", "chào\n"}, {"chaof\t", "chào\t"}, {"chaof\x1b", "chào"},
         {"xin chaof\nban", "xin chào\nban"}, {"\n", "\n"},
-        {"terms\n", "terms\n"},
+        {"terms\n", "terms\n"}, {"chaof\n<", "chào"},
     });
+}
+
+namespace {
+
+struct Pressed {
+    XKResult r;
+    std::string preedit;
+};
+
+Pressed press(XKState* s, uint32_t keysym, uint32_t mods = 0) {
+    Pressed p{xk_process_key(s, keysym, mods), {}};
+    char* pe = xk_state_get_preedit(s);
+    p.preedit = pe ? pe : "";
+    std::free(pe);
+    return p;
+}
+
+}  // namespace
+
+// Cursor and editing keys end the word and reach the app, so nothing stale
+// is left behind: "vie" Left "et" must not go on editing "vie".
+TEST_CASE("keys that are not text end the word and pass through", "[corpus]") {
+    const uint32_t keys[] = {0xFF51 /* Left */, 0xFF53 /* Right */, 0xFF52 /* Up */,
+                             0xFF54 /* Down */, 0xFF50 /* Home */, 0xFF57 /* End */,
+                             0xFF55 /* PageUp */, 0xFF56 /* PageDown */, 0xFFFF /* Delete */,
+                             0xFF09 /* Tab */, 0xFF1B /* Escape */, 0xFF0D /* Return */,
+                             0xFF8D /* KP_Enter */, 0xFFBE /* F1 */};
+    for (uint32_t key : keys) {
+        INFO("keysym " << std::hex << key);
+        for (int instant = 0; instant <= 1; ++instant) {
+            XKState* s = xk_state_new(XK_MODE_TELEX);
+            xk_state_set_instant_commit(s, instant);
+            press(s, 'v');
+            press(s, 'i');
+            press(s, 'e');
+            Pressed p = press(s, key);
+            CHECK(p.r.consumed == 0);
+            CHECK(p.preedit.empty());
+            CHECK(p.r.delete_before == 0);
+            CHECK(std::string(p.r.commit) == (instant ? "" : "vie"));
+            p = press(s, 'e');
+            CHECK(p.preedit == "e");
+            CHECK(p.r.delete_before == 0);
+            p = press(s, 't');
+            CHECK(p.preedit == "et");
+            CHECK(p.r.delete_before == 0);
+            xk_state_free(s);
+        }
+    }
+}
+
+TEST_CASE("modifier keys alone keep the word and chords end it", "[corpus]") {
+    XKState* s = xk_state_new(XK_MODE_TELEX);
+    press(s, 'v');
+    Pressed p = press(s, 0xFFE1 /* Shift_L */, 0);
+    CHECK(p.r.consumed == 0);
+    CHECK(p.preedit == "v");
+    p = press(s, 0xFFE3 /* Control_L */, 0);
+    CHECK(p.preedit == "v");
+    p = press(s, 'c', 0x04 /* Ctrl */);
+    CHECK(p.r.consumed == 0);
+    CHECK(std::string(p.r.commit) == "v");
+    CHECK(p.preedit.empty());
+    xk_state_free(s);
+}
+
+TEST_CASE("xk_state_flush finishes the word", "[corpus]") {
+    XKState* s = xk_state_new(XK_MODE_TELEX);
+    for (const char* k = "terms"; *k; ++k) press(s, static_cast<unsigned char>(*k));
+    XKResult r = xk_state_flush(s);
+    CHECK(r.consumed == 0);
+    CHECK(std::string(r.commit) == "terms");
+    r = xk_state_flush(s);
+    CHECK(std::string(r.commit).empty());
+    xk_state_free(s);
+
+    s = xk_state_new(XK_MODE_TELEX);
+    xk_state_set_instant_commit(s, 1);
+    for (const char* k = "terms"; *k; ++k) press(s, static_cast<unsigned char>(*k));
+    r = xk_state_flush(s);  // the document shows "tém"; restore it to "terms"
+    CHECK(r.delete_before == 2);
+    CHECK(std::string(r.commit) == "erms");
+    xk_state_free(s);
 }
 
 TEST_CASE("corpus: VNI does what Telex does", "[corpus][!mayfail]") {

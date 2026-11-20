@@ -66,8 +66,21 @@ void xk_state_set_instant_commit(XKState* state, int enabled);
 void xk_state_set_option(XKState* state, int option, int value);
 int  xk_state_get_option(XKState* state, int option);
 
-/* Key processing — keysym is XKB keysym, modifiers bitmask */
+/* Key processing — keysym is XKB keysym, modifiers bitmask.
+ *
+ * Apply every result, consumed or not: delete `delete_before` codepoints
+ * before the cursor, insert `commit`, and if `consumed` is 0 let the key
+ * through to the application. Keys that end a word but are not text --
+ * Return, Tab, Escape, arrows, Home/End, PageUp/PageDown, Delete, Ctrl/Alt
+ * chords -- finish the word (preedit mode: `commit` holds it) and come back
+ * with consumed = 0; they are never swallowed. A modifier key on its own
+ * changes nothing. BackSpace with no word in progress is not consumed. */
 XKResult xk_process_key(XKState* state, uint32_t keysym, uint32_t modifiers);
+
+/* Finish the word in progress as a word boundary would (auto-restore
+ * applied) and empty the state, for focus-out, reset and the like. The
+ * result is applied like xk_process_key's; consumed is 0. */
+XKResult xk_state_flush(XKState* state);
 
 /* Tone placement — returns newly allocated NFC string (caller frees) */
 char* xk_place_tone(const char* syllable, int tone);
