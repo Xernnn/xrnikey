@@ -348,3 +348,24 @@ TEST_CASE("syllables: stop codas take only sắc or nặng", "[corpus]") {
     CHECK(xk_is_valid_syllable("bàn") == 1);
     run(XK_MODE_TELEX, {{"xoot ", "xoot "}, {"tieep ", "tieep "}, {"tieeps ", "tiếp "}});
 }
+
+TEST_CASE("options: defaults, unknown options, and the word in progress", "[corpus]") {
+    XKState* s = xk_state_new(XK_MODE_TELEX);
+    CHECK(xk_state_get_option(s, XK_OPT_AUTO_RESTORE) == 1);
+    CHECK(xk_state_get_option(s, XK_OPT_MODERN_STYLE) == 0);
+    CHECK(xk_state_get_option(s, XK_OPT_FREE_MARKING) == 1);
+    CHECK(xk_state_get_option(s, XK_OPT_W_SHORTCUT) == 1);
+    CHECK(xk_state_get_option(s, 99) == -1);
+    xk_state_set_option(s, 99, 1);  // ignored
+    for (const char* k = "hoaf"; *k; ++k) xk_process_key(s, static_cast<unsigned char>(*k), 0);
+    xk_state_set_option(s, XK_OPT_MODERN_STYLE, 0);  // unchanged: word untouched
+    char* p = xk_state_get_preedit(s);
+    CHECK(std::string(p) == "hòa");
+    std::free(p);
+    xk_state_set_option(s, XK_OPT_MODERN_STYLE, 1);  // recomposed under the new style
+    p = xk_state_get_preedit(s);
+    CHECK(std::string(p) == "hoà");
+    std::free(p);
+    CHECK(xk_state_get_option(s, XK_OPT_MODERN_STYLE) == 1);
+    xk_state_free(s);
+}

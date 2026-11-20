@@ -127,6 +127,8 @@ void xk_state_set_instant_commit(XKState* state, int enabled) {
 void xk_state_set_option(XKState* state, int option, int value) {
     if (!state) return;
     auto* s = reinterpret_cast<xrnikey::XKStateImpl*>(state);
+    int current = xk_state_get_option(state, option);
+    if (current < 0 || current == (value != 0)) return;  /* unknown, or no change */
     switch (option) {
         case XK_OPT_AUTO_RESTORE: s->opt.auto_restore = value != 0; break;
         case XK_OPT_MODERN_STYLE: s->opt.modern_style = value != 0; break;
