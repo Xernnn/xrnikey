@@ -39,6 +39,10 @@ std::string lastChars(const std::string &s, size_t n) {
     if (len <= n) return s;
     return s.substr(utf8::ncharByteLength(s.begin(), len - n));
 }
+std::string firstChars(const std::string &s, size_t n) {
+    return s.substr(0, utf8::ncharByteLength(s.begin(),
+                                             std::min(n, utf8::length(s))));
+}
 std::string dropLastChars(const std::string &s, size_t n) {
     size_t len = utf8::length(s);
     if (n >= len) return {};
@@ -90,12 +94,19 @@ public:
             stale_ = false;
             diverged_ = true;
             selection_ = false;
+            after_.clear();
             return;
         }
         const auto &text = surrounding.text();
-        std::string before = text.substr(
-            0, utf8::ncharByteLength(text.begin(), surrounding.cursor()));
+        size_t cursorBytes =
+            utf8::ncharByteLength(text.begin(), surrounding.cursor());
+        std::string before = text.substr(0, cursorBytes);
         State now{lastChars(before, kTail), utf8::length(before) <= kTail};
+        /* This engine only ever edits before the cursor, so what follows
+         * it stays as the app last reported it. */
+        std::string rest = text.substr(cursorBytes);
+        after_ = firstChars(rest, kTail);
+        afterComplete_ = utf8::length(rest) <= kTail;
         selection_ = surrounding.anchor() != surrounding.cursor();
         if (!selection_) {
             /* The earliest match: the same text can recur ("ti", "tie",
@@ -134,6 +145,45 @@ public:
         if (states_.size() > 32) states_.pop_front();
     }
 
+    /* Preedit mode: where a word started -- the text this engine expects
+     * around the cursor then -- to compare later reports with. */
+    struct Mark {
+        bool valid = false;
+        std::string before, after; /* up to kTail characters each side */
+        bool beforeComplete = false, afterComplete = false;
+    };
+    Mark mark() const {
+        if (!known()) return {};
+        return {true, states_.back().tail, after_, states_.back().complete,
+                afterComplete_};
+    }
+
+    /* Whether `surrounding` has `word` as text exactly where `at` was --
+     * the text that was before the cursor, the word, the text that was
+     * after it -- with the cursor somewhere else. A cursor right after the
+     * word is not taken as a move: an app that (against the text-input
+     * protocol) reports its preedit as part of its text looks just like
+     * that while the word is being typed. */
+    static bool holdsWordAt(const Mark &at, const SurroundingText &surrounding,
+                            const std::string &word) {
+        if (!at.valid || word.empty() || !surrounding.isValid()) return false;
+        const auto &text = surrounding.text();
+        std::string before = text.substr(
+            0, utf8::ncharByteLength(text.begin(), surrounding.cursor()));
+        const std::string upToWord = at.before + word;
+        const std::string placed = upToWord + at.after;
+        size_t pos;
+        if (at.beforeComplete) {
+            pos = text.compare(0, placed.size(), placed) == 0 ? 0
+                                                              : std::string::npos;
+        } else {
+            pos = text.find(placed);
+        }
+        if (pos == std::string::npos) return false;
+        if (at.afterComplete && pos + placed.size() != text.size()) return false;
+        return before.size() != pos + upToWord.size();
+    }
+
 private:
     struct State {
         std::string tail;
@@ -148,6 +198,8 @@ private:
     /* From the last state the app confirmed (front) to the state once every
      * edit sent so far is applied (back). */
     std::deque<State> states_;
+    std::string after_; /* after the cursor in the last report */
+    bool afterComplete_ = false;
     bool stale_ = false;
     bool diverged_ = false;
     bool selection_ = false;
@@ -178,6 +230,7 @@ public:
     void reset() {
         if (state_) xk_state_reset(state_);
         composing_ = false;
+        shown_.clear();
     }
 
     /* Whether this input context has EVER handed us valid surrounding text.
@@ -194,7 +247,20 @@ public:
     void startWord(bool instant) {
         instantForWord_ = instant;
         inField_.clear();
+        wordMark_ = instant ? ClientText::Mark{} : client_.mark();
+        shown_.clear();
         client_.startWord();
+    }
+
+    /* Preedit mode: where the word started, and every preedit shown for
+     * it with the core's keys at the time. */
+    struct Shown {
+        std::string keys, preedit;
+    };
+    const ClientText::Mark &wordMark() const { return wordMark_; }
+    const std::vector<Shown> &shown() const { return shown_; }
+    void noteShown(std::string keys, std::string preedit) {
+        shown_.push_back({std::move(keys), std::move(preedit)});
     }
 
     ClientText &client() { return client_; }
@@ -222,6 +288,8 @@ private:
     bool composing_ = false;
     bool instantForWord_ = false;
     ClientText client_;
+    ClientText::Mark wordMark_;
+    std::vector<Shown> shown_;
     std::string inField_;
     std::vector<std::string> history_;
     std::string lastPreedit_;
@@ -263,6 +331,9 @@ public:
                 auto *icState = ic->propertyFor(&factory_);
                 icState->noteSurrounding(ic->surroundingText().isValid());
                 icState->client().report(ic->surroundingText());
+                if (icState->composing() && !icState->instantForWord()) {
+                    takeWordCommittedByApp(ic, icState);
+                }
             });
         reloadConfig();
     }
@@ -494,6 +565,9 @@ public:
             }
 
             showPreedit(ic, result.preedit);
+            if (result.preedit[0]) {
+                icState->noteShown(coreKeys(state), result.preedit);
+            }
         }
 
         /* Update candidates if prediction enabled */
@@ -552,6 +626,50 @@ public:
         std::string keys = typed ? typed : "";
         std::free(typed);
         return keys;
+    }
+
+    /* Preedit mode, and the app reported its text. Fcitx5's Wayland
+     * frontend sends no Reset when the user clicks elsewhere in a
+     * text-input-v3 app; there is only this report. Chromium and Firefox
+     * commit their preedit themselves at the click, so the report has the
+     * word as text where it was typed, and the word is the app's now:
+     * committing it again would type it twice, and going on composing put
+     * the next key on it ("ab chaof", a click at the start and "s " gave
+     * "cháo ab chào"). So forget it. The report can come a key or two late,
+     * after the app committed an earlier preedit of the word; the keys
+     * typed since then start the next word. An app that moves the preedit
+     * along with the cursor (GTK) or drops it (Qt) leaves no such trace,
+     * and the word goes on as before. */
+    void takeWordCommittedByApp(InputContext *ic, XrnikeyState *icState) {
+        const auto &shown = icState->shown();
+        for (size_t k = shown.size(); k-- > 0;) {
+            if (!ClientText::holdsWordAt(icState->wordMark(),
+                                         ic->surroundingText(),
+                                         shown[k].preedit)) {
+                continue;
+            }
+            const std::string done = shown[k].keys;
+            std::string keys = coreKeys(icState->state());
+            std::string later;
+            if (keys.compare(0, done.size(), done) == 0) {
+                later = keys.substr(done.size());
+            }
+            clearWord(ic, icState);
+            if (later.empty()) return;
+            XKState *state = icState->state();
+            icState->startWord(false);
+            xk_state_set_instant_commit(state, 0);
+            XKResult r{};
+            for (char c : later) {
+                r = xk_process_key(state, static_cast<unsigned char>(c), 0);
+                if (r.commit[0]) commitText(ic, icState, r.commit);
+                if (r.preedit[0]) icState->noteShown(coreKeys(state), r.preedit);
+            }
+            showPreedit(ic, r.preedit);
+            icState->setLastPreedit(r.preedit);
+            icState->setComposing(r.preedit[0] != '\0');
+            return;
+        }
     }
 
     /* The typing options are read per key, so a settings change applies to

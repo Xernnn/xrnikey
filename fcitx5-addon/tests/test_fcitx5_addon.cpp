@@ -83,6 +83,16 @@ public:
         /* Surrounding-text reports reach the engine this many key presses
          * late (0: the client answers before the next key). */
         int lag = 0;
+        /* Wayland: a click elsewhere commits the inline preedit where it
+         * is (Chromium, Firefox), instead of leaving it to be drawn at the
+         * new cursor (GTK). */
+        bool clickCommits = false;
+        /* Wayland: the click reaches the engine only after the next key
+         * (GTK's text-input-v3 module sends the new state along with the
+         * next change the input method makes). */
+        bool clickReportsLate = false;
+        /* Reports the preedit as part of its text, against the protocol. */
+        bool reportsPreedit = false;
     };
 
     explicit FakeClient(Options options)
@@ -164,10 +174,18 @@ public:
                 commitOwnPreedit();
             }
             reset();
+        } else if (options_.clickCommits) {
+            commitOwnPreedit();
         }
         cursor_ = anchor_ = pos;
         report();
-        deliver(true);
+        if (options_.clickReportsLate) {
+            for (auto &r : pending_) {
+                r.keyIndex = keyCount_ + 1;
+            }
+        } else {
+            deliver(true);
+        }
     }
 
     /* The app changes its own text (autocomplete, a chat box clearing). */
@@ -217,6 +235,9 @@ public:
 
 protected:
     void commitStringImpl(const std::string &s) override {
+        if (options_.reportsPreedit) {
+            preedit_.clear(); /* the commit takes the preedit's place */
+        }
         eraseSelection();
         text_.insert(byteOffset(text_, cursor_), s);
         cursor_ += utf8::length(s);
@@ -254,6 +275,9 @@ protected:
 
     void updatePreeditImpl() override {
         preedit_ = inputPanel().clientPreedit().toString();
+        if (options_.reportsPreedit) {
+            report();
+        }
     }
 
 private:
@@ -398,6 +422,13 @@ private:
     /* Queue a surrounding-text report of the current state. */
     void report() {
         if (!options_.surrounding) {
+            return;
+        }
+        if (options_.reportsPreedit && !preedit_.empty()) {
+            std::string t = text_;
+            t.insert(byteOffset(t, cursor_), preedit_);
+            size_t end = cursor_ + utf8::length(preedit_);
+            pending_.push_back({keyCount_, t, end, end});
             return;
         }
         pending_.push_back({keyCount_, text_, cursor_, anchor_});
@@ -619,6 +650,58 @@ TEST_CASE("focus moving away mid-word keeps the word exactly once",
         CHECK(c.preedit().empty());
         c.type("s ");
         CHECK(c.text() == "chàos ");
+    }
+}
+
+TEST_CASE("a click in a Wayland app that commits its preedit ends the word",
+          "[leave]") {
+    /* Chromium and Firefox commit the preedit themselves where it is when
+     * the user clicks elsewhere, and the Wayland frontend sends no Reset:
+     * the engine sees only the app's new text and cursor. Going on with
+     * the word typed it twice ("cháo ab chào"). */
+    for (bool late : {false, true}) {
+        INFO("the click is reported a key late: " << late);
+        configure({{"InstantCommit", "False"}});
+        auto o = waylandApp();
+        o.clickCommits = true;
+        o.clickReportsLate = late;
+        {
+            FakeClient c(o);
+            c.type("ab chaof");
+            c.click(0);
+            c.type("s ");
+            CHECK(c.text() == "s ab chào");
+            CHECK(c.preedit().empty());
+        }
+        {
+            FakeClient c(o);
+            c.type("ab chaof");
+            c.click(0);
+            c.type("xin ");
+            CHECK(c.text() == "xin ab chào");
+        }
+        {
+            FakeClient c(o);
+            c.type("chaof ban");
+            c.click(5);
+            c.type("ddi ");
+            CHECK(c.text() == "chào đi ban");
+        }
+    }
+}
+
+TEST_CASE("an app that reports its preedit as text still gets whole words",
+          "[leave]") {
+    configure({{"InstantCommit", "False"}});
+    auto o = waylandApp();
+    o.reportsPreedit = true;
+    for (int lag : {0, 1}) {
+        INFO("lag=" << lag);
+        o.lag = lag;
+        FakeClient c(o);
+        c.type("xin chaof banj ");
+        c.flush();
+        CHECK(c.text() == "xin chào bạn ");
     }
 }
 

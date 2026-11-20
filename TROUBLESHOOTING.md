@@ -209,6 +209,27 @@ sudo pacman -S fcitx5 fcitx5-qt fcitx5-gtk extra-cmake-modules
 cmake -B build -DXRNIKEY_BUILD_FCITX5=OFF
 ```
 
+## 20. Clicking elsewhere while a word is underlined (Wayland)
+
+With the preedit (the default), the word being typed is underlined in the app until it ends. In
+apps that use Fcitx5's GTK or Qt module (`QT_IM_MODULE=fcitx`, X11 `GTK_IM_MODULE=fcitx`) a click
+elsewhere ends it: the app keeps the word where it was and tells Fcitx5. A native Wayland app
+(text-input-v3) tells Fcitx5 nothing about the click, only, at some point, its new text and
+cursor, and what happens to the word depends on the app (as their source code reads; not yet
+checked in each):
+
+- **Chromium, Electron (with `--enable-wayland-ime`), Firefox** keep the word where it was. Xrnikey
+  sees it in the app's text and starts the next word at the new cursor. A click right at the end
+  of the word cannot be told apart from typing on, so there the word goes on (and can end up
+  twice).
+- **GTK** apps draw the underlined word at the new cursor and report the move only with the next
+  key; the word goes on there.
+- **Qt** apps without `QT_IM_MODULE=fcitx` drop the underlined word; it comes back at the new
+  cursor with the next key.
+
+To avoid the last two, end the word (Space, punctuation, an arrow key) before clicking, or use
+`InstantCommit=True` (§8), where the word is in the field all along.
+
 ## Getting Help
 
 Run the diagnostic tool for an automated report:

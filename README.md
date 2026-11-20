@@ -107,7 +107,8 @@ bamboo ''`). Ctrl+Space toggles between the keyboard layout and the input method
 | Ctrl+Space (Fcitx5's trigger key) | Vietnamese on/off |
 
 A click elsewhere, focus moving to another window, or switching input method keeps the word that
-was being typed. Password and other sensitive fields get every key as typed.
+was being typed (on Wayland, a click in a GTK or Qt app is the exception: TROUBLESHOOTING.md §20).
+Password and other sensitive fields get every key as typed.
 
 ## Options
 
