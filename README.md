@@ -20,7 +20,8 @@ mode that types each word straight into the field, without an underlined preedit
   not a Vietnamese syllable (`terms`, not `tém`), is left as typed
 - **Abbreviations** — `ko` + Space → `không`, from your own list (`xk-macro`)
 - **Word suggestions (opt-in)** — dictionary completion ranked by an n-gram model, plus a user
-  dictionary; picked with Ctrl+1–9 so digits always stay text
+  dictionary; picked with Ctrl+1–9 so digits always stay text. The bundled data is small: a seed
+  list of about 800 words and a sample n-gram model
 - **Fcitx5 on Wayland and X11** — input-method-v2 (Hyprland, Sway), the GTK/Qt modules, and XIM
 
 ## Download
@@ -53,8 +54,10 @@ cd packaging && makepkg -si
 ```
 
 Tests: configure with `-DXRNIKEY_ENABLE_TESTS=ON` (needs `catch2`), then `ctest --test-dir build`.
-They include the addon running in an in-process Fcitx5 and in the real `fcitx5` binary on a private
-D-Bus; neither touches a running Fcitx5 or its config.
+They cover the core, the CLI tools, and the addon running in an in-process Fcitx5 and in the real
+`fcitx5` binary on a private D-Bus (that one needs `dbus` and `python-gobject`, and is skipped
+without them); neither touches a running Fcitx5 or its config. CI runs the same build and tests
+on Ubuntu.
 
 Then restart Fcitx5 (`fcitx5 -r -d`) so it finds the new addon, add Xrnikey to its input methods
 (next section), and check the environment with `xk-setup` (it reports, and asks before changing
@@ -96,6 +99,10 @@ bamboo ''`). Ctrl+Space toggles between the keyboard layout and the input method
 | VNI | `0` | removes the tone |
 
 `xin chaof` → `xin chào`, `tieengs vieetj` → `tiếng việt`.
+
+An English word whose keys also spell an everyday Vietnamese syllable stays Vietnamese: `list` →
+`lít`, `turn` → `tủn`, `cups` → `cúp` (the word lists and their sources are in
+[`core/data/README.md`](core/data/README.md)).
 
 | Key | What it does |
 |-----|--------------|
@@ -182,9 +189,14 @@ xrnikey/
 ├── cli-tools/      xk-setup, xk-diagnose, xk-dict, xk-macro
 ├── data/           dictionary, n-gram and emoji data, icon
 ├── tests/          Catch2 tests of the core
-└── packaging/      PKGBUILD and INSTALL.sh
+└── packaging/      PKGBUILD (and INSTALL.sh, an older installer for other distros, not kept up to date)
 ```
+
+How a key travels from the app to the engine and back: [ARCHITECTURE.md](ARCHITECTURE.md). When
+something doesn't type: [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE). The word lists compiled into the engine come from SCOWL, Unicode's
+Unihan database, Mozilla Common Voice, Vietnamese Wikisource and Tatoeba, under their own terms;
+[`core/data/README.md`](core/data/README.md) has the sources and the notices they ask for.
