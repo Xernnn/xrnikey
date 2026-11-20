@@ -168,14 +168,23 @@ std::string word_final(const Word& w, const Options& o) {
     if (!o.auto_restore) return v;
     /* Two readings of the keys as plain text: with keys a repeat undid left
      * out ("ass" -> "as", "pass" -> "pas"), and exactly as typed ("pass").
-     * The first is what doubling a key means in Telex; the second is the
-     * English word when only it is one. */
+     * When both are English, the keys as typed win -- a repeated key in
+     * the middle of a word ("losses", "basses") or one far from the key it
+     * undid ("marker", "casts", "doses") is the English spelling, and the
+     * shorter reading used to turn them into "loses", "maker", "cats" --
+     * unless the word ends with a key typed again right after itself to
+     * take its effect back: that is how Telex types "as" ("ass") and "of"
+     * ("off"). */
     std::string eff = word_raw_effective(w);
     std::string raw = word_raw(w);
     if (v == eff && v == raw) return v;  /* nothing was transformed */
+    const size_t n = w.keys.size();
+    const bool undone_at_end = n >= 2 && w.recs[n - 1].undoes == static_cast<int>(n) - 2;
     auto english = [&]() -> const std::string* {
-        if (lexicon_is_english(eff)) return &eff;
-        if (lexicon_is_english(raw)) return &raw;
+        const std::string* first = undone_at_end ? &eff : &raw;
+        const std::string* second = undone_at_end ? &raw : &eff;
+        if (lexicon_is_english(*first)) return first;
+        if (lexicon_is_english(*second)) return second;
         return nullptr;
     };
 

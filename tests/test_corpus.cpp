@@ -160,6 +160,20 @@ TEST_CASE("corpus: everyday syllables are not taken for English", "[corpus]") {
     });
 }
 
+// A key typed again takes its effect back, so "losses" also reads as
+// "loses". When the keys as typed are an English word, they win -- unless
+// the word ends with a key doubled to take it back, the Telex way to type
+// "as" ("ass") and "of" ("off").
+TEST_CASE("corpus: an English word with a repeated key stays that word", "[corpus]") {
+    run(XK_MODE_TELEX, {
+        {"marker ", "marker "}, {"markers ", "markers "}, {"larger ", "larger "},
+        {"casts ", "casts "}, {"nests ", "nests "}, {"losses ", "losses "},
+        {"doses ", "doses "}, {"basses ", "basses "},
+        {"pass ", "pass "}, {"miss ", "miss "}, {"sorry ", "sorry "}, {"coffee ", "coffee "},
+        {"ass ", "as "}, {"off ", "of "}, {"catss ", "cats "}, {"maker ", "maker "},
+    });
+}
+
 TEST_CASE("corpus: BackSpace deletes one character", "[corpus]") {
     run(XK_MODE_TELEX, {
         {"toans<", "t\xC3\xB3" "a"},  // tóa: the tone stays, re-placed for "toa"
