@@ -1,160 +1,271 @@
 #include "xrnikey_internal.h"
 #include <unordered_set>
 #include <string>
+#include <vector>
 
 namespace xrnikey {
 
-static const char* ONSETS[] = {
-    "", "b", "c", "ch", "d", "đ", "g", "gh", "gi", "h", "k", "kh", "l",
-    "m", "n", "ng", "ngh", "nh", "p", "ph", "qu", "r", "s", "t", "th",
-    "tr", "v", "x"
+/* A Vietnamese syllable is onset + rime + tone. The tables below are the
+ * spelling rules of modern quốc ngữ; every valid toneless syllable is built
+ * from them once, and a trie over those syllables answers both "is this a
+ * syllable" and "can this still become one" (the question asked on every
+ * keystroke). The old check accepted ANY run of one to three vowels as a
+ * nucleus, so "ue", "ou" or "oe" after any consonant passed, and nothing knew
+ * that a stop coda (c ch p t) only takes the sắc or nặng tone -- which is how
+ * "user" became "ủe" and "text" became "tẽt". */
+
+static const char* const ONSETS[] = {
+    "", "b", "c", "ch", "d", "đ", "g", "gh", "gi", "h", "k", "kh", "l", "m",
+    "n", "ng", "ngh", "nh", "p", "ph", "qu", "r", "s", "t", "th", "tr", "v", "x",
 };
 
-static const char* CODAS[] = {
-    "", "c", "ch", "m", "n", "ng", "nh", "p", "t"
+/* Every rime (vowels plus final consonant). Rimes that begin with the glide
+ * o/u ("medial") are listed after the others. */
+static const char* const RIMES[] = {
+    "a", "ac", "ach", "ai", "am", "an", "ang", "anh", "ao", "ap", "at", "au", "ay",
+    "ăc", "ăm", "ăn", "ăng", "ăp", "ăt",
+    "âc", "âm", "ân", "âng", "âp", "ât", "âu", "ây",
+    "e", "ec", "em", "en", "eng", "eo", "ep", "et",
+    "ê", "êch", "êm", "ên", "ênh", "êp", "êt", "êu",
+    "i", "ia", "ich", "im", "in", "inh", "ip", "it", "iu",
+    "iêc", "iêm", "iên", "iêng", "iêp", "iêt", "iêu",
+    "y", "yêm", "yên", "yêng", "yêt", "yêu",
+    "ych", "ynh", "yt",  /* only after qu: quých, quỳnh, quýt */
+    "o", "oc", "oi", "om", "on", "ong", "op", "ot",
+    "ô", "ôc", "ôi", "ôm", "ôn", "ông", "ôp", "ôt",
+    "ơ", "ơi", "ơm", "ơn", "ơp", "ơt",
+    "u", "ua", "uc", "ui", "um", "un", "ung", "up", "ut",
+    "uôc", "uôi", "uôm", "uôn", "uông", "uôt",
+    "ư", "ưa", "ưc", "ưi", "ưm", "ưng", "ưt", "ưu",
+    "ươ", "ươc", "ươi", "ươm", "ươn", "ương", "ươp", "ươt", "ươu",
+    /* medial o / u */
+    "oa", "oac", "oach", "oai", "oam", "oan", "oang", "oanh", "oap", "oat", "oay",
+    "oăc", "oăm", "oăn", "oăng", "oăt",
+    "oe", "oen", "oeo", "oet",
+    "ooc", "oong",
+    "uân", "uâng", "uât", "uây",
+    "uê", "uêch", "uênh",
+    "uơ",
+    "uy", "uya", "uych", "uyên", "uyêt", "uynh", "uyt", "uyu",
 };
 
-static bool starts_with(const std::string& s, const char* prefix) {
-    return s.compare(0, std::strlen(prefix), prefix) == 0;
-}
-
-static bool match_syllable_structure(const std::string& word) {
-    std::string w = word;
-    for (char& c : w) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-
-    for (const char* onset : ONSETS) {
-        if (!starts_with(w, onset)) continue;
-        std::string rest = w.substr(std::strlen(onset));
-
-        /* The nucleus is the maximal leading run of vowel glyphs (1-3
-         * vowels; toned or not) — every syllable coda is a pure consonant,
-         * so there's no ambiguity to backtrack over, unlike a fixed nucleus
-         * table (which would need every combination enumerated, including
-         * "ươ"-family and triphthongs like "iêu" — easy to miss some). */
-        size_t vowel_bytes = 0;
-        int vowel_count = 0;
-        while (vowel_count < 3) {
-            int len = 0;
-            if (!is_vietnamese_vowel_glyph(rest, vowel_bytes, &len)) break;
-            vowel_bytes += static_cast<size_t>(len);
-            vowel_count++;
-        }
-        if (vowel_count == 0) continue;
-
-        std::string tail = rest.substr(vowel_bytes);
-        for (const char* coda : CODAS) {
-            if (tail == coda) return true;
-        }
+std::string utf8_of(const std::u32string& s) {
+    std::string out;
+    char buf[8];
+    for (char32_t c : s) {
+        int n = utf8_encode(static_cast<uint32_t>(c), buf);
+        out.append(buf, static_cast<size_t>(n));
     }
-    return false;
+    return out;
 }
 
-/* True while `word` could still GROW INTO a valid Vietnamese syllable.
- *
- * is_valid_vn_syllable() only accepts finished syllables, so it cannot be
- * consulted while a word is being typed. This one accepts partial input and
- * rejects only what no amount of further typing could rescue: an onset
- * Vietnamese does not have ("w", "sh", "st", "br"), a fourth nucleus vowel,
- * or a coda it does not have ("hel", "hold"). That is enough to tell an
- * English word from a Vietnamese one within the first few keystrokes, which
- * is what stops "word" from becoming "wỏd" when the 'r' arrives. */
-bool can_begin_vn_syllable(const std::string& word) {
-    if (word.empty()) return true;
-
-    /* Lowercase UTF-8-aware. A byte-wise tolower() would leave "Đ" (U+0110)
-     * alone, so it never matched the "đ" in ONSETS and every capitalised
-     * Vietnamese word starting with Đ was classed as English -- "DDaf" came
-     * out "Đaf" because the tone key was then treated as a literal. */
-    std::string w;
-    w.reserve(word.size());
-    for (size_t i = 0; i < word.size(); ) {
+static std::u32string u32_of(const char* s) {
+    std::u32string out;
+    for (size_t i = 0; s[i];) {
         uint32_t cp = 0;
         int len = 1;
-        if (utf8_decode(word.c_str() + i, &cp, &len) != 0 || len <= 0) {
-            cp = static_cast<unsigned char>(word[i]);
-            len = 1;
-        }
-        if (cp < 0x80) {
-            cp = static_cast<uint32_t>(
-                std::tolower(static_cast<unsigned char>(cp)));
-        } else {
-            /* Explicit table, NOT an arithmetic rule: the uppercase form is
-             * the even codepoint for Ơ (U+01A0/U+01A1) but the ODD one for
-             * Ư (U+01AF/U+01B0), so "+1 if even" silently corrupts ư into a
-             * non-letter and every ươ word stops composing. */
-            switch (cp) {
-                case 0x00C2: cp = 0x00E2; break;  /* Â */
-                case 0x00CA: cp = 0x00EA; break;  /* Ê */
-                case 0x00D4: cp = 0x00F4; break;  /* Ô */
-                case 0x0102: cp = 0x0103; break;  /* Ă */
-                case 0x0110: cp = 0x0111; break;  /* Đ */
-                case 0x01A0: cp = 0x01A1; break;  /* Ơ */
-                case 0x01AF: cp = 0x01B0; break;  /* Ư */
-                default: break;
+        utf8_decode(s + i, &cp, &len);
+        out.push_back(static_cast<char32_t>(cp));
+        i += static_cast<size_t>(len);
+    }
+    return out;
+}
+
+static bool starts_with(const std::u32string& s, const char* prefix) {
+    std::u32string p = u32_of(prefix);
+    return s.compare(0, p.size(), p) == 0;
+}
+
+static bool is_medial_rime(const std::u32string& r) {
+    if (r.size() < 2) return false;
+    if (r[0] == U'o') return r[1] == U'a' || r[1] == U'ă' || r[1] == U'e' || r[1] == U'o';
+    if (r[0] == U'u') return r[1] == U'â' || r[1] == U'ê' || r[1] == U'y' || r[1] == U'ơ';
+    return false;
+}
+
+/* The spelling rules that tie an onset to the rime after it. */
+static bool onset_takes(const std::string& on, const std::u32string& r) {
+    const char32_t v = r[0];
+    const bool front = v == U'e' || v == U'ê' || v == U'i' || v == U'y';
+    const bool medial = is_medial_rime(r);
+    if (starts_with(r, "yê")) return on.empty() || on == "qu";  /* yên, quyết */
+    /* The u of qu is the glide of uynh, uyt, uych, so quỳnh, quýt and quých
+     * are qu + ynh, yt, ych; no other onset takes those rimes (huỳnh is
+     * h + uynh, and there is no *kỳnh). */
+    if (v == U'y' && r.size() > 1) return on == "qu";
+    if (starts_with(r, "iê") && on.empty()) return false;       /* spelled yê */
+    if (starts_with(r, "uơ")) return on == "h" || on == "kh" || on == "th";  /* huơ, thuở */
+    if (r == U"ươ") return on.empty();
+    if (on == "c") return !front && !medial;                     /* ke, ki, quy */
+    if (on == "k") return front;
+    if (on == "gh" || on == "ngh") return v == U'e' || v == U'ê' || v == U'i';
+    if (on == "g") return v != U'e' && v != U'ê';                /* gi- merges: gì, gìn */
+    if (on == "ng") return !front || v == U'y';
+    if (on == "qu") {
+        return !medial && v != U'u' && v != U'ư' && v != U'o';   /* qua, quê, quốc, quơ */
+    }
+    if (on == "gi") return v != U'i' && v != U'y' && !medial;
+    return true;
+}
+
+static bool is_stop_end(const std::u32string& s) {
+    if (s.empty()) return false;
+    char32_t c = s.back();
+    return c == U'c' || c == U'p' || c == U't' ||
+           (c == U'h' && s.size() >= 2 && s[s.size() - 2] == U'c');
+}
+
+namespace {
+
+struct Node {
+    std::vector<std::pair<char32_t, int>> next;
+    bool terminal = false;
+    bool reach_open = false;  /* some syllable through here ends without a stop */
+};
+
+struct Syllables {
+    std::unordered_set<std::u32string> all;
+    std::vector<Node> trie;
+
+    Syllables() {
+        trie.emplace_back();
+        for (const char* o : ONSETS) {
+            for (const char* rm : RIMES) {
+                std::u32string r = u32_of(rm);
+                if (!onset_takes(o, r)) continue;
+                std::u32string s = u32_of(o) + r;
+                if (all.insert(s).second) add(s);
             }
         }
-        char enc[8];
-        int n = utf8_encode(cp, enc);
-        w.append(enc, static_cast<size_t>(n > 0 ? n : 0));
-        i += static_cast<size_t>(len);
     }
 
-    /* Onset: the leading run of non-vowel glyphs. */
-    size_t i = 0;
-    while (i < w.size()) {
-        int len = 0;
-        if (is_vietnamese_vowel_glyph(w, i, &len)) break;
-        uint32_t cp = 0;
-        int clen = 1;
-        if (utf8_decode(w.c_str() + i, &cp, &clen) != 0 || clen <= 0) clen = 1;
-        i += static_cast<size_t>(clen);
+    int child(int n, char32_t c) const {
+        for (const auto& e : trie[static_cast<size_t>(n)].next)
+            if (e.first == c) return e.second;
+        return -1;
     }
 
-    std::string onset = w.substr(0, i);
-    bool onset_ok = false;
-    for (const char* o : ONSETS) {
-        std::string os(o);
-        if (os.size() >= onset.size() &&
-            os.compare(0, onset.size(), onset) == 0) {
-            onset_ok = true;
-            break;
+    void add(const std::u32string& s) {
+        bool open = !is_stop_end(s);
+        int n = 0;
+        if (open) trie[0].reach_open = true;
+        for (char32_t c : s) {
+            int k = child(n, c);
+            if (k < 0) {
+                k = static_cast<int>(trie.size());
+                trie[static_cast<size_t>(n)].next.push_back({c, k});
+                trie.emplace_back();
+            }
+            n = k;
+            if (open) trie[static_cast<size_t>(n)].reach_open = true;
         }
+        trie[static_cast<size_t>(n)].terminal = true;
     }
-    if (!onset_ok) return false;
-    if (i >= w.size()) return true;
+};
 
-    /* Nucleus: up to three vowel glyphs. */
-    int vowel_count = 0;
-    while (vowel_count < 3) {
-        int len = 0;
-        if (!is_vietnamese_vowel_glyph(w, i, &len)) break;
-        i += static_cast<size_t>(len);
-        vowel_count++;
+const Syllables& syllables() {
+    static const Syllables s;
+    return s;
+}
+
+/* Letters a later key can still mark: a -> â ă, e -> ê, o -> ô ơ, u -> ư, d -> đ. */
+bool markable_to(char32_t typed, char32_t target) {
+    switch (typed) {
+        case U'a': return target == U'â' || target == U'ă';
+        case U'e': return target == U'ê';
+        case U'o': return target == U'ô' || target == U'ơ';
+        case U'u': return target == U'ư';
+        case U'd': return target == U'đ';
+        default: return false;
     }
-    if (vowel_count == 0) return false;
-    if (i >= w.size()) return true;
+}
 
-    /* A fourth vowel cannot belong to any Vietnamese nucleus. */
-    {
-        int len = 0;
-        if (is_vietnamese_vowel_glyph(w, i, &len)) return false;
+bool prefix_walk(const Syllables& sy, int n, const std::u32string& w, size_t i, bool need_open) {
+    if (i == w.size()) {
+        return need_open ? sy.trie[static_cast<size_t>(n)].reach_open : true;
     }
-
-    /* Coda: must be a prefix of one of the real codas. */
-    std::string coda = w.substr(i);
-    for (const char* cd : CODAS) {
-        std::string cs(cd);
-        if (cs.size() >= coda.size() &&
-            cs.compare(0, coda.size(), coda) == 0) {
-            return true;
+    for (const auto& e : sy.trie[static_cast<size_t>(n)].next) {
+        if (e.first == w[i] || markable_to(w[i], e.first)) {
+            if (prefix_walk(sy, e.second, w, i + 1, need_open)) return true;
         }
     }
     return false;
+}
+
+bool tone_needs_open(int tone) {
+    return tone == XK_TONE_HUYEN || tone == XK_TONE_HOI || tone == XK_TONE_NGA;
+}
+
+}  // namespace
+
+/* A finished syllable that ends in a stop (c ch p t) carries sắc or nặng;
+ * no tone at all is as impossible there as huyền ("bat", "bàt"). While the
+ * word is still being typed the tone can come later, so the prefix check
+ * only rules out huyền, hỏi and ngã. */
+bool syllable_valid(const std::u32string& letters, int tone) {
+    if (!syllables().all.count(letters)) return false;
+    return !is_stop_end(letters) || tone == XK_TONE_SAC || tone == XK_TONE_NANG;
+}
+
+bool syllable_prefix_ok(const std::u32string& letters, int tone) {
+    return prefix_walk(syllables(), 0, letters, 0, tone_needs_open(tone));
+}
+
+/* Lowercase form and tone of one Vietnamese letter; false if `cp` is not one. */
+static bool split_letter(uint32_t cp, char32_t* letter, int* tone) {
+    static const struct { const char* row; char32_t base; } ROWS[] = {
+        /* plain, sắc, huyền, hỏi, ngã, nặng; lowercase then uppercase */
+        {"aáàảãạAÁÀẢÃẠ", U'a'}, {"ăắằẳẵặĂẮẰẲẴẶ", U'ă'}, {"âấầẩẫậÂẤẦẨẪẬ", U'â'},
+        {"eéèẻẽẹEÉÈẺẼẸ", U'e'}, {"êếềểễệÊẾỀỂỄỆ", U'ê'}, {"iíìỉĩịIÍÌỈĨỊ", U'i'},
+        {"oóòỏõọOÓÒỎÕỌ", U'o'}, {"ôốồổỗộÔỐỒỔỖỘ", U'ô'}, {"ơớờởỡợƠỚỜỞỠỢ", U'ơ'},
+        {"uúùủũụUÚÙỦŨỤ", U'u'}, {"ưứừửữựƯỨỪỬỮỰ", U'ư'}, {"yýỳỷỹỵYÝỲỶỸỴ", U'y'},
+    };
+    static const int TONE_OF[6] = {XK_TONE_NONE, XK_TONE_SAC, XK_TONE_HUYEN,
+                                   XK_TONE_HOI, XK_TONE_NGA, XK_TONE_NANG};
+    for (const auto& r : ROWS) {
+        std::u32string row = u32_of(r.row);
+        for (size_t k = 0; k < row.size(); ++k) {
+            if (row[k] == cp) {
+                *letter = r.base;
+                *tone = TONE_OF[k % 6];
+                return true;
+            }
+        }
+    }
+    if (cp == 0x0111 || cp == 0x0110) { *letter = U'đ'; *tone = XK_TONE_NONE; return true; }
+    if ((cp >= 'a' && cp <= 'z') || (cp >= 'A' && cp <= 'Z')) {
+        *letter = static_cast<char32_t>(cp | 0x20);
+        *tone = XK_TONE_NONE;
+        return true;
+    }
+    return false;
+}
+
+bool syllable_split(const std::string& utf8, std::u32string* letters, int* tone) {
+    letters->clear();
+    *tone = XK_TONE_NONE;
+    for (size_t i = 0; i < utf8.size();) {
+        uint32_t cp = 0;
+        int len = 1;
+        if (utf8_decode(utf8.c_str() + i, &cp, &len) != 0) return false;
+        i += static_cast<size_t>(len);
+        char32_t l;
+        int t;
+        if (!split_letter(cp, &l, &t)) return false;
+        if (t != XK_TONE_NONE) {
+            if (*tone != XK_TONE_NONE) return false;  /* two tones */
+            *tone = t;
+        }
+        letters->push_back(l);
+    }
+    return true;
 }
 
 bool is_valid_vn_syllable(const std::string& word) {
-    if (word.empty() || word.size() > 7) return false;
-    return match_syllable_structure(word);
+    std::u32string letters;
+    int tone;
+    if (word.empty() || !syllable_split(word, &letters, &tone)) return false;
+    return syllable_valid(letters, tone);
 }
 
 } /* namespace xrnikey */

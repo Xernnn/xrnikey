@@ -8,12 +8,11 @@
 namespace fcitx {
 
 CandidateProvider::CandidateProvider()
-    : dict_(nullptr), ngram_(nullptr), emoji_(nullptr) {}
+    : dict_(nullptr), ngram_(nullptr) {}
 
 CandidateProvider::~CandidateProvider() {
     if (dict_) xk_dict_free(dict_);
     if (ngram_) xk_ngram_free(ngram_);
-    if (emoji_) xk_emoji_free(emoji_);
 }
 
 void CandidateProvider::setConfig(std::shared_ptr<XrnikeyConfig> config) {
@@ -34,7 +33,6 @@ void CandidateProvider::load(const std::string& dataDir) {
     if (!dict_) {
         dict_ = xk_dict_load((dataDir + "/dict/vi.dict").c_str());
         ngram_ = xk_ngram_load((dataDir + "/ngram/vi.arpa").c_str());
-        emoji_ = xk_emoji_load((dataDir + "/emoji/emoji.json").c_str());
     }
     if (dict_) xk_dict_reload_user(dict_, userDictPath().c_str());
 }
@@ -94,27 +92,6 @@ std::vector<XrnikeyCandidate> CandidateProvider::getCandidates(
                   return a.score > b.score;
               });
     if (static_cast<int>(results.size()) > max) results.resize(max);
-    return results;
-}
-
-std::vector<XrnikeyCandidate> CandidateProvider::getEmojiCandidates(
-    const std::string& query, int max) {
-    std::vector<XrnikeyCandidate> results;
-    if (!emoji_) return results;
-
-    char* chars[16];
-    char* names[16];
-    int n = xk_emoji_search(emoji_, query.c_str(), chars, names, max);
-    for (int i = 0; i < n; ++i) {
-        XrnikeyCandidate c;
-        c.text = chars[i];
-        c.gloss = names[i];
-        c.type = 0;
-        c.score = 1.0f;
-        results.push_back(c);
-        free(chars[i]);
-        free(names[i]);
-    }
     return results;
 }
 

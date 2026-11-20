@@ -24,7 +24,7 @@ public:
 
     void setConfig(std::shared_ptr<XrnikeyConfig> config);
 
-    /* Load the shared dictionary / n-gram / emoji data. Without this every
+    /* Load the shared dictionary / n-gram data. Without this every
      * lookup returns empty, which is why the candidate window never showed
      * anything: dict_ was initialised to nullptr and nothing ever set it. */
     void load(const std::string& dataDir);
@@ -34,13 +34,11 @@ public:
     std::vector<XrnikeyCandidate> getCandidates(
         const std::string& prefix, int max,
         const std::vector<std::string>& context = {});
-    std::vector<XrnikeyCandidate> getEmojiCandidates(const std::string& query, int max);
 
 private:
     std::shared_ptr<XrnikeyConfig> config_;
     XKDict* dict_;
     XKNgram* ngram_;
-    XKEmojiDB* emoji_;
 
     static constexpr const char* TYPE_ICONS[] = {"📖", "✏", "⚡"};
 };

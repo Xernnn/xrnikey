@@ -1,0 +1,6 @@
+/* Generated from core/data/@XK_ENGLISH_FILE@ and core/data/@XK_VI_FILE@ by
+ * core/CMakeLists.txt. Edit those files, not this one. */
+extern const char* const xrnikey_english_words;
+extern const char* const xrnikey_vi_syllables;
+const char* const xrnikey_english_words = R"XKLEX(@XK_ENGLISH_WORDS@)XKLEX";
+const char* const xrnikey_vi_syllables = R"XKLEX(@XK_VI_SYLLABLES@)XKLEX";

@@ -2,6 +2,8 @@
 #include <xrnikey.h>
 #include <cstring>
 #include <cstdlib>
+#include <fstream>
+#include <string>
 
 TEST_CASE("Tone placement on simple vowels", "[tone]") {
     SECTION("a + sắc -> á") {
@@ -168,4 +170,39 @@ TEST_CASE("Tone placement no tone", "[tone]") {
         REQUIRE(std::strcmp(result, "hello") == 0);
         free(result);
     }
+}
+
+// vi-syllables.txt is built from texts that put the tone where they like
+// ("gìa", "qúy", "tươỉ"); the list holds each syllable once, toned the way
+// the engine writes it (the old style: "già", "quý", "tưởi", "hòa").
+TEST_CASE("the attested syllable list is in the engine's own tone placement", "[tone]") {
+    static const char* const ROWS[12][6] = {
+        {"a", "á", "à", "ả", "ã", "ạ"}, {"ă", "ắ", "ằ", "ẳ", "ẵ", "ặ"}, {"â", "ấ", "ầ", "ẩ", "ẫ", "ậ"},
+        {"e", "é", "è", "ẻ", "ẽ", "ẹ"}, {"ê", "ế", "ề", "ể", "ễ", "ệ"}, {"i", "í", "ì", "ỉ", "ĩ", "ị"},
+        {"o", "ó", "ò", "ỏ", "õ", "ọ"}, {"ô", "ố", "ồ", "ổ", "ỗ", "ộ"}, {"ơ", "ớ", "ờ", "ở", "ỡ", "ợ"},
+        {"u", "ú", "ù", "ủ", "ũ", "ụ"}, {"ư", "ứ", "ừ", "ử", "ữ", "ự"}, {"y", "ý", "ỳ", "ỷ", "ỹ", "ỵ"},
+    };
+    std::ifstream f(XRNIKEY_VI_SYLLABLES);
+    REQUIRE(f);
+    std::string line;
+    int n = 0;
+    while (std::getline(f, line)) {
+        if (line.empty() || line[0] == '#') continue;
+        ++n;
+        std::string base = line;
+        int tone = XK_TONE_NONE;
+        for (const auto& row : ROWS) {
+            for (int t = 1; t <= 5; ++t) {
+                for (size_t at; (at = base.find(row[t])) != std::string::npos;) {
+                    base.replace(at, std::strlen(row[t]), row[0]);
+                    tone = t;
+                }
+            }
+        }
+        char* placed = xk_place_tone(base.c_str(), tone);
+        INFO(line);
+        CHECK(std::string(placed) == line);
+        std::free(placed);
+    }
+    CHECK(n > 5000);
 }

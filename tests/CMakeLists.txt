@@ -17,6 +17,8 @@ target_link_libraries(test_telex PRIVATE xrnikey Catch2::Catch2WithMain)
 
 add_executable(test_tone_placement test_tone_placement.cpp)
 target_link_libraries(test_tone_placement PRIVATE xrnikey Catch2::Catch2WithMain)
+target_compile_definitions(test_tone_placement PRIVATE
+    XRNIKEY_VI_SYLLABLES="${CMAKE_CURRENT_SOURCE_DIR}/../core/data/vi-syllables.txt")
 
 add_executable(test_full_pipeline test_full_pipeline.cpp)
 target_link_libraries(test_full_pipeline PRIVATE xrnikey Catch2::Catch2WithMain)
@@ -26,6 +28,9 @@ target_link_libraries(test_instant_commit PRIVATE xrnikey Catch2::Catch2WithMain
 
 add_executable(test_real_words test_real_words.cpp)
 target_link_libraries(test_real_words PRIVATE xrnikey Catch2::Catch2WithMain)
+
+add_executable(test_corpus test_corpus.cpp)
+target_link_libraries(test_corpus PRIVATE xrnikey Catch2::Catch2WithMain)
 
 add_executable(test_user_dict test_user_dict.cpp)
 target_link_libraries(test_user_dict PRIVATE xrnikey Catch2::Catch2WithMain)
@@ -42,3 +47,4 @@ catch_discover_tests(test_full_pipeline)
 catch_discover_tests(test_instant_commit)
 catch_discover_tests(test_real_words)
 catch_discover_tests(test_user_dict)
+catch_discover_tests(test_corpus)
