@@ -79,6 +79,7 @@ struct Word {
 
 struct Options {
     bool auto_restore = true;
+    bool w_shortcut = true;
 };
 
 struct XKStateImpl {

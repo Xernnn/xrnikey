@@ -171,12 +171,16 @@ TEST_CASE("corpus: uo and uu take the horn the way Vietnamese spells them", "[co
     });
 }
 
-TEST_CASE("corpus: w on its own is u-horn", "[corpus][!mayfail]") {
+TEST_CASE("corpus: w on its own is u-horn", "[corpus]") {
     run(XK_MODE_TELEX, {
         {"w ", "ư "}, {"tw ", "tư "}, {"nhw ", "như "}, {"thw ", "thư "},
         {"ww ", "w "}, {"www ", "ww "}, {"nguw ", "ngư "}, {"twf ", "từ "},
+        {"W ", "Ư "}, {"Tw ", "Tư "}, {"w<", ""}, {"tw<", "t"},
         {"we ", "we "}, {"with ", "with "}, {"what ", "what "},
         {"window ", "window "}, {"wow ", "wow "}, {"new ", "new "},
+        {"w ", "w ", BOTH, {{XK_OPT_W_SHORTCUT, 0}}},
+        {"tw ", "tw ", BOTH, {{XK_OPT_W_SHORTCUT, 0}}},
+        {"tuw ", "tư ", BOTH, {{XK_OPT_W_SHORTCUT, 0}}},
     });
 }
 

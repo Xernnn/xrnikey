@@ -68,7 +68,7 @@ static bool marked_by(const Word& w, const Letter& l, char key) {
            std::tolower(static_cast<unsigned char>(w.keys[static_cast<size_t>(l.mark_key)])) == key;
 }
 
-void telex_apply_key(Word& w, int i, const Options&) {
+void telex_apply_key(Word& w, int i, const Options& o) {
     const char c = w.keys[static_cast<size_t>(i)];
     const char lc = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     KeyRec& rec = w.recs[static_cast<size_t>(i)];
@@ -144,8 +144,21 @@ void telex_apply_key(Word& w, int i, const Options&) {
                 l.mark_key = -1;
                 l.soft = false;
             }
+            /* "ww": the ư the first w typed goes, the second w is a w. */
+            if (t.size() == 1 && w.letters[static_cast<size_t>(t[0])].key == undone)
+                w.letters.erase(w.letters.begin() + t[0]);
             word_undo(w, i, undone);
             return;
+        }
+        /* With nothing to mark, w is ư where ư can go: w -> ư, tw -> tư,
+         * nhw -> như (Bamboo's "Telex 2"). "new" stays new. */
+        if (o.w_shortcut) {
+            word_add_letter(w, i);
+            Letter& u = w.letters.back();
+            u.base = 'u';
+            u.mark = MARK_HORN;
+            u.mark_key = i;
+            if (keep_if_ok(K_LETTER)) return;
         }
     }
 

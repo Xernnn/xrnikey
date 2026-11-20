@@ -57,6 +57,8 @@ void xk_state_set_instant_commit(XKState* state, int enabled);
 #define XK_OPT_AUTO_RESTORE 1  /* default 1: a word that is not Vietnamese
                                   (or is a common English word that is not an
                                   attested syllable) is committed as typed */
+#define XK_OPT_W_SHORTCUT   4  /* default 1: Telex w with no vowel to mark is
+                                  ư (w -> ư, tw -> tư); ww -> w */
 void xk_state_set_option(XKState* state, int option, int value);
 int  xk_state_get_option(XKState* state, int option);
 
