@@ -44,9 +44,24 @@ A syllable is listed only if `xk_is_valid_syllable` accepts it.
 - Public-domain texts from vi.wikisource.org: Trần Trọng Kim, *Việt Nam sử
   lược*; Nguyễn Du, *Truyện Kiều* (1870 edition); Nguyễn Đình Chiểu, *Lục
   Vân Tiên*.
+- Vietnamese sentences from Tatoeba (<https://tatoeba.org>), the export
+  `vie_sentences.tsv` of 2026-11-20, written by Tatoeba's contributors and
+  licensed under CC BY 2.0 FR
+  (<https://creativecommons.org/licenses/by/2.0/fr/>). Only the syllables
+  are kept, not the sentences, and not those of hyphenated words, which
+  spell out foreign words ("pót-cát"). They bring everyday modern words
+  (lít, cúp, bốt, típ …).
 - `data/dict/seed_wordlist.txt` from this project.
-- At the end, a short hand-written list of interjections and spoken forms
-  that written sources miss (ò, í, ừm …), part of this project.
+- At the end, a short hand-written list, part of this project: interjections
+  and spoken forms that written sources miss (ò, í, ừm …), and everyday
+  words and loanwords they miss whose Telex keys spell English words, so
+  that without them the English word won (cỏn, háng, líp, phốt, rún, sít,
+  tủn, vế: "corn", "hangs", "lips", "photos", "runs", "sits", "turn",
+  "verse"). More text was tried for these instead: novels of 1912–1950 on
+  vi.wikisource (Hồ Biểu Chánh, Nam Cao, Vũ Trọng Phụng, Ngô Tất Tố …) have
+  most of them, but also so many regional spellings and typesetting slips
+  ("dụ dổ", "sum sê", "L ửa") that "her", "or", "see", "here" and "door"
+  became Vietnamese, so they are not used.
 
 > UNICODE LICENSE V3 — COPYRIGHT AND PERMISSION NOTICE
 >
@@ -83,7 +98,9 @@ A syllable is listed only if `xk_is_valid_syllable` accepts it.
 ## Rebuilding
 
 `tools/fetch_wikisource.py OUTDIR "Việt Nam sử lược" "Truyện Kiều" "Lục Vân Tiên"` fetches
-the Wikisource texts. `tools/make_lists.py` then writes both lists from SCOWL's `final/`
-folder, the old hand list, Unihan's `Unihan_Readings.txt`, the Common Voice sentences, the
-Wikisource text and the seed word list, keeping only syllables that a built
-`libxrnikey.so` accepts (its usage line gives the argument order).
+the Wikisource texts, and Tatoeba's export is
+<https://downloads.tatoeba.org/exports/per_language/vie/vie_sentences.tsv.bz2> (unpacked with
+`bunzip2`). `tools/make_lists.py` then writes both lists from SCOWL's `final/` folder, the old
+hand list, Unihan's `Unihan_Readings.txt`, the Common Voice sentences, the Wikisource text, the
+seed word list and the Tatoeba sentences, keeping only syllables that a built `libxrnikey.so`
+accepts (its usage line gives the argument order).

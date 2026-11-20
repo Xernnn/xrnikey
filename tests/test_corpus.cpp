@@ -149,6 +149,17 @@ TEST_CASE("corpus: English words come back as typed", "[corpus]") {
     });
 }
 
+// Everyday syllables whose Telex keys happen to spell English: they are in
+// vi-syllables.txt (from Tatoeba, or added by hand), so Vietnamese wins.
+TEST_CASE("corpus: everyday syllables are not taken for English", "[corpus]") {
+    run(XK_MODE_TELEX, {
+        {"hangs ", "háng "}, {"cups ", "cúp "}, {"list ", "lít "}, {"lips ", "líp "},
+        {"sits ", "sít "}, {"boots ", "bốt "}, {"tips ", "típ "}, {"turn ", "tủn "},
+        {"corn ", "cỏn "}, {"verse ", "vế "}, {"virus ", "víu "}, {"photos ", "phốt "},
+        {"runs ", "rún "},
+    });
+}
+
 TEST_CASE("corpus: BackSpace deletes one character", "[corpus]") {
     run(XK_MODE_TELEX, {
         {"toans<", "t\xC3\xB3" "a"},  // tóa: the tone stays, re-placed for "toa"
