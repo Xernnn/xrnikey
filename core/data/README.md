@@ -79,3 +79,11 @@ A syllable is listed only if `xk_is_valid_syllable` accepts it.
 > not be used in advertising or otherwise to promote the sale, use or other
 > dealings in these Data Files or Software without prior written
 > authorization of the copyright holder.
+
+## Rebuilding
+
+`tools/fetch_wikisource.py OUTDIR "Việt Nam sử lược" "Truyện Kiều" "Lục Vân Tiên"` fetches
+the Wikisource texts. `tools/make_lists.py` then writes both lists from SCOWL's `final/`
+folder, the old hand list, Unihan's `Unihan_Readings.txt`, the Common Voice sentences, the
+Wikisource text and the seed word list, keeping only syllables that a built
+`libxrnikey.so` accepts (its usage line gives the argument order).
