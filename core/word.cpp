@@ -74,7 +74,7 @@ std::u32string word_letters(const Word& w) {
     for (size_t i = 0; i < w.letters.size(); ++i) {
         const Letter& l = w.letters[i];
         bool plain = l.soft && soft_horn_hidden(w, i);
-        out.push_back(glyph(l.base, plain ? MARK_NONE : l.mark));
+        out.push_back(glyph(l.base, plain ? uint8_t{MARK_NONE} : l.mark));
     }
     return out;
 }
