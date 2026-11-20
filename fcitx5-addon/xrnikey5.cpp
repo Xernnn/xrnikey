@@ -178,7 +178,6 @@ public:
     void reset() {
         if (state_) xk_state_reset(state_);
         composing_ = false;
-        raw_.clear();
     }
 
     /* Whether this input context has EVER handed us valid surrounding text.
@@ -195,19 +194,7 @@ public:
     void startWord(bool instant) {
         instantForWord_ = instant;
         inField_.clear();
-        raw_.clear();
         client_.startWord();
-    }
-
-    /* The keys typed for the word in progress, for matching
-     * abbreviations ("aa" stays "aa" here while the word shows "â"). */
-    const std::string &raw() const { return raw_; }
-    void typedKey(uint32_t keysym) {
-        if (keysym == FcitxKey_BackSpace) {
-            if (!raw_.empty()) raw_.pop_back();
-        } else if (keysym >= 0x20 && keysym <= 0x7e) {
-            raw_ += static_cast<char>(keysym);
-        }
     }
 
     ClientText &client() { return client_; }
@@ -236,7 +223,6 @@ private:
     bool instantForWord_ = false;
     ClientText client_;
     std::string inField_;
-    std::string raw_;
     std::vector<std::string> history_;
     std::string lastPreedit_;
 };
@@ -493,7 +479,6 @@ public:
 
         if (result.consumed) {
             keyEvent.filterAndAccept();
-            icState->typedKey(keysym);
         }
 
         if (instantMode) {
@@ -560,6 +545,15 @@ public:
         ic->updateUserInterface(UserInterfaceComponent::InputPanel);
     }
 
+    /* The core's keys for the word in progress, as typed ("aa" while it
+     * shows "â"). */
+    static std::string coreKeys(XKState *state) {
+        char *typed = xk_state_get_keys(state);
+        std::string keys = typed ? typed : "";
+        std::free(typed);
+        return keys;
+    }
+
     /* The typing options are read per key, so a settings change applies to
      * every input context at once (setting an unchanged option is free). */
     void applyOptions(XKState *state) {
@@ -604,7 +598,10 @@ public:
         std::free(pending);
         if (shown.empty()) return false;
         bool matchCase = config_->capitalizeMacro.value();
-        auto expansion = macros_.expand(icState->raw(), matchCase);
+        /* The core's keys, not a copy kept here: BackSpace takes a
+         * character's tone and mark keys with it, so "cas" BackSpace is
+         * "c" and must not still match "ca". */
+        auto expansion = macros_.expand(coreKeys(icState->state()), matchCase);
         if (!expansion) expansion = macros_.expand(shown, matchCase);
         if (!expansion) return false;
         std::string text = *expansion + trailing;

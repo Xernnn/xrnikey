@@ -353,6 +353,25 @@ TEST_CASE("xk_state_flush finishes the word", "[corpus]") {
     xk_state_free(s);
 }
 
+// The keys of the word in progress, for a frontend matching abbreviations:
+// as typed, less those of a character BackSpace deleted.
+TEST_CASE("xk_state_get_keys gives the word's keys as BackSpace left them", "[corpus]") {
+    const std::pair<const char*, const char*> cases[] = {
+        {"aa", "aa"}, {"cas", "cas"}, {"cas<", "c"}, {"nguoiwf<", "nguowf"},
+        {"text<", "tex"}, {"chaof ", ""}, {"", ""},
+    };
+    for (const auto& [keys, want] : cases) {
+        INFO(keys);
+        XKState* s = xk_state_new(XK_MODE_TELEX);
+        for (const char* k = keys; *k; ++k) press(s, keysym_for(*k));
+        char* got = xk_state_get_keys(s);
+        CHECK(std::string(got) == want);
+        std::free(got);
+        xk_state_free(s);
+    }
+    CHECK(xk_state_get_keys(nullptr) == nullptr);
+}
+
 TEST_CASE("corpus: VNI does what Telex does", "[corpus]") {
     const std::vector<Opt> strict = {{XK_OPT_FREE_MARKING, 0}};
     run(XK_MODE_VNI, {

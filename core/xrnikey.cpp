@@ -164,6 +164,15 @@ char* xk_state_get_preedit(XKState* state) {
     return out;
 }
 
+char* xk_state_get_keys(XKState* state) {
+    if (!state) return nullptr;
+    auto* s = reinterpret_cast<xrnikey::XKStateImpl*>(state);
+    std::string keys = xrnikey::word_raw(s->word);
+    char* out = static_cast<char*>(std::malloc(keys.size() + 1));
+    if (out) std::strcpy(out, keys.c_str());
+    return out;
+}
+
 XKResult xk_process_key(XKState* state, uint32_t keysym, uint32_t modifiers) {
     XKResult r{};
     r.consumed = 0;

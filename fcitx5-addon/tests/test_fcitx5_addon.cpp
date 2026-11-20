@@ -1037,6 +1037,25 @@ TEST_CASE("an abbreviation's case carries over to the expansion",
     }
 }
 
+TEST_CASE("an abbreviation matches the word as BackSpace left it", "[macro]") {
+    /* BackSpace deletes a character with every key that made it: "cas"
+     * shows "cá", and BackSpace leaves "c" -- the s went with the á. */
+    writeMacros("ca\tcảm ơn\n");
+    for (const char *instant : {"False", "True"}) {
+        INFO("InstantCommit=" << instant);
+        configure({{"Macro", "True"}, {"InstantCommit", instant}});
+        FakeClient c(instantApp());
+        c.type("cas");
+        c.key("BackSpace");
+        c.type(" ");
+        CHECK(c.text() == "c ");
+        c.type("cas");
+        c.key("BackSpace");
+        c.type("a ");
+        CHECK(c.text() == "c cảm ơn ");
+    }
+}
+
 TEST_CASE("an edited abbreviation file applies from the next word",
           "[macro]") {
     writeMacros("ko\tkhông\n");

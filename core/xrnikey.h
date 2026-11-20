@@ -44,6 +44,10 @@ XKState* xk_state_new(int mode);
 void     xk_state_free(XKState* state);
 void     xk_state_reset(XKState* state);
 char*    xk_state_get_preedit(XKState* state);
+/* The keys of the word in progress as typed ("aa" while it shows "â"), less
+ * those BackSpace took away: deleting a character takes the keys that typed,
+ * marked and toned it. Newly allocated; the caller frees it. */
+char*    xk_state_get_keys(XKState* state);
 
 /* Opt in to Unikey-style instant commit: every keystroke fills
  * commit/delete_before to correct previously committed text in place,
