@@ -31,7 +31,8 @@ cd xrnikey
 
 ```bash
 sudo pacman -S --needed cmake extra-cmake-modules ninja fcitx5 fcitx5-configtool python
-cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
+cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr \
+    -DXRNIKEY_BUILD_IBUS=OFF
 cmake --build build
 sudo cmake --install build
 ```
