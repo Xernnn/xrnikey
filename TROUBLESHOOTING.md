@@ -35,7 +35,7 @@ on Wayland"). Set the others where your session gets its environment (Hyprland: 
 lines in `hyprland.conf`):
 
 ```bash
-QT_IM_MODULE=fcitx
+QT_IM_MODULE=fcitx        # needs fcitx5-qt
 XMODIFIERS=@im=fcitx      # X11 apps under XWayland
 SDL_IM_MODULE=fcitx
 # X11 sessions only:
@@ -43,7 +43,9 @@ GTK_IM_MODULE=fcitx
 ```
 
 `xk-setup` checks these and offers to write the missing ones to
-`~/.config/environment.d/90-xrnikey.conf`; it asks first and never changes ones already set.
+`~/.config/environment.d/90-xrnikey.conf`; it asks first and never changes ones already set. It
+offers `QT_IM_MODULE=fcitx` only when fcitx5-qt is installed: without it Qt apps would get no
+input method at all.
 
 ## 4. Electron/Chromium apps not accepting input
 

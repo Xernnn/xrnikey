@@ -19,6 +19,10 @@ AUTOSTART_FILE="$CONFIG_HOME/autostart/fcitx5.desktop"
 # Files this script may create; a rollback only ever touches these.
 MANAGED=("$ENV_FILE" "$AUTOSTART_FILE")
 
+# Qt's plugin folders (Qt 6 and 5; Arch, Fedora, Debian-style multiarch).
+# XK_QT_PLUGIN_DIRS, space-separated, replaces the list (for tests).
+QT_PLUGIN_DIRS=${XK_QT_PLUGIN_DIRS:-/usr/lib/qt6/plugins /usr/lib/qt/plugins /usr/lib64/qt6/plugins /usr/lib64/qt5/plugins /usr/lib/*/qt6/plugins /usr/lib/*/qt5/plugins}
+
 MODE=ask
 log() { echo "[xk-setup] $*"; }
 warn() { echo "[xk-setup] WARNING: $*" >&2; }
@@ -83,12 +87,25 @@ rollback() {
     log "Rollback complete. Log out and back in for environment changes to take effect."
 }
 
+# Whether fcitx5-qt, Fcitx5's input method module for Qt, is installed.
+# QT_IM_MODULE=fcitx points Qt apps at it; without it they get no input
+# method at all.
+qt_module_present() {
+    local d
+    for d in $QT_PLUGIN_DIRS; do
+        [ -e "$d/platforminputcontexts/libfcitx5platforminputcontextplugin.so" ] && return 0
+    done
+    return 1
+}
+
 # What the session needs, per the Fcitx5 wiki ("Using Fcitx 5 on Wayland"): on
 # a compositor with an input-method frontend (Hyprland, Sway, KDE) GTK apps
 # reach Fcitx5 through text-input-v3, so GTK_IM_MODULE must NOT be set; Qt,
 # SDL and X11 (XWayland) apps still need theirs.
 wanted_env() {
-    echo "QT_IM_MODULE=fcitx"
+    if qt_module_present; then
+        echo "QT_IM_MODULE=fcitx"
+    fi
     echo "XMODIFIERS=@im=fcitx"
     echo "SDL_IM_MODULE=fcitx"
     if [ "$(session_type)" != wayland ]; then
@@ -124,6 +141,13 @@ step_environment() {
             missing+=("$line")
         fi
     done < <(wanted_env)
+    if ! qt_module_present; then
+        if [ "${QT_IM_MODULE:-}" = fcitx ]; then
+            warn "QT_IM_MODULE=fcitx is set, but fcitx5-qt (Fcitx5's Qt module) is not installed, so Qt apps get no input method. Install fcitx5-qt, or unset QT_IM_MODULE."
+        else
+            log "QT_IM_MODULE=fcitx not offered: it needs fcitx5-qt (Fcitx5's Qt module), which is not installed. Install fcitx5-qt for it (on Wayland, Qt apps also reach Fcitx5 without it, through text-input-v3)."
+        fi
+    fi
     if [ "$(session_type)" = wayland ] && [ -n "${GTK_IM_MODULE:-}" ]; then
         warn "GTK_IM_MODULE=$GTK_IM_MODULE is set; on Wayland the Fcitx5 wiki says to leave it unset."
     fi
