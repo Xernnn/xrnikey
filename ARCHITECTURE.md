@@ -21,14 +21,7 @@
 │  │ Telex/  │ │ Tone   │ │ Dict │ │ N-gram │ │ Autocorrect│  │
 │  │ VNI FSM │ │ Place  │ │ Trie │ │ Model  │ │ Engine     │  │
 │  └─────────┘ └────────┘ └──────┘ └────────┘ └───────────┘  │
-└──────────────────────────┬──────────────────────────────────┘
-                           │ Unix socket (JSON)
-                           ▼
-                  ┌─────────────────┐
-                  │   xkd daemon    │
-                  │  prediction /   │
-                  │  emoji / stats  │
-                  └─────────────────┘
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ## Keypress Data Flow
@@ -42,10 +35,7 @@
    - Bilingual check (English word → pass-through)
 5. **Tone placement** applies Unicode combining characters per Vietnamese orthographic rules
 6. **Candidate provider** queries dictionary + n-gram + autocorrect for suggestions
-7. **xkd daemon** (optional) answers the same dictionary, emoji and stats queries over a Unix
-   socket for other tools; the input method doesn't use it (step 6 reads the core in process),
-   so it isn't started by default
-8. **Preedit** rendered inline or in aux window; **commit** sent to application on Space
+7. **Preedit** rendered inline or in aux window; **commit** sent to application on Space
 
 ## Core Library (libxrnikey)
 
@@ -70,7 +60,6 @@ Pure C ABI (`xrnikey.h`) — no C++ in public headers. Internal implementation i
 | libxrnikey core | < 8 MB |
 | Dictionary (mmap) | < 20 MB |
 | N-gram model | < 50 MB |
-| xkd daemon | < 80 MB |
 
 Dictionary uses `mmap()` for zero-copy startup. N-gram scores use 4-bit quantization. Candidate generation uses arena allocation with a 512-entry LRU cache.
 
@@ -80,13 +69,3 @@ Dictionary uses `mmap()` for zero-copy startup. N-gram scores use 4-bit quantiza
 - `~/.config/xrnikey/app-overrides.json` — per-app disable list
 - `~/.local/share/xrnikey/user-dict.txt` — user dictionary (hot-reloaded)
 - `~/.config/fcitx5/conf/xrnikey5.conf` — Fcitx5 addon settings
-
-## Socket Protocol (xkd)
-
-Newline-delimited JSON over Unix domain socket at `/run/user/$UID/xrnikey.sock`:
-
-```json
-{"type": "complete", "prefix": "hap", "context": ["tôi", "rất"], "max": 5}
-{"type": "emoji", "query": "smile"}
-{"type": "stats"}
-```

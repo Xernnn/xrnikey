@@ -6,14 +6,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(XRNIKEY_BUILD_IBUS "Build IBus engine" ON)
 option(XRNIKEY_BUILD_FCITX5 "Build Fcitx5 addon" ON)
-option(XRNIKEY_BUILD_DAEMON "Build xkd daemon" ON)
 option(XRNIKEY_ENABLE_TESTS "Build test suite" OFF)
 ## NOT option() — that declares a BOOL and takes its third argument as the
 ## initial VALUE, so `option(XRNIKEY_DATA_DIR "/usr/share/xrnikey" "Data files
 ## install directory")` cached a BOOL of OFF and the daemon got compiled with
 ## XRNIKEY_DATA_DIR="OFF", making every dict/ngram/emoji path load from ./OFF/.
 ## Must also be defined here at top level, not in data/CMakeLists.txt:
-## add_subdirectory(daemon) runs before add_subdirectory(data).
+## add_subdirectory(fcitx5-addon), which compiles it in, runs before
+## add_subdirectory(data).
 set(XRNIKEY_DATA_DIR "${CMAKE_INSTALL_PREFIX}/share/xrnikey"
     CACHE PATH "Data files install directory")
 
@@ -36,10 +36,6 @@ if(XRNIKEY_ENABLE_TESTS)
 endif()
 
 add_subdirectory(core)
-
-if(XRNIKEY_BUILD_DAEMON)
-    add_subdirectory(daemon)
-endif()
 
 if(XRNIKEY_BUILD_FCITX5)
     find_package(Fcitx5Core QUIET)

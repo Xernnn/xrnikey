@@ -83,19 +83,7 @@ fc-cache -fv
 fc-match :lang=vi
 ```
 
-## 7. xkd daemon not running
-
-This is normal. The input method reads the dictionary, n-grams and emoji in process and never
-asks xkd, so prediction and emoji search work without it, and setup doesn't enable it. If they
-don't work, look at the addon instead (sections 1–6). Start xkd only to use its socket from
-another tool:
-
-```bash
-systemctl --user start xkd
-systemctl --user status xkd
-```
-
-## 8. libxrnikey.so not found
+## 7. libxrnikey.so not found
 
 **Symptom:** `xk-diagnose` reports missing library.
 
@@ -108,7 +96,7 @@ sudo cmake --install build
 sudo ldconfig
 ```
 
-## 9. Instant commit: which apps get it
+## 8. Instant commit: which apps get it
 
 With `InstantCommit=True`, a word is typed straight into the field and corrected in place, with
 no underlined preedit. Xrnikey uses it only where that is safe, and falls back to the preedit
@@ -133,7 +121,7 @@ busctl --user call org.fcitx.Fcitx5 /controller org.fcitx.Fcitx.Controller1 Debu
 Add one in `fcitx5-configtool` (Xrnikey's settings, "Force Preedit In These Apps"); it applies
 from the next word.
 
-## 10. Flatpak/Snap app isolation
+## 9. Flatpak/Snap app isolation
 
 **Symptom:** IME doesn't work in Flatpak or Snap applications.
 
@@ -145,13 +133,13 @@ flatpak override --user --env=GTK_IM_MODULE=fcitx <app-id>
 **Fix (Snap):**
 Snap apps may not inherit host IME. Use native packages when possible.
 
-## 11. Tone marks on wrong vowel
+## 10. Tone marks on wrong vowel
 
 **Symptom:** `tuong` + hỏi produces incorrect tone placement.
 
 **Fix:** This follows Vietnamese orthographic rules. Report specific syllables as bugs. The tone placement algorithm implements Rules 1–4 from Vietnamese linguistics standards.
 
-## 12. User dictionary not updating
+## 11. User dictionary not updating
 
 **Symptom:** Added words don't appear in completions.
 
@@ -163,7 +151,7 @@ xk-dict add "từ mới" 9000
 fcitx5-remote -r
 ```
 
-## 13. Picking a word suggestion
+## 12. Picking a word suggestion
 
 **Symptom:** Typing a digit does not pick the suggestion under it.
 
@@ -172,12 +160,12 @@ never taken as picks. Suggestions are off by default; with `PredictionEnabled=Tr
 with **Ctrl+1–9**. Space always ends the word as typed. To use other keys, set
 `CandidateSelectionKeys` in `~/.config/fcitx5/conf/xrnikey5.conf` (or in Fcitx5's settings).
 
-## 14. Turning Vietnamese on and off
+## 13. Turning Vietnamese on and off
 
 Xrnikey has no toggle key of its own: switch with Fcitx5's trigger key (Ctrl+Space by default,
 set in Fcitx5's global options), or `fcitx5-remote -s keyboard-us` / `fcitx5-remote -s xrnikey`.
 
-## 15. High latency / slow candidate window
+## 14. High latency / slow candidate window
 
 **Symptom:** Noticeable delay between keypress and candidate display.
 
@@ -187,7 +175,7 @@ set in Fcitx5's global options), or `fcitx5-remote -s keyboard-us` / `fcitx5-rem
 ls -la /usr/share/xrnikey/dict/vi.dict
 ```
 
-## 16. IBus engine crashes on startup
+## 15. IBus engine crashes on startup
 
 **Symptom:** `xrnikey-ibus` exits immediately.
 
@@ -199,7 +187,7 @@ python3 -c "import ctypes; ctypes.CDLL('/usr/lib/libxrnikey.so')"
 ibus-daemon -drx
 ```
 
-## 17. Environment variables not persisting
+## 16. Environment variables not persisting
 
 **Symptom:** IME works in current session but not after reboot.
 
@@ -212,7 +200,7 @@ QT_IM_MODULE=fcitx
 XMODIFIERS=@im=fcitx
 ```
 
-## 18. CachyOS-specific: fcitx5-unikey conflict
+## 17. CachyOS-specific: fcitx5-unikey conflict
 
 **Symptom:** Both unikey and Xrnikey active simultaneously.
 
@@ -223,12 +211,12 @@ sudo pacman -R fcitx5-unikey
 fcitx5-configtool   # remove Unikey, add Xrnikey
 ```
 
-## 19. Typing emoji
+## 18. Typing emoji
 
 Xrnikey has no emoji input of its own. Use Fcitx5's Unicode picker (Ctrl+Alt+Shift+U by default),
 which searches characters, emoji included, by name.
 
-## 20. Build fails on missing Fcitx5 headers
+## 19. Build fails on missing Fcitx5 headers
 
 **Symptom:** CMake can't find Fcitx5Core.
 

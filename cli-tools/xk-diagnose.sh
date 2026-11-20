@@ -54,23 +54,6 @@ check_libxrnikey() {
     fi
 }
 
-check_xkd_socket() {
-    log "=== xkd Daemon ==="
-    local sock="/run/user/$(id -u)/xrnikey.sock"
-    if [ -S "$sock" ]; then
-        ok "Socket exists: $sock"
-        if echo '{"type":"stats"}' | nc -U "$sock" 2>/dev/null; then
-            ok "Socket responds to queries"
-        else
-            issue "Socket exists but does not respond"
-            fix "Restart daemon: systemctl --user restart xkd"
-        fi
-    else
-        # Optional: the input method itself never queries xkd, so this isn't an issue.
-        ok "xkd not running (optional; typing, prediction and emoji don't need it)"
-    fi
-}
-
 check_fonts() {
     log "=== Vietnamese Font Coverage ==="
     if command -v fc-match >/dev/null 2>&1; then
@@ -146,7 +129,6 @@ main() {
     check_env_vars
     check_imf_running
     check_libxrnikey
-    check_xkd_socket
     check_fonts
     check_wayland
     check_data_files
