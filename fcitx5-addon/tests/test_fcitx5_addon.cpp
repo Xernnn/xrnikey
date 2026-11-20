@@ -531,6 +531,37 @@ TEST_CASE("every key the core does not compose with ends the word and "
     }
 }
 
+TEST_CASE("a word the core restores at its end is fixed before the key "
+          "passes",
+          "[keys]") {
+    /* "password" is not Vietnamese: the core shows its Telex reading while
+     * it is typed and gives the keys back when the word ends -- on Return
+     * and the other passed-through keys too (xk_state_flush). */
+    for (const char *instant : {"False", "True"}) {
+        for (const char *key : {"Return", "Tab", "Control+Return"}) {
+            INFO("InstantCommit=" << instant << " key=" << key);
+            configure({{"InstantCommit", instant}});
+            FakeClient c(instantApp());
+            c.type("password");
+            CHECK_FALSE(c.key(key));
+            CHECK(c.text().rfind("password", 0) == 0);
+            CHECK(c.preedit().empty());
+        }
+    }
+}
+
+TEST_CASE("a very long word ends up as typed", "[keys]") {
+    for (const char *instant : {"False", "True"}) {
+        INFO("InstantCommit=" << instant);
+        configure({{"InstantCommit", instant}});
+        FakeClient c(instantApp());
+        std::string keys;
+        for (int i = 0; i < 20; ++i) keys += "ab";
+        c.type(keys + " ");
+        CHECK(c.text() == keys + " ");
+    }
+}
+
 TEST_CASE("an arrow key mid-word never lets the next key edit the old word",
           "[keys]") {
     configure({{"InstantCommit", "True"}});
@@ -745,17 +776,17 @@ TEST_CASE("changing the input mode applies to fields that are already open",
           "[config]") {
     configure({{"InputMode", "Telex"}, {"InstantCommit", "False"}});
     FakeClient c(preeditApp());
-    c.type("a1 aa ");
-    CHECK(c.text() == "a1 â ");
+    c.type("a1 ddi ");
+    CHECK(c.text() == "a1 đi ");
     configure({{"InputMode", "VNI"}, {"InstantCommit", "False"}});
-    c.type("a1 aa ");
-    CHECK(c.text() == "a1 â á aa ");
+    c.type("a1 d9i ");
+    CHECK(c.text() == "a1 đi á đi ");
     configure({{"InputMode", "Telex"}, {"InstantCommit", "False"}});
     c.type("chaof");
     /* Switching mid-word keeps the word, then types on in the new mode. */
     configure({{"InputMode", "VNI"}, {"InstantCommit", "False"}});
     c.type(" a1 ");
-    CHECK(c.text() == "a1 â á aa chào á ");
+    CHECK(c.text() == "a1 đi á đi chào á ");
 }
 
 TEST_CASE("only options that do something are offered", "[config]") {

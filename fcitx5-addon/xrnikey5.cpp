@@ -499,9 +499,12 @@ public:
             ic->inputPanel().reset();
             ic->updatePreedit();
         } else {
+            /* The core empties its word when it commits one; a commit with
+             * a preedit still left is a word that went on (a very long one
+             * is closed and the rest kept as typed), so the state is not
+             * reset here. */
             if (result.commit[0]) {
                 commitText(ic, icState, result.commit);
-                icState->reset();
             }
 
             showPreedit(ic, result.preedit);
@@ -622,16 +625,16 @@ public:
 
     /* Finish the word in progress, keeping what the user sees. In preedit
      * mode that means committing it. In instant mode it is already in the
-     * field; the core still gets its end-of-word pass (fed Return, which it
-     * treats as "end the word, add no character") so a correction it makes
-     * only at word end is applied in place. */
+     * field; the core still gets its end-of-word pass (xk_state_flush) so a
+     * correction it makes only at word end -- restoring the keys of a word
+     * that is not Vietnamese -- is applied in place. */
     void endWord(InputContext *ic, XrnikeyState *icState) {
         XKState *state = icState->state();
         char *pending = state ? xk_state_get_preedit(state) : nullptr;
         std::string shown = pending ? pending : "";
         std::free(pending);
         if (!shown.empty()) {
-            XKResult r = xk_process_key(state, FcitxKey_Return, 0);
+            XKResult r = xk_state_flush(state);
             if (icState->instantForWord()) {
                 /* A last correction is skipped if it cannot be made safely. */
                 editInPlace(ic, icState, r.delete_before, r.commit);
