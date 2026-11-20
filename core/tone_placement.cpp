@@ -107,7 +107,7 @@ bool is_vietnamese_vowel_glyph(const std::string& s, size_t pos, int* out_len) {
     return false;
 }
 
-int find_tone_vowel_index(const std::string& syllable) {
+int find_tone_vowel_index(const std::string& syllable, bool modern) {
     /* Rule 1: a modified vowel (â ê ô ơ ă ư) always takes the tone. When two
      * modified vowels are adjacent — the ươ diphthong ("được", "người",
      * "mười", "trường"...) — the tone goes on the second one, not the
@@ -158,22 +158,32 @@ int find_tone_vowel_index(const std::string& syllable) {
     if (positions.empty()) return -1;
     if (positions.size() == 1) return positions[0];
 
-    /* Modern Vietnamese orthography (1980 spelling standard) for a plain
-     * (unmodified) vowel cluster: tone goes on the LAST vowel when the
-     * syllable has a final consonant (closer to the coda, e.g. "toán"),
-     * and on the SECOND-TO-LAST vowel when the syllable is open.
+    /* A plain (unmodified) vowel cluster takes the tone on its LAST vowel
+     * when the syllable has a final consonant ("toán"), and on the
+     * SECOND-TO-LAST when the syllable is open. That is the traditional
+     * ("old") style, and the default.
      *
      * For the common two-vowel case that is simply the first vowel ("cõi",
-     * "của", "chào", "hòa"), which is what this used to return. But an open
-     * TRIPHTHONG has three: "oai" must take the tone on its middle vowel --
-     * ngoài, xoài, loại, thoại, ngoại -- and returning the first vowel gave
-     * "ngòai". Counting from the end is right for both lengths. */
+     * "của", "chào", "hòa"). But an open TRIPHTHONG has three: "oai" must
+     * take the tone on its middle vowel -- ngoài, xoài, loại, thoại, ngoại --
+     * and returning the first vowel gave "ngòai". Counting from the end is
+     * right for both lengths.
+     *
+     * The modern style (`modern`) differs only in the open glides oa, oe and
+     * uy, which put the tone on the vowel after the glide: hoà, khoẻ, thuý
+     * rather than hòa, khỏe, thúy. */
     bool has_coda = false;
     {
         int last_pos = positions.back();
         int vid, vlen;
         is_special_vowel(syllable, static_cast<size_t>(last_pos), &vid, &vlen);
         if (static_cast<size_t>(last_pos + vlen) < syllable.size()) has_coda = true;
+    }
+
+    if (modern && !has_coda && positions.size() == 2) {
+        char a = static_cast<char>(std::tolower(static_cast<unsigned char>(syllable[static_cast<size_t>(positions[0])])));
+        char b = static_cast<char>(std::tolower(static_cast<unsigned char>(syllable[static_cast<size_t>(positions[1])])));
+        if ((a == 'o' && (b == 'a' || b == 'e')) || (a == 'u' && b == 'y')) return positions[1];
     }
 
     return has_coda ? positions.back() : positions[positions.size() - 2];

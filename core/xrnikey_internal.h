@@ -79,6 +79,7 @@ struct Word {
 
 struct Options {
     bool auto_restore = true;
+    bool modern_style = false;
     bool free_marking = true;
     bool w_shortcut = true;
 };
@@ -100,7 +101,7 @@ void word_replay(Word& w, int mode, const Options& o);
 /* Letters as Vietnamese spells them: lowercase, marks applied, no tone. */
 std::u32string word_letters(const Word& w);
 /* The word as Vietnamese text (marks, tone, case). */
-std::string word_render(const Word& w);
+std::string word_render(const Word& w, const Options& o);
 /* The keys exactly as typed. */
 std::string word_raw(const Word& w);
 /* The keys as typed, less those a repeated key undid ("ass" -> "as"). */
@@ -127,7 +128,7 @@ void vni_apply_key(Word& w, int i, const Options& o);
 
 /* tone_placement.cpp */
 std::string apply_tone_to_syllable(const std::string& base, int tone);
-int find_tone_vowel_index(const std::string& syllable);
+int find_tone_vowel_index(const std::string& syllable, bool modern = false);
 bool is_vietnamese_vowel_glyph(const std::string& s, size_t pos, int* out_len);
 std::string nfc_compose(const std::string& nfd);
 /* `vowel` (lowercase, marked or not) carrying `tone`. */

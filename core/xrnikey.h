@@ -57,6 +57,7 @@ void xk_state_set_instant_commit(XKState* state, int enabled);
 #define XK_OPT_AUTO_RESTORE 1  /* default 1: a word that is not Vietnamese
                                   (or is a common English word that is not an
                                   attested syllable) is committed as typed */
+#define XK_OPT_MODERN_STYLE 2  /* default 0: hòa, khỏe, thúy; 1: hoà, khoẻ, thuý */
 #define XK_OPT_FREE_MARKING 3  /* default 1: tone and mark keys may follow the
                                   final consonant (toans, dangd, tienge); 0: a
                                   tone before it, a mark right after its letter */

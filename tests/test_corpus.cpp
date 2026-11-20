@@ -200,7 +200,23 @@ TEST_CASE("corpus: marks and tones may follow the final consonant", "[corpus]") 
     });
 }
 
-TEST_CASE("corpus: Enter, Tab and Escape end the word and reach the app", "[corpus][!mayfail]") {
+TEST_CASE("corpus: modern tone style moves the tone in oa oe uy", "[corpus]") {
+    const std::vector<Opt> modern = {{XK_OPT_MODERN_STYLE, 1}};
+    run(XK_MODE_TELEX, {
+        {"hoaf ", "hòa "}, {"thuys ", "thúy "}, {"khoer ", "khỏe "},
+        {"hoaf ", "hoà ", BOTH, modern}, {"thuys ", "thuý ", BOTH, modern},
+        {"khoer ", "khoẻ ", BOTH, modern}, {"thoar ", "thoả ", BOTH, modern},
+        {"HOAF ", "HOÀ ", BOTH, modern}, {"thuyr ", "thuỷ ", BOTH, modern},
+        // Everything else is the same in both styles.
+        {"cuar ", "của ", BOTH, modern}, {"muaf ", "mùa ", BOTH, modern},
+        {"quys ", "quý ", BOTH, modern}, {"toans ", "toán ", BOTH, modern},
+        {"ngoaif ", "ngoài ", BOTH, modern}, {"hoaij ", "hoại ", BOTH, modern},
+        {"khuyur ", "khuỷu ", BOTH, modern}, {"giaf ", "già ", BOTH, modern},
+        {"hoaf<", "ho", BOTH, modern}, {"hoaf<", "hò"},
+    });
+}
+
+TEST_CASE("corpus: Enter Tab and Escape end the word and reach the app", "[corpus][!mayfail]") {
     run(XK_MODE_TELEX, {
         {"chaof\n", "chào\n"}, {"chaof\t", "chào\t"}, {"chaof\x1b", "chào"},
         {"xin chaof\nban", "xin chào\nban"}, {"\n", "\n"},

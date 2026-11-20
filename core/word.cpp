@@ -84,10 +84,10 @@ bool word_prefix_ok(const Word& w) {
 }
 
 /* Index into w.letters of the vowel that carries the tone, or -1. */
-static int tone_letter(const Word& w) {
+static int tone_letter(const Word& w, bool modern) {
     if (w.tone == XK_TONE_NONE) return -1;
     std::u32string letters = word_letters(w);
-    int off = find_tone_vowel_index(utf8_of(letters));
+    int off = find_tone_vowel_index(utf8_of(letters), modern);
     char buf[8];
     int at = 0;
     for (size_t i = 0; i < letters.size(); ++i) {
@@ -101,9 +101,9 @@ static int tone_letter(const Word& w) {
  * marked or toned it: "As" is Á, "AAn" Ân, "HOAF" HÒA, "Owr" Ở. The old
  * renderer took toned and marked vowels from lowercase-only tables (and
  * lowercased doubled vowels), giving "á", "ân", "HòA", "Ơr". */
-std::string word_render(const Word& w) {
+std::string word_render(const Word& w, const Options& o) {
     std::u32string lower = word_letters(w);
-    const int carrier = tone_letter(w);
+    const int carrier = tone_letter(w, o.modern_style);
     std::string s;
     char buf[8];
     for (size_t i = 0; i < lower.size(); ++i) {
@@ -156,7 +156,7 @@ static bool has_vn_marks(const Word& w) {
 
 std::string word_display(const Word& w, const Options& o) {
     if (w.literal) return word_raw(w);
-    std::string v = word_render(w);
+    std::string v = word_render(w, o);
     if (!o.auto_restore || !has_vn_marks(w) || word_prefix_ok(w)) return v;
     /* No more keys can make this Vietnamese ("tẽt"): show what was typed. */
     return word_raw_effective(w);
@@ -164,7 +164,7 @@ std::string word_display(const Word& w, const Options& o) {
 
 std::string word_final(const Word& w, const Options& o) {
     if (w.literal) return word_raw(w);
-    std::string v = word_render(w);
+    std::string v = word_render(w, o);
     if (!o.auto_restore) return v;
     /* Two readings of the keys as plain text: with keys a repeat undid left
      * out ("ass" -> "as", "pass" -> "pas"), and exactly as typed ("pass").
@@ -207,7 +207,7 @@ std::string word_final(const Word& w, const Options& o) {
  * moves where "toa" takes it), "được" -> "đượ", "thuở" -> "thu". */
 void word_backspace(Word& w, int mode, const Options& o) {
     if (w.empty()) return;
-    if (w.literal || word_display(w, o) != word_render(w)) {
+    if (w.literal || word_display(w, o) != word_render(w, o)) {
         /* Shown as typed: BackSpace edits the keys themselves. */
         w.keys = w.literal ? word_raw(w) : word_raw_effective(w);
         w.keys.pop_back();
@@ -216,7 +216,7 @@ void word_backspace(Word& w, int mode, const Options& o) {
         const int last = static_cast<int>(w.letters.size()) - 1;
         const int key = w.letters[static_cast<size_t>(last)].key;
         const int partner = w.recs[static_cast<size_t>(key)].undoes;  /* "aaa": the 2nd a */
-        const bool carries_tone = tone_letter(w) == last;
+        const bool carries_tone = tone_letter(w, o.modern_style) == last;
         std::string keep;
         for (size_t k = 0; k < w.keys.size(); ++k) {
             const KeyRec& rec = w.recs[k];

@@ -109,6 +109,7 @@ void xk_state_set_option(XKState* state, int option, int value) {
     auto* s = reinterpret_cast<xrnikey::XKStateImpl*>(state);
     switch (option) {
         case XK_OPT_AUTO_RESTORE: s->opt.auto_restore = value != 0; break;
+        case XK_OPT_MODERN_STYLE: s->opt.modern_style = value != 0; break;
         case XK_OPT_FREE_MARKING: s->opt.free_marking = value != 0; break;
         case XK_OPT_W_SHORTCUT: s->opt.w_shortcut = value != 0; break;
         default: return;
@@ -122,6 +123,7 @@ int xk_state_get_option(XKState* state, int option) {
     auto* s = reinterpret_cast<xrnikey::XKStateImpl*>(state);
     switch (option) {
         case XK_OPT_AUTO_RESTORE: return s->opt.auto_restore ? 1 : 0;
+        case XK_OPT_MODERN_STYLE: return s->opt.modern_style ? 1 : 0;
         case XK_OPT_FREE_MARKING: return s->opt.free_marking ? 1 : 0;
         case XK_OPT_W_SHORTCUT: return s->opt.w_shortcut ? 1 : 0;
         default: return -1;
