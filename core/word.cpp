@@ -53,13 +53,29 @@ void word_add_letter(Word& w, int key_index) {
     l.mark = MARK_NONE;
     l.key = key_index;
     l.mark_key = -1;
+    l.soft = false;
     w.letters.push_back(l);
     w.recs[static_cast<size_t>(key_index)].kind = K_LETTER;
 }
 
+/* "uo" horned by one w is written uơ, not ươ, when the syllable ends right
+ * there after h, kh or th: huơ, khuơ, thuở. Everywhere else it is ươ
+ * (hương, thương, người, and "ươ" with no onset). */
+static bool soft_horn_hidden(const Word& w, size_t i) {
+    const std::vector<Letter>& L = w.letters;
+    if (i + 2 != L.size() || L[i + 1].base != 'o' || L[i + 1].mark != MARK_HORN) return false;
+    std::string onset;
+    for (size_t k = 0; k < i; ++k) onset += L[k].base;
+    return onset == "h" || onset == "kh" || onset == "th";
+}
+
 std::u32string word_letters(const Word& w) {
     std::u32string out;
-    for (const Letter& l : w.letters) out.push_back(glyph(l.base, l.mark));
+    for (size_t i = 0; i < w.letters.size(); ++i) {
+        const Letter& l = w.letters[i];
+        bool plain = l.soft && soft_horn_hidden(w, i);
+        out.push_back(glyph(l.base, plain ? MARK_NONE : l.mark));
+    }
     return out;
 }
 

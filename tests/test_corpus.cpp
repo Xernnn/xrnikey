@@ -160,7 +160,7 @@ TEST_CASE("corpus: typing a key twice undoes it", "[corpus]") {
     });
 }
 
-TEST_CASE("corpus: uo and uu take the horn the way Vietnamese spells them", "[corpus][!mayfail]") {
+TEST_CASE("corpus: uo and uu take the horn the way Vietnamese spells them", "[corpus]") {
     run(XK_MODE_TELEX, {
         {"thuowr ", "thuở "}, {"luuw ", "lưu "}, {"huow ", "huơ "},
         {"uow ", "ươ "}, {"quow ", "quơ "}, {"khuow ", "khuơ "},

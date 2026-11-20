@@ -33,6 +33,8 @@ struct Letter {
     uint8_t mark;   /* Mark */
     int key;        /* index into Word::keys of the key that typed it */
     int mark_key;   /* index of the key that set `mark`, -1 if none */
+    bool soft;      /* horn put on the u of "uo" by one w: shown or not by
+                       the spelling rule in word_letters() */
 };
 
 /* What a keystroke did to the word. */

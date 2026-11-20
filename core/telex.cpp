@@ -27,15 +27,19 @@ static int tone_of_key(char lc) {
 /* Telex's `w` is a SYLLABLE-level modifier, not a previous-character one:
  * Unikey accepts it anywhere after the nucleus, so "nguoiw" and "duongw" reach
  * ngươi / dương exactly as "nguwowi" does. It acts on the rightmost run of
- * vowels (skipping a coda after it), treating u+o as one unit that takes a
- * horn on BOTH halves; otherwise on the last vowel of the run that takes a w
- * mark (u -> ư, o -> ơ, a -> ă). Returns the letters it acts on (indexes into
- * w.letters), none when there is no vowel to mark (leading "w", "new"). */
-static std::vector<int> w_targets(const Word& w) {
+ * vowels (skipping a coda after it). The choices, in order: the u+o pair
+ * (horn on both: ươ), then each vowel that takes a w mark (u -> ư, o -> ơ,
+ * a -> ă) from the last one back. The caller takes the first choice that
+ * still spells Vietnamese, so "luu" + w is lưu (not luư) and "mua" + w is
+ * mưa (not muă). The u of "qu" is part of the onset, so "quo" + w is quơ.
+ * Each choice is a list of indexes into w.letters; none when there is no
+ * vowel to mark (leading "w", "new"). */
+static std::vector<std::vector<int>> w_choices(const Word& w) {
     const std::vector<Letter>& L = w.letters;
+    const int onset_u = (L.size() > 1 && L[0].base == 'q' && L[1].base == 'u') ? 1 : -1;
     int last = -1, first = -1;
     for (int k = static_cast<int>(L.size()) - 1; k >= 0; --k) {
-        if (is_vowel(L[static_cast<size_t>(k)].base)) {
+        if (is_vowel(L[static_cast<size_t>(k)].base) && k != onset_u) {
             if (last < 0) last = k;
             first = k;
         } else if (last >= 0) {
@@ -48,14 +52,15 @@ static std::vector<int> w_targets(const Word& w) {
         return (l.base == 'u' || l.base == 'o' || l.base == 'a') &&
                (l.mark == MARK_NONE || l.mark == MARK_HORN || l.mark == MARK_BREVE);
     };
+    std::vector<std::vector<int>> out;
     for (int k = first; k < last; ++k) {
         const Letter& u = L[static_cast<size_t>(k)];
         const Letter& o = L[static_cast<size_t>(k) + 1];
-        if (u.base == 'u' && o.base == 'o' && takes_w(u) && takes_w(o)) return {k, k + 1};
+        if (u.base == 'u' && o.base == 'o' && takes_w(u) && takes_w(o)) out.push_back({k, k + 1});
     }
     for (int k = last; k >= first; --k)
-        if (takes_w(L[static_cast<size_t>(k)])) return {k};
-    return {};
+        if (takes_w(L[static_cast<size_t>(k)])) out.push_back({k});
+    return out;
 }
 
 static bool marked_by(const Word& w, const Letter& l, char key) {
@@ -105,10 +110,31 @@ void telex_apply_key(Word& w, int i, const Options&) {
     }
 
     if (lc == 'w') {
-        std::vector<int> t = w_targets(w);
-        bool all_w = !t.empty();
-        for (int k : t) all_w = all_w && marked_by(w, w.letters[static_cast<size_t>(k)], 'w');
-        if (all_w) {  /* aww -> aw, uoww -> uow */
+        std::vector<std::vector<int>> choices = w_choices(w);
+        for (const std::vector<int>& t : choices) {
+            bool done = true;
+            for (int k : t) done = done && marked_by(w, w.letters[static_cast<size_t>(k)], 'w');
+            if (done) continue;
+            for (int k : t) {
+                Letter& l = w.letters[static_cast<size_t>(k)];
+                if (l.mark == MARK_HORN || l.mark == MARK_BREVE) continue;  /* keep "uw" */
+                l.mark = l.base == 'a' ? MARK_BREVE : MARK_HORN;
+                l.mark_key = i;
+                /* A single w on "uo" leaves it to the spelling whether the u
+                 * shows its horn: ươ before a final (hương, người), uơ when
+                 * the syllable ends there after h/kh/th (huơ, thuở). */
+                l.soft = t.size() == 2 && l.base == 'u';
+            }
+            rec.target = w.letters[static_cast<size_t>(t.back())].key;
+            if (t.size() == 2) rec.target2 = w.letters[static_cast<size_t>(t[0])].key;
+            if (keep_if_ok(K_MARK)) return;
+        }
+        /* Nothing left to mark: a w typed again takes its marks back
+         * (aww -> aw, uoww -> uow). */
+        for (const std::vector<int>& t : choices) {
+            bool done = true;
+            for (int k : t) done = done && marked_by(w, w.letters[static_cast<size_t>(k)], 'w');
+            if (!done) continue;
             int undone = -1;
             for (int k : t) {
                 Letter& l = w.letters[static_cast<size_t>(k)];
@@ -116,20 +142,10 @@ void telex_apply_key(Word& w, int i, const Options&) {
                 undone = std::max(undone, l.mark_key);
                 l.mark = MARK_NONE;
                 l.mark_key = -1;
+                l.soft = false;
             }
             word_undo(w, i, undone);
             return;
-        }
-        if (!t.empty()) {
-            for (int k : t) {
-                Letter& l = w.letters[static_cast<size_t>(k)];
-                if (l.mark == MARK_HORN || l.mark == MARK_BREVE) continue;  /* keep "uw" */
-                l.mark = l.base == 'a' ? MARK_BREVE : MARK_HORN;
-                l.mark_key = i;
-            }
-            rec.target = w.letters[static_cast<size_t>(t.back())].key;
-            if (t.size() == 2) rec.target2 = w.letters[static_cast<size_t>(t[0])].key;
-            if (keep_if_ok(K_MARK)) return;
         }
     }
 
