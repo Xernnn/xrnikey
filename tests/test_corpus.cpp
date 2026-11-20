@@ -370,6 +370,28 @@ TEST_CASE("syllables: stop codas take only sắc or nặng", "[corpus]") {
     run(XK_MODE_TELEX, {{"xoot ", "xoot "}, {"tieep ", "tieep "}, {"tieeps ", "tiếp "}});
 }
 
+// After qu the y of quỳnh, quýt, quých is the vowel itself (the u belongs to
+// the onset), as in huỳnh / huýt with the u as a glide.
+TEST_CASE("syllables: qu takes the y rimes of quỳnh, quýt and quých", "[corpus]") {
+    for (const char* s : {"quỳnh", "quýnh", "quynh", "quýt", "quỵt", "quých", "Quỳnh"}) {
+        INFO(s);
+        CHECK(xk_is_valid_syllable(s) == 1);
+    }
+    for (const char* s : {"quyt", "quỳt", "quych", "quuynh", "kynh", "ynh", "quyu"}) {
+        INFO(s);
+        CHECK(xk_is_valid_syllable(s) == 0);
+    }
+    run(XK_MODE_TELEX, {
+        {"quyfnh ", "quỳnh "}, {"quynhf ", "quỳnh "}, {"Quyfnh ", "Quỳnh "},
+        {"quyts ", "quýt "}, {"quytj ", "quỵt "}, {"quychs ", "quých "},
+        {"quynhs ", "quýnh "}, {"QUYFNH ", "QUỲNH "}, {"huyfnh ", "huỳnh "},
+        {"quyfnh ", "quỳnh ", BOTH, {{XK_OPT_MODERN_STYLE, 1}}},
+        {"quyfnh<", "quỳn"}, {"quyts<", "quý"},
+    });
+    run(XK_MODE_VNI, {{"quy2nh ", "quỳnh "}, {"quynh2 ", "quỳnh "}, {"quyt1 ", "quýt "},
+                      {"quy5t ", "quỵt "}});
+}
+
 TEST_CASE("options: defaults, unknown options, and the word in progress", "[corpus]") {
     XKState* s = xk_state_new(XK_MODE_TELEX);
     CHECK(xk_state_get_option(s, XK_OPT_AUTO_RESTORE) == 1);

@@ -3429,6 +3429,8 @@ quì
 quí
 quít
 quý
+quýnh
+quýt
 quăn
 quăng
 quĩ
@@ -3479,6 +3481,7 @@ quớ
 quờ
 quở
 quỳ
+quỳnh
 quỷ
 qúy
 ra

@@ -30,6 +30,7 @@ static const char* const RIMES[] = {
     "i", "ia", "ich", "im", "in", "inh", "ip", "it", "iu",
     "iêc", "iêm", "iên", "iêng", "iêp", "iêt", "iêu",
     "y", "yêm", "yên", "yêng", "yêt", "yêu",
+    "ych", "ynh", "yt",  /* only after qu: quých, quỳnh, quýt */
     "o", "oc", "oi", "om", "on", "ong", "op", "ot",
     "ô", "ôc", "ôi", "ôm", "ôn", "ông", "ôp", "ôt",
     "ơ", "ơi", "ơm", "ơn", "ơp", "ơt",
@@ -88,6 +89,10 @@ static bool onset_takes(const std::string& on, const std::u32string& r) {
     const bool front = v == U'e' || v == U'ê' || v == U'i' || v == U'y';
     const bool medial = is_medial_rime(r);
     if (starts_with(r, "yê")) return on.empty() || on == "qu";  /* yên, quyết */
+    /* The u of qu is the glide of uynh, uyt, uych, so quỳnh, quýt and quých
+     * are qu + ynh, yt, ych; no other onset takes those rimes (huỳnh is
+     * h + uynh, and there is no *kỳnh). */
+    if (v == U'y' && r.size() > 1) return on == "qu";
     if (starts_with(r, "iê") && on.empty()) return false;       /* spelled yê */
     if (starts_with(r, "uơ")) return on == "h" || on == "kh" || on == "th";  /* huơ, thuở */
     if (r == U"ươ") return on.empty();
