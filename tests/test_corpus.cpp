@@ -369,3 +369,14 @@ TEST_CASE("options: defaults, unknown options, and the word in progress", "[corp
     CHECK(xk_state_get_option(s, XK_OPT_MODERN_STYLE) == 1);
     xk_state_free(s);
 }
+
+// Nothing that long is Vietnamese: past 32 keys the word is committed in
+// pieces (XKResult's fields are 64 bytes) and the rest stays as typed.
+TEST_CASE("corpus: very long words stay as typed", "[corpus]") {
+    run(XK_MODE_TELEX, {
+        {"pneumonoultramicroscopicsilicovolcanoconiosis ",
+         "pneumonoultramicroscopicsilicovolcanoconiosis "},
+        {"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa ",
+         "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa "},
+    });
+}

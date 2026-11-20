@@ -75,10 +75,13 @@ static bool is_modifier_keysym(uint32_t keysym) {
 
 static void word_key(XKStateImpl* s, XKResult* r, char c) {
     if (s->word.keys.size() >= kMaxWordKeys) {
-        /* Close the long word and start a new one with this key. */
+        /* Close the long word and go on with this key as plain text: no
+         * Vietnamese word is this long, and composing again from here would
+         * turn the middle of it into a new syllable. */
         finalize_word(s, r, 0);
         std::string done = r->commit;
         int deleted = r->delete_before;
+        s->word.literal = true;
         s->word.keys.push_back(c);
         word_replay(s->word, s->mode, s->opt);
         show_word(s, r);
