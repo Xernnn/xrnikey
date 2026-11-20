@@ -10,9 +10,9 @@ Xrnikey provides Telex and VNI input methods with intelligent bilingual auto-swi
 
 ## Features
 
-- **Telex & VNI** — full Vietnamese input encoding with tone marks, vowel modifications, and backspace undo
+- **Telex & VNI** — full Vietnamese input encoding with tone marks and vowel modifications; tone and mark keys may follow the final consonant (`toans`, `dangd` → `toán`, `đang`), a key typed again undoes itself (`aaa` → `aa`, `ass` → `as`), and in Telex `w` alone is `ư`
 - **Unikey-style instant commit** — corrects tones in place as you type (no visible composition buffer), like Unikey on Windows, instead of holding the word in preedit until Space; opt-in via `InstantCommit=True`, falls back to classic preedit in apps without surrounding-text support
-- **Bilingual auto-switch** — type English without toggling the IME off
+- **Bilingual auto-switch** — type English without toggling the IME off: a word that cannot be Vietnamese, or a common English word that is not a Vietnamese syllable (`terms`, not `tém`), is committed as typed
 - **Dictionary completion** — 800+ word seed dictionary with user dictionary hot-reload
 - **N-gram prediction** — context-aware word suggestions
 - **Autocorrect** — Damerau-Levenshtein with Vietnamese phonetic similarity
@@ -59,7 +59,8 @@ To verify it actually loaded: `fcitx5-diagnose | grep -i xrnikey`, or run `xk-di
 | Select candidate 1–9 | 1–9 |
 | Page candidates | Tab / Shift+Tab |
 | Emoji trigger | `:` |
-| Undo composition | Backspace |
+| Delete one character | Backspace |
+| Remove the tone | z (Telex), 0 (VNI) |
 
 ## Input Methods
 
@@ -68,11 +69,15 @@ To verify it actually loaded: `fcitx5-diagnose | grep -i xrnikey`, or run `xk-di
 | Telex | `aas` | `âs` → `ấ` (with tone) |
 | Telex | `dd` | `đ` |
 | Telex | `ow` | `ơ` |
+| Telex | `w` | `ư` |
+| Telex | `aaa` | `aa` (typing a key again undoes it) |
 | VNI | `a1` | `á` |
 | VNI | `o6` | `ô` |
 | VNI | `d9` | `đ` |
 
 Type `xin chao` in Telex mode → `xin chào`.
+
+Typing options in the Fcitx5 settings: **AutoRestore** (on), **ModernStyle** (off: `hòa`, `thúy`; on: `hoà`, `thuý`), **FreeMarking** (on), **WShortcut** (on).
 
 ## CLI Tools
 
