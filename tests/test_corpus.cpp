@@ -182,7 +182,11 @@ TEST_CASE("corpus: BackSpace deletes one character", "[corpus]") {
         {"vieejt<", "việ"}, {"khoong<", "khôn"}, {"giaf<", "gi"},
         {"thuowr<", "thu"}, {"text<", "tex"}, {"aa<", ""},
         {"tex<", "t"}, {"aas<", ""}, {"chaof<<<<", ""}, {"chaof<<<<<", ""},
+        // One w horned both letters of "uo"; deleting the ơ keeps the ư.
+        {"nguoiwf<<", "ngư"}, {"tuoiw<<", "tư"}, {"truowngf<<<", "trư"},
+        {"nguoiwf<<<", "ng"}, {"dduwowcj<<", "đư"}, {"huowng<<<", "hu"},
     });
+    run(XK_MODE_VNI, {{"nguoi72<<", "ngư"}, {"thuo73<", "thu"}});
 }
 
 TEST_CASE("corpus: capitals follow the keys that typed them", "[corpus]") {

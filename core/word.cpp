@@ -214,6 +214,21 @@ std::string word_final(const Word& w, const Options& o) {
  * marked it, and the tone keys if it carried the tone -- and the word is
  * recomposed from the keys that remain: "toán" -> "tóa" (the tone stays and
  * moves where "toa" takes it), "được" -> "đượ", "thuở" -> "thu". */
+
+/* Key `k` (a mark key that marked two letters: one w or 7 on "uo") also
+ * marked a letter other than the one typed by key `deleted`, and that letter
+ * shows the mark. The key then stays, for that letter: "ngườ" BackSpace is
+ * "ngư", not "ngu". (In "thuở" the u's horn is not shown, so "thu".) */
+static bool marks_other_shown(const Word& w, int k, const KeyRec& rec, int deleted) {
+    const int other = rec.target == deleted ? rec.target2 : rec.target;
+    if (other < 0) return false;
+    for (size_t i = 0; i < w.letters.size(); ++i) {
+        const Letter& l = w.letters[i];
+        if (l.key == other) return l.mark_key == k && !(l.soft && soft_horn_hidden(w, i));
+    }
+    return false;
+}
+
 void word_backspace(Word& w, int mode, const Options& o) {
     if (w.empty()) return;
     if (w.literal || word_display(w, o) != word_render(w, o)) {
@@ -230,7 +245,8 @@ void word_backspace(Word& w, int mode, const Options& o) {
         for (size_t k = 0; k < w.keys.size(); ++k) {
             const KeyRec& rec = w.recs[k];
             bool drop = static_cast<int>(k) == key || static_cast<int>(k) == partner ||
-                        (rec.kind == K_MARK && (rec.target == key || rec.target2 == key)) ||
+                        (rec.kind == K_MARK && (rec.target == key || rec.target2 == key) &&
+                         !marks_other_shown(w, static_cast<int>(k), rec, key)) ||
                         (rec.kind == K_TONE && carries_tone);
             if (!drop) keep += w.keys[k];
         }
