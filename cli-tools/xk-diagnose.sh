@@ -12,15 +12,44 @@ fix() { log "  [FIX] $*"; }
 
 check_env_vars() {
     log "=== Environment Variables ==="
-    for var in GTK_IM_MODULE QT_IM_MODULE XMODIFIERS SDL_IM_MODULE; do
+    # On Wayland GTK apps reach Fcitx5 through text-input-v3, and the Fcitx5
+    # wiki says to leave GTK_IM_MODULE unset there; the others are still
+    # needed (Qt, SDL, and X11 apps under XWayland).
+    for var in QT_IM_MODULE XMODIFIERS SDL_IM_MODULE GTK_IM_MODULE; do
         val="${!var:-}"
-        if [ -z "$val" ]; then
+        if [ "$var" = GTK_IM_MODULE ] && [ -n "${WAYLAND_DISPLAY:-}" ]; then
+            if [ -z "$val" ]; then
+                ok "GTK_IM_MODULE unset (right for Wayland)"
+            else
+                log "  [NOTE] GTK_IM_MODULE=$val: on Wayland the Fcitx5 wiki says to leave it unset"
+            fi
+        elif [ -z "$val" ]; then
             issue "$var is not set"
-            fix "Add to ~/.bashrc: export $var=fcitx (or ibus for GNOME)"
+            fix "Set $var=fcitx where your session gets its environment (xk-setup can do it)"
         else
             ok "$var=$val"
         fi
     done
+}
+
+check_xrnikey_installed() {
+    log "=== Xrnikey in Fcitx5 ==="
+    local found=false f
+    for f in /usr/lib/fcitx5/libxrnikey5.so /usr/lib/*/fcitx5/libxrnikey5.so; do
+        [ -e "$f" ] && { ok "Addon: $f"; found=true; break; }
+    done
+    $found || { issue "libxrnikey5.so is not in Fcitx5's addon directory"
+                fix "Install with -DCMAKE_INSTALL_PREFIX=/usr (see README)"; }
+    for f in /usr/share/fcitx5/addon/xrnikey5.conf /usr/share/fcitx5/inputmethod/xrnikey.conf; do
+        if [ -e "$f" ]; then ok "$f"; else issue "Missing: $f"; fi
+    done
+    local profile="${XDG_CONFIG_HOME:-$HOME/.config}/fcitx5/profile"
+    if [ -f "$profile" ] && grep -q -x "Name=xrnikey" "$profile"; then
+        ok "Xrnikey is in the Fcitx5 input method list"
+    else
+        issue "Xrnikey is not in the Fcitx5 input method list"
+        fix "Add it in fcitx5-configtool, or see README, \"Switching from Bamboo\""
+    fi
 }
 
 check_imf_running() {
@@ -99,26 +128,6 @@ check_data_files() {
     done
 }
 
-check_gtk_im_module() {
-    log "=== GTK IM Module Compatibility ==="
-    local de="${XDG_CURRENT_DESKTOP:-unknown}"
-    local gtk_im="${GTK_IM_MODULE:-}"
-    case "$de" in
-        *GNOME*|*gnome*)
-            if [ "$gtk_im" != "ibus" ]; then
-                issue "GNOME detected but GTK_IM_MODULE=$gtk_im (expected ibus)"
-                fix "export GTK_IM_MODULE=ibus"
-            else ok "GTK_IM_MODULE=ibus for GNOME"
-            fi ;;
-        *)
-            if [ "$gtk_im" != "fcitx" ]; then
-                issue "Non-GNOME DE but GTK_IM_MODULE=$gtk_im (expected fcitx)"
-                fix "export GTK_IM_MODULE=fcitx"
-            else ok "GTK_IM_MODULE=fcitx"
-            fi ;;
-    esac
-}
-
 main() {
     log "Xrnikey Diagnostic Report"
     log "Generated: $(date)"
@@ -129,10 +138,10 @@ main() {
     check_env_vars
     check_imf_running
     check_libxrnikey
+    check_xrnikey_installed
     check_fonts
     check_wayland
     check_data_files
-    check_gtk_im_module
 
     log ""
     log "=== Summary ==="
