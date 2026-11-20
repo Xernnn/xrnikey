@@ -17,9 +17,12 @@ static std::string process_string(XKState* s, const char* input) {
 }
 
 TEST_CASE("Telex basic vowels", "[telex]") {
-    XKState* s = make_telex();
+    /* Catch2 runs the test case once per SECTION, so a state made out here
+     * leaked on every run whose section makes its own. */
+    XKState* s = nullptr;
 
     SECTION("aa -> â") {
+        s = make_telex();
         XKResult r = xk_process_key(s, 'a', 0);
         r = xk_process_key(s, 'a', 0);
         REQUIRE(r.consumed == 1);
