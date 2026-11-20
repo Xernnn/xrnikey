@@ -236,8 +236,10 @@ To avoid the last two, end the word (Space, punctuation, an arrow key) before cl
 
 Run the diagnostic tool for an automated report:
 ```bash
-xk-diagnose
+xk-diagnose                          # prints it
+xk-diagnose --output report.txt      # also saves it
 ```
 
 It checks the environment variables, the running input method framework, the library, fonts,
-the session type and the data files, and suggests fixes.
+the session type and the data files, and suggests fixes. It leaves out the host and user name
+unless given `--full`.

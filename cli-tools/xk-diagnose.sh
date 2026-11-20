@@ -1,11 +1,21 @@
 #!/usr/bin/env bash
 # xk-diagnose — comprehensive Xrnikey diagnostic tool
+#
+#   xk-diagnose                the report, on standard output
+#   xk-diagnose --output PATH  also write it to PATH
+#   xk-diagnose --full         include the host and user name
 set -euo pipefail
 
-REPORT="xrnikey-diagnostic-$(date +%Y%m%d-%H%M%S).txt"
+REPORT=""
+FULL=false
 ISSUES=0
 
-log() { echo "$*" | tee -a "$REPORT"; }
+log() {
+    echo "$*"
+    if [ -n "$REPORT" ]; then echo "$*" >> "$REPORT"; fi
+}
+# Command output into the report, line by line.
+log_lines() { local line; while IFS= read -r line; do log "$line"; done; }
 issue() { ISSUES=$((ISSUES + 1)); log "  [ISSUE $ISSUES] $*"; }
 ok() { log "  [OK] $*"; }
 fix() { log "  [FIX] $*"; }
@@ -73,10 +83,10 @@ check_libxrnikey() {
     log "=== libxrnikey.so ==="
     if ldconfig -p 2>/dev/null | grep -q libxrnikey; then
         ok "libxrnikey.so found in ldconfig cache"
-        ldd "$(ldconfig -p | grep libxrnikey | awk '{print $NF}' | head -1)" 2>&1 | tee -a "$REPORT"
+        ldd "$(ldconfig -p | grep libxrnikey | awk '{print $NF}' | head -1)" 2>&1 | log_lines
     elif [ -f /usr/lib/libxrnikey.so ]; then
         ok "Found /usr/lib/libxrnikey.so"
-        ldd /usr/lib/libxrnikey.so 2>&1 | tee -a "$REPORT"
+        ldd /usr/lib/libxrnikey.so 2>&1 | log_lines
     else
         issue "libxrnikey.so not found"
         fix "Install Xrnikey: sudo cmake --install build"
@@ -87,7 +97,8 @@ check_fonts() {
     log "=== Vietnamese Font Coverage ==="
     if command -v fc-match >/dev/null 2>&1; then
         local font
-        font=$(fc-match -s ":lang=vi" 2>/dev/null | head -1)
+        # head closing the pipe early must not end the script (pipefail).
+        font=$(fc-match -s ":lang=vi" 2>/dev/null | head -1 || true)
         if [ -n "$font" ]; then
             ok "Vietnamese font: $font"
         else
@@ -129,10 +140,23 @@ check_data_files() {
 }
 
 main() {
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --output)
+                [ $# -ge 2 ] || { echo "xk-diagnose: --output needs a path" >&2; exit 2; }
+                REPORT="$2"; shift 2 ;;
+            --full) FULL=true; shift ;;
+            *) echo "usage: xk-diagnose [--full] [--output PATH]" >&2; exit 2 ;;
+        esac
+    done
+    if [ -n "$REPORT" ]; then : > "$REPORT"; fi
+
     log "Xrnikey Diagnostic Report"
     log "Generated: $(date)"
-    log "Hostname: $(hostname)"
-    log "User: $(whoami)"
+    if $FULL; then
+        log "Hostname: $(hostname)"
+        log "User: $(whoami)"
+    fi
     log ""
 
     check_env_vars
@@ -146,7 +170,7 @@ main() {
     log ""
     log "=== Summary ==="
     log "Issues found: $ISSUES"
-    log "Report saved to: $REPORT"
+    if [ -n "$REPORT" ]; then echo "Report saved to: $REPORT"; fi
 
     if [ "$ISSUES" -gt 0 ]; then
         log "Run xk-setup to fix common issues automatically."

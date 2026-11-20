@@ -165,7 +165,7 @@ Files: user dictionary `~/.local/share/xrnikey/user-dict.txt` (`xk-dict`), abbre
 
 ```bash
 xk-setup                    # Check the Fcitx5 setup; asks before each change (--dry-run, --rollback)
-xk-diagnose                 # Diagnostic report
+xk-diagnose                 # Diagnostic report (--output PATH saves it; --full adds host and user)
 xk-dict lookup "hạnh phúc"  # Dictionary lookup
 xk-dict add "từ mới" 9000   # Add to the user dictionary (then fcitx5-remote -r)
 xk-macro add ko không       # Abbreviation: "ko" + Space -> "không" (needs Macro=True)
