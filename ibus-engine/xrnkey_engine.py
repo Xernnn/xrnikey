@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Xrnikey IBus engine — fallback for GNOME users."""
+"""xrnkey IBus engine — fallback for GNOME users."""
 
 import os
 import sys
@@ -8,14 +8,14 @@ import ibus
 from gi.repository import GObject
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from config import XrnikeyConfig
+from config import XrnkeyConfig
 from candidate_window import CandidateWindow
 
 XK_MODE_TELEX = 0
 XK_MODE_VNI = 1
 
 class XKResult(ctypes.Structure):
-    # Field order/types must mirror XKResult in core/xrnikey.h exactly —
+    # Field order/types must mirror XKResult in core/xrnkey.h exactly —
     # this struct is returned by value across the ctypes boundary.
     _fields_ = [
         ("commit", ctypes.c_char * 64),
@@ -25,23 +25,23 @@ class XKResult(ctypes.Structure):
         ("delete_before", ctypes.c_int),
     ]
 
-class XrnikeyEngine(ibus.Engine):
-    __gtype_name__ = "XrnikeyEngine"
+class XrnkeyEngine(ibus.Engine):
+    __gtype_name__ = "XrnkeyEngine"
 
     def __init__(self):
         super().__init__()
-        self.config = XrnikeyConfig()
-        self._load_libxrnikey()
+        self.config = XrnkeyConfig()
+        self._load_libxrnkey()
         mode = XK_MODE_VNI if self.config.input_mode == "VNI" else XK_MODE_TELEX
         self.state = self.lib.xk_state_new(mode)
         self.candidates = CandidateWindow(self)
         self.preedit_text = ""
 
-    def _load_libxrnikey(self):
+    def _load_libxrnkey(self):
         lib_paths = [
-            "/usr/lib/libxrnikey.so",
-            "/usr/local/lib/libxrnikey.so",
-            os.path.join(os.path.dirname(__file__), "..", "build", "core", "libxrnikey.so"),
+            "/usr/lib/libxrnkey.so",
+            "/usr/local/lib/libxrnkey.so",
+            os.path.join(os.path.dirname(__file__), "..", "build", "core", "libxrnkey.so"),
         ]
         self.lib = None
         for path in lib_paths:
@@ -49,7 +49,7 @@ class XrnikeyEngine(ibus.Engine):
                 self.lib = ctypes.CDLL(path)
                 break
         if not self.lib:
-            raise RuntimeError("libxrnikey.so not found")
+            raise RuntimeError("libxrnkey.so not found")
 
         self.lib.xk_state_new.argtypes = [ctypes.c_int]
         self.lib.xk_state_new.restype = ctypes.c_void_p
@@ -104,25 +104,25 @@ class XrnikeyEngine(ibus.Engine):
     def _setup_properties(self):
         props = ibus.PropList()
         props.append(ibus.Property.new(
-            "xrnikey.mode",
+            "xrnkey.mode",
             ibus.PROP_TYPE_NORMAL,
             ibus.PROP_STATE_UNCHECKED,
-            "Xrnikey",
+            "xrnkey",
             self.config.input_mode,
             True, True, 0, None
         ))
         return props
 
-class XrnikeyFactory(ibus.EngineFactory):
-    __gtype_name__ = "XrnikeyFactory"
+class XrnkeyFactory(ibus.EngineFactory):
+    __gtype_name__ = "XrnkeyFactory"
 
     def __init__(self):
         super().__init__()
-        self.engine_type = XrnikeyEngine
+        self.engine_type = XrnkeyEngine
 
     def do_create_engine(self, engine_name):
-        if engine_name == "xrnikey":
-            return XrnikeyEngine()
+        if engine_name == "xrnkey":
+            return XrnkeyEngine()
         return None
 
 def main():
@@ -137,8 +137,8 @@ def main():
         ibus.Component.get_textdomain(),
         ""
     )
-    factory = XrnikeyFactory()
-    component.add_engine("xrnikey", "Xrnikey", "vi", "MIT")
+    factory = XrnkeyFactory()
+    component.add_engine("xrnkey", "xrnkey", "vi", "MIT")
     component.set_engine_factory(factory)
     return component
 

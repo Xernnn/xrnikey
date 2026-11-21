@@ -2,7 +2,7 @@
 
 #include <fcitx/candidatelist.h>
 #include <fcitx/text.h>
-#include <xrnikey.h>
+#include <xrnkey.h>
 #include <vector>
 #include <string>
 #include <memory>
@@ -10,7 +10,7 @@
 
 namespace fcitx {
 
-struct XrnikeyCandidate {
+struct XrnkeyCandidate {
     std::string text;
     std::string gloss;
     float score;
@@ -22,7 +22,7 @@ public:
     CandidateProvider();
     ~CandidateProvider();
 
-    void setConfig(std::shared_ptr<XrnikeyConfig> config);
+    void setConfig(std::shared_ptr<XrnkeyConfig> config);
 
     /* Load the shared dictionary / n-gram data. Without this every
      * lookup returns empty, which is why the candidate window never showed
@@ -31,12 +31,12 @@ public:
     bool ready() const { return dict_ != nullptr; }
     /* `context` is the last few finished words, used to rank completions by
      * how likely they are to follow. Pass empty for no context. */
-    std::vector<XrnikeyCandidate> getCandidates(
+    std::vector<XrnkeyCandidate> getCandidates(
         const std::string& prefix, int max,
         const std::vector<std::string>& context = {});
 
 private:
-    std::shared_ptr<XrnikeyConfig> config_;
+    std::shared_ptr<XrnkeyConfig> config_;
     XKDict* dict_;
     XKNgram* ngram_;
 

@@ -1,5 +1,5 @@
 /* End-to-end tests of the Fcitx5 addon: a real fcitx::Instance loads the
- * built libxrnikey5.so, and a fake client -- an InputContext with its own
+ * built libxrnkey.so, and a fake client -- an InputContext with its own
  * text buffer -- types into it the way GTK, Qt and Wayland clients do.
  *
  * The client applies everything the engine sends (commits, preedit,
@@ -47,12 +47,12 @@ namespace {
 Instance *gInstance = nullptr;
 
 AddonInstance *engine() {
-    return gInstance->addonManager().addon("xrnikey5", true);
+    return gInstance->addonManager().addon("xrnkey", true);
 }
 
 /* Set the addon's options: everything at its default except `overrides`. */
 void configure(const std::map<std::string, std::string> &overrides = {}) {
-    XrnikeyConfig defaults;
+    XrnkeyConfig defaults;
     RawConfig raw;
     defaults.save(raw);
     for (const auto &[key, value] : overrides) {
@@ -115,7 +115,7 @@ public:
         }
         setCapabilityFlags(flags);
         focusIn();
-        gInstance->setCurrentInputMethod(this, "xrnikey", true);
+        gInstance->setCurrentInputMethod(this, "xrnkey", true);
         report();
         deliver(true);
     }
@@ -786,7 +786,7 @@ TEST_CASE("password and sensitive fields get the keys untouched",
         auto o = preeditApp();
         o.extra = CapabilityFlag::Password;
         FakeClient c(o);
-        REQUIRE(gInstance->inputMethod(&c) == "xrnikey");
+        REQUIRE(gInstance->inputMethod(&c) == "xrnkey");
         c.type("ddaay");
         CHECK(c.text() == "ddaay");
     }
@@ -873,7 +873,7 @@ TEST_CASE("changing the input mode applies to fields that are already open",
 }
 
 TEST_CASE("only options that do something are offered", "[config]") {
-    XrnikeyConfig config;
+    XrnkeyConfig config;
     RawConfig raw;
     config.save(raw);
     for (const char *dead : {"AutoSwitch", "SpellCheck", "EmojiEnabled",
@@ -1082,7 +1082,7 @@ TEST_CASE("the words before decide whether keys are English or Vietnamese",
 
 void writeMacros(const std::string &content) {
     std::ofstream(std::string(std::getenv("XDG_DATA_HOME")) +
-                  "/xrnikey/macros.txt")
+                  "/xrnkey/macros.txt")
         << content;
 }
 
@@ -1174,27 +1174,27 @@ int main(int argc, char *argv[]) {
      * bus, and every file the addon reads under a throwaway directory. */
     namespace fs = std::filesystem;
     /* One directory per process: ctest runs the cases in parallel. */
-    std::string tmpl = std::string(XRNIKEY_TEST_TMP) + "/home-XXXXXX";
+    std::string tmpl = std::string(XRNKEY_TEST_TMP) + "/home-XXXXXX";
     if (!mkdtemp(tmpl.data())) {
         std::perror("mkdtemp");
         return 1;
     }
     fs::path home = tmpl;
-    fs::create_directories(home / ".local/share/xrnikey");
+    fs::create_directories(home / ".local/share/xrnkey");
     setenv("HOME", home.c_str(), 1);
     setenv("XDG_DATA_HOME", (home / ".local/share").c_str(), 1);
     setenv("XDG_CONFIG_HOME", (home / ".config").c_str(), 1);
-    setenv("XRNIKEY_DATA_DIR", XRNIKEY_TEST_DATA_DIR, 1);
+    setenv("XRNKEY_DATA_DIR", XRNKEY_TEST_DATA_DIR, 1);
     unsetenv("DISPLAY");
     unsetenv("WAYLAND_DISPLAY");
     setenv("DBUS_SESSION_BUS_ADDRESS", "disabled:", 1);
 
-    setupTestingEnvironment(XRNIKEY_TEST_TMP, {XRNIKEY_TEST_ADDON_DIR},
-                            {XRNIKEY_TEST_FCITX_DATA});
+    setupTestingEnvironment(XRNKEY_TEST_TMP, {XRNKEY_TEST_ADDON_DIR},
+                            {XRNKEY_TEST_FCITX_DATA});
 
     char arg0[] = "test_fcitx5_addon";
     char arg1[] = "--disable=all";
-    char arg2[] = "--enable=testim,xrnikey5";
+    char arg2[] = "--enable=testim,xrnkey";
     char *fargv[] = {arg0, arg1, arg2};
     Instance instance(3, fargv);
     instance.addonManager().registerDefaultLoader(nullptr);
@@ -1205,13 +1205,13 @@ int main(int argc, char *argv[]) {
     dispatcher.attach(&instance.eventLoop());
     dispatcher.schedule([&]() {
         if (!engine()) {
-            std::fprintf(stderr, "xrnikey5 addon did not load\n");
+            std::fprintf(stderr, "xrnkey addon did not load\n");
         } else {
             auto group = instance.inputMethodManager().currentGroup();
             group.inputMethodList().clear();
             group.inputMethodList().push_back(
                 InputMethodGroupItem("keyboard-us"));
-            group.inputMethodList().push_back(InputMethodGroupItem("xrnikey"));
+            group.inputMethodList().push_back(InputMethodGroupItem("xrnkey"));
             group.setDefaultInputMethod("");
             instance.inputMethodManager().setGroup(group);
             result = Catch::Session().run(argc, argv);

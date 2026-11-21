@@ -28,7 +28,7 @@ class XkDiagnoseTest(unittest.TestCase):
 
     def test_prints_the_report_and_writes_no_file(self):
         r = self.run_cli()
-        self.assertIn("Xrnikey Diagnostic Report", r.stdout)
+        self.assertIn("xrnkey Diagnostic Report", r.stdout)
         self.assertIn("Issues found:", r.stdout)
         self.assertEqual(os.listdir(self.cwd), [])
 
@@ -45,7 +45,7 @@ class XkDiagnoseTest(unittest.TestCase):
         r = self.run_cli("--output", path)
         with open(path, encoding="utf-8") as f:
             report = f.read()
-        self.assertIn("Xrnikey Diagnostic Report", report)
+        self.assertIn("xrnkey Diagnostic Report", report)
         self.assertNotIn("Hostname:", report)
         self.assertTrue(r.stdout.startswith(report.splitlines()[0]))
         self.assertIn("Report saved to: " + path, r.stdout)

@@ -29,7 +29,7 @@ jobs:
           cmake -B build -G Ninja
           -DCMAKE_BUILD_TYPE=Release
           -DCMAKE_INSTALL_PREFIX=/usr
-          -DXRNIKEY_ENABLE_TESTS=ON
+          -DXRNKEY_ENABLE_TESTS=ON
           -DCMAKE_REQUIRE_FIND_PACKAGE_Fcitx5Core=ON
 
       - name: Build
@@ -48,7 +48,7 @@ jobs:
       # The IBus engine and the CLI tools are scripts, not compiled, so at least parse them.
       - name: Syntax-check the scripts
         run: |
-          python3 -m py_compile ibus-engine/*.py ibus-engine/xrnikey-ibus \
+          python3 -m py_compile ibus-engine/*.py ibus-engine/xrnkey-ibus \
             cli-tools/xk-dict.py cli-tools/xk-macro.py data/emoji/generate.py data/ngram/train.py \
             fcitx5-addon/tests/dbus_driver.py data/lm/build.py data/lm/xklm_text.py tools/xk-eval
           for f in cli-tools/*.sh data/dict/build_dict.sh \

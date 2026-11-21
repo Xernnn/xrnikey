@@ -1,14 +1,14 @@
-#ifndef XRNIKEY_INTERNAL_H
-#define XRNIKEY_INTERNAL_H
+#ifndef XRNKEY_INTERNAL_H
+#define XRNKEY_INTERNAL_H
 
-#include "xrnikey.h"
+#include "xrnkey.h"
 #include <string>
 #include <vector>
 #include <cstdint>
 #include <cstring>
 #include <memory>
 
-namespace xrnikey {
+namespace xrnkey {
 
 /* Unicode combining marks */
 constexpr char COMB_SAC[]   = "\xCC\x81";  /* U+0301 */
@@ -215,6 +215,6 @@ bool is_vowel_char(char c);
 bool has_vietnamese_vowel_pattern(const std::string& s);
 uint32_t keysym_to_char(uint32_t keysym);
 
-} /* namespace xrnikey */
+} /* namespace xrnkey */
 
-#endif /* XRNIKEY_INTERNAL_H */
+#endif /* XRNKEY_INTERNAL_H */

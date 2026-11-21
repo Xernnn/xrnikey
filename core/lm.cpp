@@ -11,7 +11,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-namespace xrnikey {
+namespace xrnkey {
 
 using namespace lmfmt;
 
@@ -186,9 +186,9 @@ float lm_unk_share(const Lm& m) {
     return static_cast<float>(std::log10(static_cast<double>(std::max<uint64_t>(m.hdr->unk_types, 1))));
 }
 
-}  // namespace xrnikey
+}  // namespace xrnkey
 
-using xrnikey::Lm;
+using xrnkey::Lm;
 
 extern "C" {
 
@@ -207,11 +207,11 @@ XKLm* xk_lm_open(const char* path) {
 XKLm* xk_lm_open_fd(int fd, int64_t offset, int64_t length) {
     if (offset < 0 || length <= 0) return nullptr;
     return reinterpret_cast<XKLm*>(
-        xrnikey::lm_map(fd, static_cast<uint64_t>(offset), static_cast<uint64_t>(length)));
+        xrnkey::lm_map(fd, static_cast<uint64_t>(offset), static_cast<uint64_t>(length)));
 }
 
 void xk_lm_free(XKLm* lm) {
-    xrnikey::lm_unmap(reinterpret_cast<Lm*>(lm));
+    xrnkey::lm_unmap(reinterpret_cast<Lm*>(lm));
 }
 
 int xk_lm_order(const XKLm* lm) {
@@ -224,30 +224,30 @@ int xk_lm_vocab_size(const XKLm* lm) {
 
 const char* xk_lm_word(const XKLm* lm, int id) {
     if (!lm || id < 0) return nullptr;
-    return xrnikey::lm_word(*reinterpret_cast<const Lm*>(lm), static_cast<uint32_t>(id));
+    return xrnkey::lm_word(*reinterpret_cast<const Lm*>(lm), static_cast<uint32_t>(id));
 }
 
 int xk_lm_id(const XKLm* lm, const char* word) {
     if (!lm || !word) return 0;
-    return static_cast<int>(xrnikey::lm_id(*reinterpret_cast<const Lm*>(lm), word));
+    return static_cast<int>(xrnkey::lm_id(*reinterpret_cast<const Lm*>(lm), word));
 }
 
 float xk_lm_logprob(const XKLm* lm, const char* const* context, int ctx_len, const char* word) {
-    if (!lm || !word) return xrnikey::lmfmt::kNever;
+    if (!lm || !word) return xrnkey::lmfmt::kNever;
     const Lm& m = *reinterpret_cast<const Lm*>(lm);
     if (ctx_len < 0 || (ctx_len > 0 && !context)) ctx_len = 0;
     /* Only the last order-1 words of the context can matter. */
     const int keep = std::min(ctx_len, static_cast<int>(m.hdr->order) - 1);
-    uint32_t ids[xrnikey::lmfmt::kMaxOrder];
+    uint32_t ids[xrnkey::lmfmt::kMaxOrder];
     for (int i = 0; i < keep; ++i) {
         const char* c = context[ctx_len - keep + i];
-        ids[i] = c ? xrnikey::lm_id(m, c) : xrnikey::lmfmt::kUnk;
+        ids[i] = c ? xrnkey::lm_id(m, c) : xrnkey::lmfmt::kUnk;
     }
-    const uint32_t id = xrnikey::lm_id(m, word);
-    float p = xrnikey::lm_logprob(m, ids, keep, id);
+    const uint32_t id = xrnkey::lm_id(m, word);
+    float p = xrnkey::lm_logprob(m, ids, keep, id);
     /* One particular unknown word gets its share of the unknown mass; the
      * token "<unk>" itself is all of it. */
-    if (id == xrnikey::lmfmt::kUnk && std::strcmp(word, "<unk>") != 0) p -= xrnikey::lm_unk_share(m);
+    if (id == xrnkey::lmfmt::kUnk && std::strcmp(word, "<unk>") != 0) p -= xrnkey::lm_unk_share(m);
     return p;
 }
 

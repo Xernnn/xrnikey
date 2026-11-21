@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""xk-dict — interactive dictionary CLI for Xrnikey."""
+"""xk-dict — interactive dictionary CLI for xrnkey."""
 
 import argparse
 import ctypes
@@ -7,10 +7,10 @@ import os
 import sys
 
 def load_lib():
-    for path in ["/usr/lib/libxrnikey.so", "/usr/local/lib/libxrnikey.so"]:
+    for path in ["/usr/lib/libxrnkey.so", "/usr/local/lib/libxrnkey.so"]:
         if os.path.exists(path):
             return ctypes.CDLL(path)
-    print("Error: libxrnikey.so not found", file=sys.stderr)
+    print("Error: libxrnkey.so not found", file=sys.stderr)
     sys.exit(1)
 
 def cmd_lookup(lib, word, dict_path):
@@ -79,12 +79,12 @@ def cmd_stats(user_dict):
     print(f"User dictionary: {len(lines)} entries")
 
 def main():
-    parser = argparse.ArgumentParser(description="Xrnikey dictionary CLI")
+    parser = argparse.ArgumentParser(description="xrnkey dictionary CLI")
     sub = parser.add_subparsers(dest="command")
 
     p_lookup = sub.add_parser("lookup")
     p_lookup.add_argument("word")
-    p_lookup.add_argument("--dict", default="/usr/share/xrnikey/dict/vi.dict")
+    p_lookup.add_argument("--dict", default="/usr/share/xrnkey/dict/vi.dict")
 
     p_add = sub.add_parser("add")
     p_add.add_argument("word")
@@ -106,7 +106,7 @@ def main():
     data_home = os.environ.get("XDG_DATA_HOME", "")
     if not data_home.startswith("/"):
         data_home = os.path.expanduser("~/.local/share")
-    user_dict = os.path.join(data_home, "xrnikey", "user-dict.txt")
+    user_dict = os.path.join(data_home, "xrnkey", "user-dict.txt")
 
     if args.command == "lookup":
         lib = load_lib()

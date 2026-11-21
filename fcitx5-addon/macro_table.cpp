@@ -72,9 +72,9 @@ std::string toLowerVi(const std::string &s) { return mapChars(s, lowerCp); }
 
 std::string MacroTable::defaultPath() {
     const char *xdg = std::getenv("XDG_DATA_HOME");
-    if (xdg && *xdg == '/') return std::string(xdg) + "/xrnikey/macros.txt";
+    if (xdg && *xdg == '/') return std::string(xdg) + "/xrnkey/macros.txt";
     const char *home = std::getenv("HOME");
-    return std::string(home ? home : "") + "/.local/share/xrnikey/macros.txt";
+    return std::string(home ? home : "") + "/.local/share/xrnkey/macros.txt";
 }
 
 MacroTable::MacroTable(std::string path) : path_(std::move(path)) { refresh(); }

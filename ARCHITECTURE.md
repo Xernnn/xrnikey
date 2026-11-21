@@ -1,4 +1,4 @@
-# Xrnikey Architecture
+# xrnkey Architecture
 
 ## Subsystem Overview
 
@@ -11,12 +11,12 @@
            ▼                                ▼
 ┌──────────────────────┐         ┌──────────────────────┐
 │   Fcitx5 Framework   │         │    IBus Daemon       │
-│  (xrnikey5 addon)    │         │  (xrnikey_engine.py) │
+│  (xrnkey addon)      │         │  (xrnkey_engine.py)  │
 └──────────┬───────────┘         └──────────┬───────────┘
            │ ctypes / direct link            │ ctypes
            ▼                                ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                      libxrnikey.so                           │
+│                      libxrnkey.so                            │
 │  ┌─────────┐ ┌────────┐ ┌──────┐ ┌────────┐ ┌───────────┐  │
 │  │ Telex/  │ │ Tone   │ │ Dict │ │ N-gram │ │ Autocorrect│  │
 │  │ VNI FSM │ │ Place  │ │ Trie │ │ Model  │ │ Engine     │  │
@@ -28,11 +28,11 @@
 
 1. **Kernel** delivers key event via evdev to the compositor (Wayland) or X server (X11)
 2. **Fcitx5** receives the key through `input-method-v2` (Wayland apps), its D-Bus frontend (the
-   GTK/Qt IM modules) or XIM (X11 apps), and hands it to the addon (`fcitx5-addon/xrnikey5.cpp`)
+   GTK/Qt IM modules) or XIM (X11 apps), and hands it to the addon (`fcitx5-addon/xrnkey_addon.cpp`)
 3. **The addon** decides what the key is: a pick from the suggestion window (Ctrl+1–9), a key in a
    password or sensitive field (passed through untouched), a key that ends the word (Return, Tab,
    arrows, shortcuts: the word is finished, then the key goes to the app), or a key for the core
-4. **Xrnikey core** (`xk_process_key(state, keysym, modifiers)`) runs the Telex/VNI state machine:
+4. **xrnkey core** (`xk_process_key(state, keysym, modifiers)`) runs the Telex/VNI state machine:
    - Vowel modification (aa→â, dd→đ)
    - Tone mark application (s→sắc)
    - Auto-restore: the word's raw keystrokes are kept, and it is shown as typed when it
@@ -50,9 +50,9 @@
      that word in place. On Wayland, Fcitx5 converts the deletion to bytes from its copy of the
      surrounding text, so the addon hands it exactly the characters it typed.
 
-## Core Library (libxrnikey)
+## Core Library (libxrnkey)
 
-Pure C ABI (`xrnikey.h`) — no C++ in public headers. Internal implementation in C++20.
+Pure C ABI (`xrnkey.h`) — no C++ in public headers. Internal implementation in C++20.
 
 | Module | File | Purpose |
 |--------|------|---------|
@@ -72,7 +72,7 @@ Pure C ABI (`xrnikey.h`) — no C++ in public headers. Internal implementation i
 
 | Component | Target |
 |-----------|--------|
-| libxrnikey core | < 8 MB |
+| libxrnkey core | < 8 MB |
 | Dictionary (mmap) | < 20 MB |
 | N-gram model | < 50 MB |
 
@@ -80,9 +80,9 @@ Dictionary uses `mmap()` for zero-copy startup. N-gram scores use 4-bit quantiza
 
 ## Configuration Persistence
 
-- `~/.config/fcitx5/conf/xrnikey5.conf` — Fcitx5 addon settings (re-read on "Reload Config")
-- `~/.local/share/xrnikey/user-dict.txt` — user dictionary (re-read on "Reload Config")
-- `~/.local/share/xrnikey/macros.txt` — abbreviations (re-read when the file changes)
+- `~/.config/fcitx5/conf/xrnkey.conf` — Fcitx5 addon settings (re-read on "Reload Config")
+- `~/.local/share/xrnkey/user-dict.txt` — user dictionary (re-read on "Reload Config")
+- `~/.local/share/xrnkey/macros.txt` — abbreviations (re-read when the file changes)
 
 ## Tests
 

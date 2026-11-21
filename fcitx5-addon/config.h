@@ -42,7 +42,7 @@ struct OptionTypeName<double> {
 };
 
 FCITX_CONFIGURATION(
-    XrnikeyConfig,
+    XrnkeyConfig,
     Option<InputMode, NoConstrain<InputMode>, DefaultMarshaller<InputMode>,
            InputModeI18NAnnotation>
         inputMode{this, "InputMode", _("Input Mode"), InputMode::Telex};
@@ -76,7 +76,7 @@ FCITX_CONFIGURATION(
          Key("Control+4"), Key("Control+5"), Key("Control+6"),
          Key("Control+7"), Key("Control+8"), Key("Control+9")},
         KeyListConstrain()};
-    /* Abbreviations from ~/.local/share/xrnikey/macros.txt (xk-macro),
+    /* Abbreviations from ~/.local/share/xrnkey/macros.txt (xk-macro),
      * expanded when the word ends, as in Bamboo. */
     Option<bool> macro{this, "Macro", _("Expand Abbreviations"), false};
     /* "Ko" expands with a capital first letter, "KO" in capitals; "ko" as

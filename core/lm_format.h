@@ -1,4 +1,4 @@
-/* The on-disk layout of an xrnikey language model (.xklm), shared by the
+/* The on-disk layout of an xrnkey language model (.xklm), shared by the
  * reader (lm.cpp) and the builder (tools/lm/xk-lm-build.cpp).
  *
  * A backoff n-gram model, as in an ARPA file, laid out as a forward trie so
@@ -17,12 +17,12 @@
  * Everything is little-endian and every section starts 8-byte aligned.
  * Offsets are from the start of the model (which need not be the start of
  * the file: a model can live inside an APK). */
-#ifndef XRNIKEY_LM_FORMAT_H
-#define XRNIKEY_LM_FORMAT_H
+#ifndef XRNKEY_LM_FORMAT_H
+#define XRNKEY_LM_FORMAT_H
 
 #include <cstdint>
 
-namespace xrnikey::lmfmt {
+namespace xrnkey::lmfmt {
 
 constexpr char kMagic[8] = {'X', 'K', 'L', 'M', '0', '0', '0', '1'};
 constexpr uint32_t kMaxOrder = 5;
@@ -59,6 +59,6 @@ struct Header {
     OrderSection sec[kMaxOrder + 1];  /* sec[2..order] */
 };
 
-}  // namespace xrnikey::lmfmt
+}  // namespace xrnkey::lmfmt
 
 #endif

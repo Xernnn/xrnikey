@@ -1,6 +1,6 @@
-#include "xrnikey_internal.h"
+#include "xrnkey_internal.h"
 
-namespace xrnikey {
+namespace xrnkey {
 
 int utf8_decode(const char* s, uint32_t* cp, int* len) {
     unsigned char c = static_cast<unsigned char>(s[0]);
@@ -64,4 +64,4 @@ bool has_vietnamese_vowel_pattern(const std::string& s) {
     return false;
 }
 
-} /* namespace xrnikey */
+} /* namespace xrnkey */

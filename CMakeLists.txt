@@ -1,26 +1,26 @@
 cmake_minimum_required(VERSION 3.27)
-project(xrnikey VERSION 1.0.0 LANGUAGES CXX)
+project(xrnkey VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-option(XRNIKEY_BUILD_IBUS "Build IBus engine" ON)
-option(XRNIKEY_BUILD_FCITX5 "Build Fcitx5 addon" ON)
-option(XRNIKEY_ENABLE_TESTS "Build test suite" OFF)
+option(XRNKEY_BUILD_IBUS "Build IBus engine" ON)
+option(XRNKEY_BUILD_FCITX5 "Build Fcitx5 addon" ON)
+option(XRNKEY_ENABLE_TESTS "Build test suite" OFF)
 ## NOT option() — that declares a BOOL and takes its third argument as the
-## initial VALUE, so `option(XRNIKEY_DATA_DIR "/usr/share/xrnikey" "Data files
+## initial VALUE, so `option(XRNKEY_DATA_DIR "/usr/share/xrnkey" "Data files
 ## install directory")` cached a BOOL of OFF and the daemon got compiled with
-## XRNIKEY_DATA_DIR="OFF", making every dict/ngram/emoji path load from ./OFF/.
+## XRNKEY_DATA_DIR="OFF", making every dict/ngram/emoji path load from ./OFF/.
 ## Must also be defined here at top level, not in data/CMakeLists.txt:
 ## add_subdirectory(fcitx5-addon), which compiles it in, runs before
 ## add_subdirectory(data).
-set(XRNIKEY_DATA_DIR "${CMAKE_INSTALL_PREFIX}/share/xrnikey"
+set(XRNKEY_DATA_DIR "${CMAKE_INSTALL_PREFIX}/share/xrnkey"
     CACHE PATH "Data files install directory")
 
 ## Before any add_subdirectory(): the addon's tests live in fcitx5-addon/,
 ## the core's in tests/. Catch2 is found (or fetched) here, once, so its
 ## targets and its Catch.cmake module are visible to both directories.
-if(XRNIKEY_ENABLE_TESTS)
+if(XRNKEY_ENABLE_TESTS)
     enable_testing()
     find_package(Catch2 3 QUIET)
     if(NOT Catch2_FOUND)
@@ -37,7 +37,7 @@ endif()
 
 add_subdirectory(core)
 
-if(XRNIKEY_BUILD_FCITX5)
+if(XRNKEY_BUILD_FCITX5)
     find_package(Fcitx5Core QUIET)
     if(Fcitx5Core_FOUND)
         add_subdirectory(fcitx5-addon)
@@ -46,7 +46,7 @@ if(XRNIKEY_BUILD_FCITX5)
     endif()
 endif()
 
-if(XRNIKEY_BUILD_IBUS)
+if(XRNKEY_BUILD_IBUS)
     add_subdirectory(ibus-engine)
 endif()
 
@@ -61,7 +61,7 @@ if(TARGET test_fcitx5_addon AND TARGET test_lm_models)
     add_dependencies(test_fcitx5_addon test_lm_models)
 endif()
 
-if(XRNIKEY_ENABLE_TESTS)
+if(XRNKEY_ENABLE_TESTS)
     add_subdirectory(tests)
 endif()
 

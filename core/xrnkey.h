@@ -1,5 +1,5 @@
-#ifndef XRNIKEY_H
-#define XRNIKEY_H
+#ifndef XRNKEY_H
+#define XRNKEY_H
 
 #include <stdint.h>
 
@@ -198,4 +198,4 @@ int        xk_emoji_search(XKEmojiDB* db, const char* query,
 }
 #endif
 
-#endif /* XRNIKEY_H */
+#endif /* XRNKEY_H */

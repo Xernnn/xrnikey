@@ -1,7 +1,7 @@
-#include "xrnikey_internal.h"
+#include "xrnkey_internal.h"
 #include <cctype>
 
-namespace xrnikey {
+namespace xrnkey {
 
 /* The word in progress is kept as the raw keystrokes. Every change replays
  * them from the start, so the composition is a pure function of the keys and
@@ -258,4 +258,4 @@ void word_backspace(Word& w, int mode, const Options& o) {
     word_replay(w, mode, o);
 }
 
-} /* namespace xrnikey */
+} /* namespace xrnkey */

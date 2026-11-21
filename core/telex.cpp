@@ -1,8 +1,8 @@
-#include "xrnikey_internal.h"
+#include "xrnkey_internal.h"
 #include <algorithm>
 #include <cctype>
 
-namespace xrnikey {
+namespace xrnkey {
 
 /* Telex: letters are letters, except that s f r x j set the tone, a e o
  * typed after themselves put a circumflex on them, dd is đ, and w puts the
@@ -225,4 +225,4 @@ void telex_apply_key(Word& w, int i, const Options& o) {
     word_add_letter(w, i);
 }
 
-} /* namespace xrnikey */
+} /* namespace xrnkey */

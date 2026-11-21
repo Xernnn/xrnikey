@@ -8,7 +8,7 @@
 namespace fcitx {
 
 /* The user's abbreviations (Bamboo's "macros"): one per line in
- * $XDG_DATA_HOME/xrnikey/macros.txt as `abbreviation<TAB>expansion`, blank
+ * $XDG_DATA_HOME/xrnkey/macros.txt as `abbreviation<TAB>expansion`, blank
  * lines and lines starting with # ignored. Abbreviations match without
  * case. The file is re-read whenever it changes, so `xk-macro add` takes
  * effect from the next word. */

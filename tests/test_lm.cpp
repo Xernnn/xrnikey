@@ -13,11 +13,11 @@
 #include <vector>
 
 #include "lm_format.h"
-#include "xrnikey.h"
+#include "xrnkey.h"
 
 namespace {
 
-const std::string kVi = std::string(XRNIKEY_TEST_LM_DIR) + "/vi.xklm";
+const std::string kVi = std::string(XRNKEY_TEST_LM_DIR) + "/vi.xklm";
 
 float lp(XKLm* m, std::vector<const char*> ctx, const char* w) {
     return xk_lm_logprob(m, ctx.data(), static_cast<int>(ctx.size()), w);
@@ -29,7 +29,7 @@ std::vector<char> slurp(const std::string& path) {
 }
 
 std::string spit(const std::string& name, const std::vector<char>& bytes) {
-    std::string path = std::string(XRNIKEY_TEST_TMP) + "/" + name;
+    std::string path = std::string(XRNKEY_TEST_TMP) + "/" + name;
     std::ofstream(path, std::ios::binary).write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
     return path;
 }
@@ -124,11 +124,11 @@ TEST_CASE("files that are not whole models are refused", "[lm]") {
 
     // An offset that points past the end.
     std::vector<char> bad = model;
-    xrnikey::lmfmt::Header h;
+    xrnkey::lmfmt::Header h;
     std::memcpy(&h, bad.data(), sizeof(h));
     h.vocab_index = h.total_size + 64;
     std::memcpy(bad.data(), &h, sizeof(h));
     CHECK(xk_lm_open(spit("offset.xklm", bad).c_str()) == nullptr);
 
-    CHECK(xk_lm_logprob(nullptr, nullptr, 0, "a") == xrnikey::lmfmt::kNever);
+    CHECK(xk_lm_logprob(nullptr, nullptr, 0, "a") == xrnkey::lmfmt::kNever);
 }

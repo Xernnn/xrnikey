@@ -1,4 +1,4 @@
-# xrnikey for Android: feature spec
+# xrnkey for Android: feature spec
 
 An Android keyboard for one owner's phone (Android 15, HyperOS) that replaces the closed-source
 Vietnamese keyboard they have used for years. The owner's verdict on it: it is so good that
@@ -120,7 +120,7 @@ large, in MiSans Latin.
 4. **Bottom row**:
    - `?123`.
    - Comma, with a small globe above it, because holding it opens the keyboard picker.
-   - The space bar, about 5 keys wide. It shows only a small, faint xrnikey tile, where the
+   - The space bar, about 5 keys wide. It shows only a small, faint xrnkey tile, where the
      reference shows its name.
    - Full stop.
    - Enter, as a round key in the accent colour. Its icon follows the field's action: newline,
@@ -412,7 +412,7 @@ the Telex result whatever the context, like `AutoRestore=False` on the laptop.
 - In the app's credential-encrypted private storage, as two text files the core reads and writes
   atomically (a temporary file, then rename):
   - `user-dict.txt`: `word<TAB>count`, the same format as the laptop's
-    `~/.local/share/xrnikey/user-dict.txt`;
+    `~/.local/share/xrnkey/user-dict.txt`;
   - `user-pairs.txt`: `word<TAB>word<TAB>count`.
 - They are read only after the phone is first unlocked. Before that, the keyboard types with the
   shipped model alone.
@@ -517,7 +517,7 @@ The panel holds:
 ## Settings
 
 A plain Compose activity, opened from the tool row's gear and from the app's launcher icon. It
-follows the family's look: the xrnikey tile is the title, the text is MiSans Latin, and the
+follows the family's look: the xrnkey tile is the title, the text is MiSans Latin, and the
 labels are short with no explanatory sentences.
 
 ### First run
@@ -560,7 +560,7 @@ opens on the settings list.
 
 ## The engine route: JNI to the shared C++ core
 
-**Decision: JNI.** The keyboard calls `libxrnikey` through a thin JNI layer. There is no Kotlin
+**Decision: JNI.** The keyboard calls `libxrnkey` through a thin JNI layer. There is no Kotlin
 port.
 
 Why:
@@ -624,7 +624,7 @@ keep passing.
   - The Compose views in the IME window get the lifecycle and saved-state owners set on the
     window's decor view.
 - **Project**:
-  - The package is `com.xern.xrnikey`. The system lists the keyboard as "xrnikey", because the
+  - The package is `com.xern.xrnkey`. The system lists the keyboard as "xrnkey", because the
     OS needs text.
   - `android/` is a Gradle project copied from the family's smallest app setup (`xrn-android-app`
     skill): AGP 9, Kotlin 2.4, compileSdk and targetSdk 35, minSdk 26, Java 17, and release builds
@@ -699,7 +699,7 @@ Rules:
 | `vi.lm` (about 4 M n-grams after pruning) | ≤ 25 MB |
 | `en.lm` | ≤ 6 MB |
 | `lexicon.bin`, `emoji.bin` | ≤ 3 MB |
-| `libxrnikey.so` + JNI (arm64) | ≤ 3 MB |
+| `libxrnkey.so` + JNI (arm64) | ≤ 3 MB |
 | APK total | ≤ 45 MB |
 
 - The model files are stored uncompressed in the APK (`noCompress`). They are memory-mapped

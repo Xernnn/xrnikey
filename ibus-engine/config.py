@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""GSettings schema wrapper for Xrnikey IBus engine."""
+"""GSettings schema wrapper for xrnkey IBus engine."""
 
 import os
 
@@ -9,8 +9,8 @@ try:
 except ImportError:
     HAS_GSETTINGS = False
 
-SCHEMA_ID = "com.xrnikey"
-SCHEMA_PATH = "/com/xrnikey/"
+SCHEMA_ID = "com.xrnkey"
+SCHEMA_PATH = "/com/xrnkey/"
 
 DEFAULTS = {
     "input-mode": "Telex",
@@ -21,7 +21,7 @@ DEFAULTS = {
     "auto-correct": True,
 }
 
-class XrnikeyConfig:
+class XrnkeyConfig:
     def __init__(self):
         self._settings = None
         if HAS_GSETTINGS:

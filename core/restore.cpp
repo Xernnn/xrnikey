@@ -9,7 +9,7 @@
  * small beam search, so a later word can change an earlier one ("co gang":
  * "có" alone, "cố gắng" together). */
 #include "lm_internal.h"
-#include "xrnikey_internal.h"
+#include "xrnkey_internal.h"
 
 #include <algorithm>
 #include <cmath>
@@ -20,7 +20,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace xrnikey {
+namespace xrnkey {
 
 using lmfmt::kUnk;
 
@@ -170,9 +170,9 @@ std::vector<uint32_t> context_ids(const Lm& m, const char* const* ctx, int n) {
 
 }  // namespace
 
-}  // namespace xrnikey
+}  // namespace xrnkey
 
-using namespace xrnikey;
+using namespace xrnkey;
 
 extern "C" {
 

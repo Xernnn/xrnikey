@@ -1,13 +1,13 @@
-# Xrnikey Troubleshooting
+# xrnkey Troubleshooting
 
 ## 1. IME not appearing in input method list
 
-**Symptom:** Xrnikey doesn't show up after installation.
+**Symptom:** xrnkey doesn't show up after installation.
 
 **Fix (Fcitx5):** both files must exist, and Fcitx5 must have been restarted since:
 ```bash
-ls /usr/lib/fcitx5/libxrnikey5.so /usr/share/fcitx5/addon/xrnikey5.conf \
-   /usr/share/fcitx5/inputmethod/xrnikey.conf
+ls /usr/lib/fcitx5/libxrnkey.so /usr/share/fcitx5/addon/xrnkey.conf \
+   /usr/share/fcitx5/inputmethod/xrnkey.conf
 fcitx5 -r -d
 ```
 If they are under `/usr/local`, reinstall with `-DCMAKE_INSTALL_PREFIX=/usr`.
@@ -43,7 +43,7 @@ GTK_IM_MODULE=fcitx
 ```
 
 `xk-setup` checks these and offers to write the missing ones to
-`~/.config/environment.d/90-xrnikey.conf`; it asks first and never changes ones already set. It
+`~/.config/environment.d/90-xrnkey.conf`; it asks first and never changes ones already set. It
 offers `QT_IM_MODULE=fcitx` only when fcitx5-qt is installed: without it Qt apps would get no
 input method at all.
 
@@ -53,7 +53,7 @@ input method at all.
 
 **Fix:** Under XWayland they use XIM (`XMODIFIERS=@im=fcitx`). As native Wayland apps they need
 `--enable-wayland-ime` (with `--ozone-platform=wayland`), e.g. in `~/.config/code-flags.conf` for
-VS Code. Xrnikey uses its preedit in them unless they report surrounding text (§8).
+VS Code. xrnkey uses its preedit in them unless they report surrounding text (§8).
 
 ## 5. Wayland compositor missing text-input protocol
 
@@ -77,14 +77,14 @@ fc-cache -fv
 fc-match :lang=vi
 ```
 
-## 7. libxrnikey.so not found
+## 7. libxrnkey.so not found
 
 **Symptom:** `xk-diagnose` reports missing library.
 
 **Fix:**
 ```bash
 sudo ldconfig
-ldconfig -p | grep xrnikey
+ldconfig -p | grep xrnkey
 # If missing:
 sudo cmake --install build
 sudo ldconfig
@@ -93,14 +93,14 @@ sudo ldconfig
 ## 8. Instant commit: which apps get it
 
 With `InstantCommit=True`, a word is typed straight into the field and corrected in place, with
-no underlined preedit. Xrnikey uses it only where that is safe, and falls back to the preedit
+no underlined preedit. xrnkey uses it only where that is safe, and falls back to the preedit
 otherwise:
 
 - the app must send surrounding text (foot, Alacritty and kitty never do; X11 apps through XIM
   cannot), with nothing selected;
 - the field must not be a terminal (Fcitx5 is told so by the app), and the app must not match
   `AppOverrideList` (terminals, VS Code and its forks, LibreOffice by default);
-- while a word is typed, the text the app reports must still be the text Xrnikey typed. After a
+- while a word is typed, the text the app reports must still be the text xrnkey typed. After a
   click elsewhere, or when the app rewrites or selects text, the word is left as it is and the
   next key starts a new word in preedit.
 
@@ -112,7 +112,7 @@ reports and against its last dot-separated part. To see the names, list Fcitx5's
 busctl --user call org.fcitx.Fcitx5 /controller org.fcitx.Fcitx.Controller1 DebugInfo
 ```
 
-Add one in `fcitx5-configtool` (Xrnikey's settings, "Force Preedit In These Apps"); it applies
+Add one in `fcitx5-configtool` (xrnkey's settings, "Force Preedit In These Apps"); it applies
 from the next word.
 
 ## 9. Flatpak/Snap app isolation
@@ -139,7 +139,7 @@ Snap apps may not inherit host IME. Use native packages when possible.
 
 **Fix:**
 ```bash
-# Add the word (it goes to ~/.local/share/xrnikey/user-dict.txt), then have Fcitx5 reload
+# Add the word (it goes to ~/.local/share/xrnkey/user-dict.txt), then have Fcitx5 reload
 # so the addon reads your words again: "Reload Config" in its tray menu, or
 xk-dict add "từ mới" 9000
 fcitx5-remote -r
@@ -152,12 +152,12 @@ fcitx5-remote -r
 That is deliberate: digits are text in Telex (`mp3`, `a1`) and tone marks in VNI, so they are
 never taken as picks. Suggestions are off by default; with `PredictionEnabled=True`, pick one
 with **Ctrl+1–9**. Space always ends the word as typed. To use other keys, set
-`CandidateSelectionKeys` in `~/.config/fcitx5/conf/xrnikey5.conf` (or in Fcitx5's settings).
+`CandidateSelectionKeys` in `~/.config/fcitx5/conf/xrnkey.conf` (or in Fcitx5's settings).
 
 ## 13. Turning Vietnamese on and off
 
-Xrnikey has no toggle key of its own: switch with Fcitx5's trigger key (Ctrl+Space by default,
-set in Fcitx5's global options), or `fcitx5-remote -s keyboard-us` / `fcitx5-remote -s xrnikey`.
+xrnkey has no toggle key of its own: switch with Fcitx5's trigger key (Ctrl+Space by default,
+set in Fcitx5's global options), or `fcitx5-remote -s keyboard-us` / `fcitx5-remote -s xrnkey`.
 
 ## 14. High latency / slow candidate window
 
@@ -166,12 +166,12 @@ set in Fcitx5's global options), or `fcitx5-remote -s keyboard-us` / `fcitx5-rem
 **Fix:**
 ```bash
 # Ensure dictionary is mmap'd (not loading from slow storage):
-ls -la /usr/share/xrnikey/dict/vi.dict
+ls -la /usr/share/xrnkey/dict/vi.dict
 ```
 
 ## 15. IBus engine crashes on startup
 
-**Symptom:** `xrnikey-ibus` exits immediately.
+**Symptom:** `xrnkey-ibus` exits immediately.
 
 The IBus engine is old and unmaintained: it is written against the long-gone `python-ibus` API,
 and the PKGBUILD does not build it. Use Fcitx5.
@@ -186,18 +186,18 @@ the session reads them: Hyprland's `env = NAME,value` lines, or `~/.config/envir
 
 ## 17. CachyOS-specific: fcitx5-unikey conflict
 
-**Symptom:** Both unikey and Xrnikey active simultaneously.
+**Symptom:** Both unikey and xrnkey active simultaneously.
 
 **Fix:**
 ```bash
 # Disable fcitx5-unikey:
 sudo pacman -R fcitx5-unikey
-fcitx5-configtool   # remove Unikey, add Xrnikey
+fcitx5-configtool   # remove Unikey, add xrnkey
 ```
 
 ## 18. Typing emoji
 
-Xrnikey has no emoji input of its own. Use Fcitx5's Unicode picker (Ctrl+Alt+Shift+U by default),
+xrnkey has no emoji input of its own. Use Fcitx5's Unicode picker (Ctrl+Alt+Shift+U by default),
 which searches characters, emoji included, by name.
 
 ## 19. Build fails on missing Fcitx5 headers
@@ -208,7 +208,7 @@ which searches characters, emoji included, by name.
 ```bash
 sudo pacman -S fcitx5 fcitx5-qt fcitx5-gtk extra-cmake-modules
 # Or build without Fcitx5:
-cmake -B build -DXRNIKEY_BUILD_FCITX5=OFF
+cmake -B build -DXRNKEY_BUILD_FCITX5=OFF
 ```
 
 ## 20. Clicking elsewhere while a word is underlined (Wayland)
@@ -220,7 +220,7 @@ elsewhere ends it: the app keeps the word where it was and tells Fcitx5. A nativ
 cursor, and what happens to the word depends on the app (as their source code reads; not yet
 checked in each):
 
-- **Chromium, Electron (with `--enable-wayland-ime`), Firefox** keep the word where it was. Xrnikey
+- **Chromium, Electron (with `--enable-wayland-ime`), Firefox** keep the word where it was. xrnkey
   sees it in the app's text and starts the next word at the new cursor. A click right at the end
   of the word cannot be told apart from typing on, so there the word goes on (and can end up
   twice).

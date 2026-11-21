@@ -13,48 +13,48 @@ if(NOT Catch2_FOUND)
 endif()
 
 add_executable(test_telex test_telex.cpp)
-target_link_libraries(test_telex PRIVATE xrnikey Catch2::Catch2WithMain)
+target_link_libraries(test_telex PRIVATE xrnkey Catch2::Catch2WithMain)
 
 add_executable(test_tone_placement test_tone_placement.cpp)
-target_link_libraries(test_tone_placement PRIVATE xrnikey Catch2::Catch2WithMain)
+target_link_libraries(test_tone_placement PRIVATE xrnkey Catch2::Catch2WithMain)
 target_compile_definitions(test_tone_placement PRIVATE
-    XRNIKEY_VI_SYLLABLES="${CMAKE_CURRENT_SOURCE_DIR}/../core/data/vi-syllables.txt")
+    XRNKEY_VI_SYLLABLES="${CMAKE_CURRENT_SOURCE_DIR}/../core/data/vi-syllables.txt")
 
 add_executable(test_full_pipeline test_full_pipeline.cpp)
-target_link_libraries(test_full_pipeline PRIVATE xrnikey Catch2::Catch2WithMain)
+target_link_libraries(test_full_pipeline PRIVATE xrnkey Catch2::Catch2WithMain)
 
 add_executable(test_instant_commit test_instant_commit.cpp)
-target_link_libraries(test_instant_commit PRIVATE xrnikey Catch2::Catch2WithMain)
+target_link_libraries(test_instant_commit PRIVATE xrnkey Catch2::Catch2WithMain)
 
 add_executable(test_real_words test_real_words.cpp)
-target_link_libraries(test_real_words PRIVATE xrnikey Catch2::Catch2WithMain)
+target_link_libraries(test_real_words PRIVATE xrnkey Catch2::Catch2WithMain)
 
 add_executable(test_corpus test_corpus.cpp)
-target_link_libraries(test_corpus PRIVATE xrnikey Catch2::Catch2WithMain)
+target_link_libraries(test_corpus PRIVATE xrnkey Catch2::Catch2WithMain)
 
 add_executable(test_user_dict test_user_dict.cpp)
-target_link_libraries(test_user_dict PRIVATE xrnikey Catch2::Catch2WithMain)
+target_link_libraries(test_user_dict PRIVATE xrnkey Catch2::Catch2WithMain)
 target_compile_definitions(test_user_dict PRIVATE
-    XRNIKEY_TEST_DICT="${CMAKE_BINARY_DIR}/data/dict/vi.dict"
-    XRNIKEY_TEST_TMP="${CMAKE_CURRENT_BINARY_DIR}")
+    XRNKEY_TEST_DICT="${CMAKE_BINARY_DIR}/data/dict/vi.dict"
+    XRNKEY_TEST_TMP="${CMAKE_CURRENT_BINARY_DIR}")
 add_dependencies(test_user_dict build_dict)
 
 add_executable(test_lm test_lm.cpp)
-target_link_libraries(test_lm PRIVATE xrnikey Catch2::Catch2WithMain)
+target_link_libraries(test_lm PRIVATE xrnkey Catch2::Catch2WithMain)
 target_include_directories(test_lm PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../core)
 target_compile_definitions(test_lm PRIVATE
-    XRNIKEY_TEST_LM_DIR="${CMAKE_BINARY_DIR}/data/lm"
-    XRNIKEY_TEST_TMP="${CMAKE_CURRENT_BINARY_DIR}")
+    XRNKEY_TEST_LM_DIR="${CMAKE_BINARY_DIR}/data/lm"
+    XRNKEY_TEST_TMP="${CMAKE_CURRENT_BINARY_DIR}")
 add_dependencies(test_lm test_lm_models)
 
 add_executable(test_restore test_restore.cpp)
-target_link_libraries(test_restore PRIVATE xrnikey Catch2::Catch2WithMain)
-target_compile_definitions(test_restore PRIVATE XRNIKEY_TEST_LM_DIR="${CMAKE_BINARY_DIR}/data/lm")
+target_link_libraries(test_restore PRIVATE xrnkey Catch2::Catch2WithMain)
+target_compile_definitions(test_restore PRIVATE XRNKEY_TEST_LM_DIR="${CMAKE_BINARY_DIR}/data/lm")
 add_dependencies(test_restore test_lm_models)
 
 add_executable(test_bilingual test_bilingual.cpp)
-target_link_libraries(test_bilingual PRIVATE xrnikey Catch2::Catch2WithMain)
-target_compile_definitions(test_bilingual PRIVATE XRNIKEY_TEST_LM_DIR="${CMAKE_BINARY_DIR}/data/lm")
+target_link_libraries(test_bilingual PRIVATE xrnkey Catch2::Catch2WithMain)
+target_compile_definitions(test_bilingual PRIVATE XRNKEY_TEST_LM_DIR="${CMAKE_BINARY_DIR}/data/lm")
 add_dependencies(test_bilingual test_lm_models)
 
 include(CTest)

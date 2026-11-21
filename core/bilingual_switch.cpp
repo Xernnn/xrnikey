@@ -1,5 +1,5 @@
-#include "xrnikey.h"
-#include "xrnikey_internal.h"
+#include "xrnkey.h"
+#include "xrnkey_internal.h"
 #include "lm_internal.h"
 #include <cmath>
 #include <fstream>
@@ -25,7 +25,7 @@
  * The English reading wins only when it is likelier; a tie goes to
  * Vietnamese. */
 
-namespace xrnikey {
+namespace xrnkey {
 
 namespace {
 
@@ -152,28 +152,28 @@ void context_note_char(XKStateImpl& s, char c) {
     } else if (c == '.' || c == '!' || c == '?') s.ctx.clear();
 }
 
-}  // namespace xrnikey
+}  // namespace xrnkey
 
 extern "C" {
 
 void xk_state_set_models(XKState* state, const XKLm* vi, const XKLm* en) {
     if (!state) return;
-    auto* s = reinterpret_cast<xrnikey::XKStateImpl*>(state);
-    s->vi_lm = reinterpret_cast<const xrnikey::Lm*>(vi);
-    s->en_lm = reinterpret_cast<const xrnikey::Lm*>(en);
+    auto* s = reinterpret_cast<xrnkey::XKStateImpl*>(state);
+    s->vi_lm = reinterpret_cast<const xrnkey::Lm*>(vi);
+    s->en_lm = reinterpret_cast<const xrnkey::Lm*>(en);
 }
 
 void xk_state_set_context(XKState* state, const char* const* words, int n) {
     if (!state) return;
-    auto* s = reinterpret_cast<xrnikey::XKStateImpl*>(state);
+    auto* s = reinterpret_cast<xrnkey::XKStateImpl*>(state);
     s->ctx.clear();
     for (int i = 0; words && i < n; ++i) {
         if (!words[i]) continue;
         const std::string w = words[i];
         if (w == "<s>") s->ctx.clear();
         else if (w.size() == 1 && !((w[0] >= 'a' && w[0] <= 'z') || (w[0] >= 'A' && w[0] <= 'Z')))
-            xrnikey::context_note_char(*s, w[0]);
-        else xrnikey::context_note_word(*s, w);
+            xrnkey::context_note_char(*s, w[0]);
+        else xrnkey::context_note_word(*s, w);
     }
 }
 
@@ -182,26 +182,26 @@ void xk_state_set_context(XKState* state, const char* const* words, int n) {
  * also holds the computing words that used to be hard-coded here). */
 int xk_is_english_word(const char* word) {
     if (!word) return 0;
-    if (xrnikey::lexicon_is_english(word)) return 1;
+    if (xrnkey::lexicon_is_english(word)) return 1;
     if (!xk_is_valid_syllable(word)) return 1;
     return 0;
 }
 
 void xk_bilingual_set_enabled(XKState* state, int enabled) {
     if (!state) return;
-    auto* s = reinterpret_cast<xrnikey::XKStateImpl*>(state);
+    auto* s = reinterpret_cast<xrnkey::XKStateImpl*>(state);
     s->enabled = enabled != 0;
 }
 
 int xk_bilingual_is_enabled(XKState* state) {
     if (!state) return 1;
-    auto* s = reinterpret_cast<xrnikey::XKStateImpl*>(state);
+    auto* s = reinterpret_cast<xrnkey::XKStateImpl*>(state);
     return s->enabled ? 1 : 0;
 }
 
 void xk_bilingual_load_state(XKState* state, const char* state_path) {
     if (!state || !state_path) return;
-    auto* s = reinterpret_cast<xrnikey::XKStateImpl*>(state);
+    auto* s = reinterpret_cast<xrnkey::XKStateImpl*>(state);
     std::ifstream f(state_path);
     if (!f.is_open()) return;
     std::string line;
@@ -214,7 +214,7 @@ void xk_bilingual_load_state(XKState* state, const char* state_path) {
 
 void xk_bilingual_save_state(XKState* state, const char* state_path) {
     if (!state || !state_path) return;
-    auto* s = reinterpret_cast<xrnikey::XKStateImpl*>(state);
+    auto* s = reinterpret_cast<xrnkey::XKStateImpl*>(state);
     std::ofstream f(state_path);
     if (!f.is_open()) return;
     f << "{\n  \"enabled\": " << (s->enabled ? "true" : "false") << "\n}\n";

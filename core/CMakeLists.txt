@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.27)
-project(xrnikey_core VERSION 1.0.0 LANGUAGES CXX)
+project(xrnkey_core VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_library(xrnikey SHARED
-    xrnikey.cpp
+add_library(xrnkey SHARED
+    xrnkey.cpp
     utf8_utils.cpp
     telex.cpp
     vni.cpp
@@ -34,22 +34,22 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/data/${XK_VI_FILE})
 configure_file(lexicon_data.cpp.in ${CMAKE_CURRENT_BINARY_DIR}/lexicon_data.cpp @ONLY)
 
-target_include_directories(xrnikey PUBLIC
+target_include_directories(xrnkey PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-    $<INSTALL_INTERFACE:include/xrnikey>
+    $<INSTALL_INTERFACE:include/xrnkey>
 )
 
-set_target_properties(xrnikey PROPERTIES
+set_target_properties(xrnkey PROPERTIES
     VERSION ${PROJECT_VERSION}
     SOVERSION 1
-    PUBLIC_HEADER xrnikey.h
+    PUBLIC_HEADER xrnkey.h
 )
 
 find_package(Threads REQUIRED)
-target_link_libraries(xrnikey PRIVATE Threads::Threads)
+target_link_libraries(xrnkey PRIVATE Threads::Threads)
 
-install(TARGETS xrnikey
+install(TARGETS xrnkey
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
-    PUBLIC_HEADER DESTINATION include/xrnikey
+    PUBLIC_HEADER DESTINATION include/xrnkey
 )

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
-  <schema id="com.xrnikey" path="/com/xrnikey/">
+  <schema id="com.xrnkey" path="/com/xrnkey/">
     <key name="input-mode" type="s">
       <default>'Telex'</default>
       <summary>Input mode</summary>

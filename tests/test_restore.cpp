@@ -6,12 +6,12 @@
 #include <string>
 #include <vector>
 
-#include "xrnikey.h"
+#include "xrnkey.h"
 
 namespace {
 
 struct Model {
-    XKLm* lm = xk_lm_open((std::string(XRNIKEY_TEST_LM_DIR) + "/vi.xklm").c_str());
+    XKLm* lm = xk_lm_open((std::string(XRNKEY_TEST_LM_DIR) + "/vi.xklm").c_str());
     ~Model() { xk_lm_free(lm); }
 };
 

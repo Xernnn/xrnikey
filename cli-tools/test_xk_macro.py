@@ -12,7 +12,7 @@ class XkMacroTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.env = dict(os.environ, XDG_DATA_HOME=self.tmp.name)
-        self.file = os.path.join(self.tmp.name, "xrnikey", "macros.txt")
+        self.file = os.path.join(self.tmp.name, "xrnkey", "macros.txt")
 
     def tearDown(self):
         self.tmp.cleanup()

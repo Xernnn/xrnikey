@@ -60,7 +60,7 @@ class Field:
         call(self.path, IC, "SetCapability", "(t)", (caps,))
         call(self.path, IC, "FocusIn")
         self.report()
-        call("/controller", CONTROLLER, "SetCurrentIM", "(s)", ("xrnikey",))
+        call("/controller", CONTROLLER, "SetCurrentIM", "(s)", ("xrnkey",))
         pump()
 
     def close(self):
@@ -109,7 +109,7 @@ class Field:
 def set_options(text):
     with open(CONF, "w", encoding="utf-8") as fp:
         fp.write(text)
-    call("/controller", CONTROLLER, "ReloadAddonConfig", "(s)", ("xrnikey5",))
+    call("/controller", CONTROLLER, "ReloadAddonConfig", "(s)", ("xrnkey",))
     pump()
 
 

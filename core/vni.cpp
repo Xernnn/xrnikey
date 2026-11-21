@@ -1,8 +1,8 @@
-#include "xrnikey_internal.h"
+#include "xrnkey_internal.h"
 #include <cctype>
 #include <vector>
 
-namespace xrnikey {
+namespace xrnkey {
 
 /* VNI: digits after the letters they change. 1-5 set the tone (sắc huyền
  * hỏi ngã nặng), 0 removes it, 6 is the circumflex (â ê ô), 7 the horn (ơ ư,
@@ -152,4 +152,4 @@ void vni_apply_key(Word& w, int i, const Options& o) {
     word_add_letter(w, i);
 }
 
-} /* namespace xrnikey */
+} /* namespace xrnkey */
