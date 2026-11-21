@@ -231,6 +231,27 @@ class XrnkeyService :
         showStrip()
     }
 
+    override fun onCursorStart() {
+        typist.finish()
+        keyboard?.strip = Strip.Tools
+    }
+
+    override fun onCursor(dx: Int, dy: Int) {
+        val ic = currentInputConnection ?: return
+        fun press(code: Int, times: Int) = repeat(times) {
+            ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, code))
+            ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, code))
+        }
+        press(if (dx < 0) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT, Math.abs(dx))
+        press(if (dy < 0) KeyEvent.KEYCODE_DPAD_UP else KeyEvent.KEYCODE_DPAD_DOWN, Math.abs(dy))
+    }
+
+    /** The cursor moved: what's before it now is the context for the next word. */
+    override fun onCursorEnd() {
+        typist.reset()
+        showStrip()
+    }
+
     override fun onStripMenu() {
         keyboard?.strip = Strip.Tools
     }

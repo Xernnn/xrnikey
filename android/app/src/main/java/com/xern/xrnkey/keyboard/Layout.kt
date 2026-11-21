@@ -18,9 +18,15 @@ data class Key(
     val width: Float = 1f,
     /** What a tap types, for CHAR, COMMA and PERIOD. */
     val text: String = label,
-    /** What holding it types, if anything (top-row letters give their digit). */
-    val hold: String? = null,
-)
+    /**
+     * What holding it offers: the first is chosen at once (a top-row letter's digit), the rest
+     * in a row above the key to slide to (the letter's Vietnamese forms).
+     */
+    val variants: List<String> = emptyList(),
+) {
+    /** What holding it and letting go types, if anything. */
+    val hold: String? get() = variants.firstOrNull()
+}
 
 data class Row(val keys: List<Key>, /** Empty space at each end, in letter keys. */ val inset: Float = 0f) {
     val width: Float get() = keys.sumOf { it.width.toDouble() }.toFloat() + 2 * inset
@@ -33,10 +39,24 @@ enum class Shift { OFF, ONCE, LOCKED }
 object Layouts {
     private const val DIGITS = "1234567890"
 
-    private fun chars(s: String, shift: Shift = Shift.OFF, holds: String? = null) =
+    /** Each letter's Vietnamese forms, as holding it offers them: the marked vowels, then its tones. */
+    val VARIANTS = mapOf(
+        'a' to "â ă á à ả ã ạ",
+        'd' to "đ",
+        'e' to "ê é è ẻ ẽ ẹ",
+        'i' to "í ì ỉ ĩ ị",
+        'o' to "ô ơ ó ò ỏ õ ọ",
+        'u' to "ư ú ù ủ ũ ụ",
+        'w' to "ư",
+        'y' to "ý ỳ ỷ ỹ ỵ",
+    ).mapValues { it.value.split(' ') }
+
+    private fun chars(s: String, shift: Shift = Shift.OFF, digits: Boolean = false) =
         s.mapIndexed { i, c ->
-            val label = if (shift == Shift.OFF) c.toString() else c.uppercase()
-            Key(KeyKind.CHAR, label, hold = holds?.getOrNull(i)?.toString())
+            val up = shift != Shift.OFF
+            val label = if (up) c.uppercase() else c.toString()
+            val forms = VARIANTS[c].orEmpty().map { if (up) it.uppercase() else it }
+            Key(KeyKind.CHAR, label, variants = (if (digits) listOf(DIGITS[i].toString()) else emptyList()) + forms)
         }
 
     private fun symbols(s: String) = s.split(' ').map { Key(KeyKind.CHAR, it) }
@@ -51,11 +71,14 @@ object Layouts {
         ),
     )
 
-    /** The rows of a page, top to bottom. The number row is there when [numberRow]. */
-    fun rows(page: Page, shift: Shift = Shift.OFF, numberRow: Boolean = true): List<Row> = when (page) {
+    /**
+     * The rows of a page, top to bottom. The number row is there when [numberRow]; holding a
+     * top-row letter gives its digit when [holdDigits].
+     */
+    fun rows(page: Page, shift: Shift = Shift.OFF, numberRow: Boolean = true, holdDigits: Boolean = true): List<Row> = when (page) {
         Page.LETTERS -> buildList {
             if (numberRow) add(Row(chars(DIGITS)))
-            add(Row(chars("qwertyuiop", shift, holds = DIGITS)))
+            add(Row(chars("qwertyuiop", shift, digits = holdDigits)))
             add(Row(chars("asdfghjkl", shift), inset = 0.5f))
             add(
                 Row(
