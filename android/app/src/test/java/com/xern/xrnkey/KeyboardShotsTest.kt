@@ -6,6 +6,8 @@ import android.os.SystemClock
 import android.view.MotionEvent
 import android.view.View.MeasureSpec
 import com.xern.xrnkey.engine.EmojiIndex
+import com.xern.xrnkey.clip.Clip
+import com.xern.xrnkey.keyboard.ClipboardPanelView
 import com.xern.xrnkey.keyboard.EmojiPanelView
 import com.xern.xrnkey.keyboard.EmojiTab
 import com.xern.xrnkey.keyboard.KeyboardView
@@ -110,7 +112,7 @@ class KeyboardShotsTest {
         return p
     }
 
-    private fun shotPanel(name: String, v: EmojiPanelView) {
+    private fun shotPanel(name: String, v: android.view.View) {
         val bmp = Bitmap.createBitmap(v.width, v.height, Bitmap.Config.ARGB_8888)
         v.draw(Canvas(bmp))
         out.mkdirs()
@@ -133,5 +135,30 @@ class KeyboardShotsTest {
         index.close()
         both("emoji-search") { strip = Strip.Search("cuoi", found) }
         both("strip-emoji") { strip = Strip.Candidates("sinh", "nhật", "🎂", more = true) }
+    }
+
+    @Test
+    fun clipboardPanel() {
+        for ((name, palette) in listOf("dark" to Palette.DARK, "light" to Palette.LIGHT)) {
+            val keys = view(palette)
+            val p = ClipboardPanelView(RuntimeEnvironment.getApplication())
+            p.palette = palette
+            p.clips = listOf(
+                Clip("Hẹn 7 giờ tối thứ Sáu ở quán cà phê cũ nhé, nhớ mang theo sách", 6, pinned = true),
+                Clip("https://example.com/menu", 5),
+                Clip("0901 234 567", 4),
+                Clip("Địa chỉ: 12 Đường Hoa Sữa,\nPhường 1, Quận 3", 3),
+                Clip("Thanks, see you tomorrow!", 2),
+                Clip("mã đơn hàng ABC-12345", 1),
+            )
+            p.measure(
+                MeasureSpec.makeMeasureSpec(1080, MeasureSpec.EXACTLY),
+                MeasureSpec.makeMeasureSpec(keys.height, MeasureSpec.EXACTLY),
+            )
+            p.layout(0, 0, p.measuredWidth, p.measuredHeight)
+            shotPanel("clipboard-$name", p)
+            p.hold(1)
+            shotPanel("clipboard-hold-$name", p)
+        }
     }
 }

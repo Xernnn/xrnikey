@@ -1,9 +1,11 @@
 package com.xern.xrnkey.ime
 
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.inputmethodservice.InputMethodService
+import android.os.UserManager
 import android.text.InputType
 import android.view.KeyEvent
 import android.view.View
@@ -12,10 +14,12 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
 import com.xern.xrnkey.SettingsActivity
+import com.xern.xrnkey.clip.ClipHistory
 import com.xern.xrnkey.engine.EmojiIndex
 import com.xern.xrnkey.engine.Model
 import com.xern.xrnkey.engine.Models
 import com.xern.xrnkey.engine.TypingState
+import com.xern.xrnkey.keyboard.ClipboardPanelView
 import com.xern.xrnkey.keyboard.EmojiPanelView
 import com.xern.xrnkey.keyboard.EnterAction
 import com.xern.xrnkey.keyboard.KeyboardView
@@ -24,16 +28,21 @@ import com.xern.xrnkey.keyboard.Palette
 import com.xern.xrnkey.keyboard.Shift
 import com.xern.xrnkey.keyboard.Strip
 import com.xern.xrnkey.keyboard.Tool
+import java.io.File
 import java.io.IOException
 
 /**
  * The keyboard. The models are memory-mapped straight from the APK (uncompressed assets), so
  * they cost no copy and only the pages in use take RAM. Nothing needs a permission.
  *
- * The input view is a frame: the keys, and the panels that take their place (emoji). A panel
+ * The input view is a frame: the keys, and the panels that take their place (emoji, clipboard). A panel
  * hides the keys but keeps their height, so the field above doesn't jump.
  */
-class XrnkeyService : InputMethodService(), KeyboardView.Listener, EmojiPanelView.Listener {
+class XrnkeyService :
+    InputMethodService(),
+    KeyboardView.Listener,
+    EmojiPanelView.Listener,
+    ClipboardPanelView.Listener {
     private var vi: Model? = null
     private var en: Model? = null
     private var models: Models? = null
@@ -43,6 +52,9 @@ class XrnkeyService : InputMethodService(), KeyboardView.Listener, EmojiPanelVie
     private lateinit var strip: StripMaker
     private var keyboard: KeyboardView? = null
     private var emojiPanel: EmojiPanelView? = null
+    private var clipPanel: ClipboardPanelView? = null
+    private var clips: ClipHistory? = null
+    private val clipListener = ClipboardManager.OnPrimaryClipChangedListener { onCopied() }
 
     /** The emoji search's query, while the keys type into it rather than the field. */
     private var searchQuery: String? = null
@@ -92,6 +104,7 @@ class XrnkeyService : InputMethodService(), KeyboardView.Listener, EmojiPanelVie
         state = TypingState().also { it.useModels(models) }
         typist = Typist(state, editor, models)
         strip = StripMaker(models, emoji)
+        clipboard().addPrimaryClipChangedListener(clipListener)
     }
 
     private fun openModel(name: String): Model? = try {
@@ -101,6 +114,7 @@ class XrnkeyService : InputMethodService(), KeyboardView.Listener, EmojiPanelVie
     }
 
     override fun onDestroy() {
+        clipboard().removePrimaryClipChangedListener(clipListener)
         state?.close()
         models?.close()
         emoji?.close()
@@ -122,8 +136,16 @@ class XrnkeyService : InputMethodService(), KeyboardView.Listener, EmojiPanelVie
             it.visibility = View.GONE
             emojiPanel = it
         }
+        val clipboard = ClipboardPanelView(this).also {
+            it.listener = this
+            it.palette = keys.palette
+            it.visibility = View.GONE
+            clipPanel = it
+        }
         frame.addView(keys, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-        frame.addView(panel, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        for (v in listOf(panel, clipboard)) {
+            frame.addView(v, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        }
         return frame
     }
 
@@ -226,11 +248,13 @@ class XrnkeyService : InputMethodService(), KeyboardView.Listener, EmojiPanelVie
                 val next = if (keyboard?.palette == Palette.LIGHT) Palette.DARK else Palette.LIGHT
                 keyboard?.palette = next
                 emojiPanel?.palette = next
+                clipPanel?.palette = next
                 prefs().edit().putString("palette", if (next == Palette.LIGHT) "light" else "dark").apply()
             }
             Tool.EMOJI -> showEmoji()
-            // The clipboard and the cursor pad come in later steps.
-            Tool.CLIPBOARD, Tool.CURSOR -> Unit
+            Tool.CLIPBOARD -> showClipboard()
+            // The cursor pad comes in a later step.
+            Tool.CURSOR -> Unit
         }
     }
 
@@ -242,6 +266,7 @@ class XrnkeyService : InputMethodService(), KeyboardView.Listener, EmojiPanelVie
 
     private fun showKeys() {
         emojiPanel?.visibility = View.GONE
+        clipPanel?.visibility = View.GONE
         keyboard?.visibility = View.VISIBLE
     }
 
@@ -293,6 +318,56 @@ class XrnkeyService : InputMethodService(), KeyboardView.Listener, EmojiPanelVie
         showEmoji()
     }
 
+    // ---- the clipboard ------------------------------------------------------------------------
+
+    private fun clipboard() = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+
+    /** The history, once the phone has been unlocked (it lives in credential-encrypted storage). */
+    private fun history(): ClipHistory? {
+        clips?.let { return it }
+        if (!getSystemService(UserManager::class.java).isUserUnlocked) return null
+        return ClipHistory(File(filesDir, "clips.tsv")).also { clips = it }
+    }
+
+    private fun onCopied() {
+        val clip = clipboard().primaryClip ?: return
+        val extras = clip.description?.extras
+        val sensitive = extras?.getBoolean(EXTRA_IS_SENSITIVE, false) == true
+        val text = clip.takeIf { it.itemCount > 0 }?.getItemAt(0)?.text
+        // typist.raw: the field that has the keyboard is a password field.
+        val inPassword = typist.raw
+        if (!ClipHistory.keep(text, sensitive, inPassword)) return
+        history()?.add(text.toString().take(MAX_CLIP), System.currentTimeMillis())
+        clipPanel?.clips = history()?.clips.orEmpty()
+    }
+
+    private fun showClipboard() {
+        val panel = clipPanel ?: return
+        panel.clips = history()?.clips.orEmpty()
+        emojiPanel?.visibility = View.GONE
+        keyboard?.visibility = View.INVISIBLE
+        panel.visibility = View.VISIBLE
+    }
+
+    override fun onPaste(text: String) {
+        typist.insert(text)
+    }
+
+    override fun onPin(text: String, pinned: Boolean) {
+        history()?.pin(text, pinned)
+        clipPanel?.clips = history()?.clips.orEmpty()
+    }
+
+    override fun onDelete(text: String) {
+        history()?.delete(text)
+        clipPanel?.clips = history()?.clips.orEmpty()
+    }
+
+    override fun onClearClips() {
+        history()?.clear()
+        clipPanel?.clips = history()?.clips.orEmpty()
+    }
+
     // ---- settings -----------------------------------------------------------------------------
 
     /** Device-protected storage: the keyboard runs before the phone's first unlock. */
@@ -303,6 +378,10 @@ class XrnkeyService : InputMethodService(), KeyboardView.Listener, EmojiPanelVie
     private fun savedPalette() = if (prefs().getString("palette", "dark") == "light") Palette.LIGHT else Palette.DARK
 
     companion object {
+        /** ClipDescription.EXTRA_IS_SENSITIVE (API 33), by name so older phones read it too. */
+        const val EXTRA_IS_SENSITIVE = "android.content.extra.IS_SENSITIVE"
+        private const val MAX_CLIP = 20_000
+
         fun isPassword(info: EditorInfo): Boolean {
             val cls = info.inputType and InputType.TYPE_MASK_CLASS
             val variation = info.inputType and InputType.TYPE_MASK_VARIATION
