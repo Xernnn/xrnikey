@@ -85,6 +85,7 @@ struct Options {
 };
 
 struct Lm;
+struct Models;
 
 /* Which language a finished word is in, as far as choosing the next one
  * goes. Numbers and pauses have none. */
@@ -117,8 +118,7 @@ struct XKStateImpl {
     bool instant_commit;
     Options opt;
     /* Language models for the English/Vietnamese choice; not owned. */
-    const Lm* vi_lm = nullptr;
-    const Lm* en_lm = nullptr;
+    const Models* models = nullptr;
     Context ctx;
 
     XKStateImpl(int m) : mode(m), enabled(true), instant_commit(false) {}

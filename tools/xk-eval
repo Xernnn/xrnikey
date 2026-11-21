@@ -140,7 +140,8 @@ class Candidate(ctypes.Structure):
 class Restorer:
     """The engine's accent restoration (xk_restore_word, xk_restore_run)."""
 
-    def __init__(self, lib, lm):
+    def __init__(self, lib, models):
+        lm = models
         L = lib
         L.xk_restore_word.restype = ctypes.c_int
         L.xk_restore_word.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_int,
@@ -161,14 +162,14 @@ class Restorer:
     def word(self, ctx, typed, k=1):
         arr, n = self._ctx(ctx)
         out = (Candidate * k)()
-        got = self.L.xk_restore_word(self.lm.ptr, arr, n, typed.encode(), out, k)
+        got = self.L.xk_restore_word(self.lm, arr, n, typed.encode(), out, k)
         return [out[i].text.decode() for i in range(got)] or [typed]
 
     def run(self, ctx, typed, nxt=None):
         arr, n = self._ctx(ctx)
         words = (ctypes.c_char_p * len(typed))(*[t.encode() for t in typed])
         out = (ctypes.c_void_p * len(typed))()
-        got = self.L.xk_restore_run(self.lm.ptr, arr, n, words, len(typed),
+        got = self.L.xk_restore_run(self.lm, arr, n, words, len(typed),
                                     nxt.encode() if nxt else None, out)
         if got != len(typed):
             return list(typed)
@@ -267,7 +268,7 @@ def eval_restoration(sentences, restore):
 
 # ---- Telex through the engine -------------------------------------------------
 
-MODELS = []  # (vi, en) model pointers for xk_state_set_models, when given
+MODELS = []  # the XKModels bundle for xk_state_set_models, when both models are given
 
 
 def type_words(engine, words):
@@ -277,7 +278,7 @@ def type_words(engine, words):
     lib = engine.lib
     s = lib.xk_state_new(0)
     if MODELS:
-        lib.xk_state_set_models(s, *MODELS)
+        lib.xk_state_set_models(s, MODELS[0])
     out = []
     try:
         for keys in words:
@@ -407,9 +408,14 @@ def main():
     engine = xklm_text.Engine(os.path.abspath(args.lib))
     vi = Lm(engine.lib, args.vi)
     en = Lm(engine.lib, args.en) if args.en else None
-    if en and hasattr(engine.lib, "xk_state_set_models"):
-        engine.lib.xk_state_set_models.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p]
-        MODELS[:] = [vi.ptr, en.ptr]
+    L = engine.lib
+    L.xk_models_new.restype = ctypes.c_void_p
+    L.xk_models_new.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+    L.xk_state_set_models.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+    # Restoration and the Telex choice score with the same bundle.
+    models = L.xk_models_new(vi.ptr, en.ptr if en else None)
+    if en:
+        MODELS[:] = [models]
     shapes = Shapes(engine, vi, args.syllables)
     results = []
 
@@ -429,7 +435,7 @@ def main():
         sets = {k: v[:100] for k, v in sets.items()}
 
     targets = {"H1": 95.0, "H2": 94.0, "C": 93.0}
-    restorer = Restorer(engine.lib, vi)
+    restorer = Restorer(engine.lib, models)
     for name, sentences in sets.items():
         r, t, ex, n = eval_restoration(sentences, lambda ctx, typed: typed)
         row(name, "restoration top-1, baseline: left without marks", pct(r, t), None,

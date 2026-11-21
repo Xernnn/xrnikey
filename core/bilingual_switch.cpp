@@ -1,6 +1,7 @@
 #include "xrnikey.h"
 #include "xrnikey_internal.h"
 #include "lm_internal.h"
+#include "score.h"
 #include <cmath>
 #include <fstream>
 #include <string>
@@ -27,72 +28,6 @@
 
 namespace xrnikey {
 
-namespace {
-
-/* P(next frame | language of the word before), LANG_NONE at the start of
- * a sentence. The owner writes mostly Vietnamese. English words that
- * Vietnamese text itself uses need no switch (the Vietnamese model has
- * them); a switch into English proper is rare right after a Vietnamese
- * word, and English runs are short. */
-double frame_prob(uint8_t prev, uint8_t next) {
-    static const double p[3][3] = {
-        /* to:  none  vi     en  */
-        {0.0, 0.85, 0.15},  /* from the start of a sentence */
-        {0.0, 0.99, 0.01},  /* from Vietnamese */
-        {0.0, 0.30, 0.70},  /* from English */
-    };
-    return p[prev][next];
-}
-
-/* The language of the latest word in the context, skipping numbers and
- * pauses; LANG_NONE at the start of a sentence. */
-uint8_t previous_lang(const Context& c) {
-    for (size_t i = c.langs.size(); i-- > 0;)
-        if (c.langs[i] != LANG_NONE) return c.langs[i];
-    return LANG_NONE;
-}
-
-/* log10 P(token | context) under one model; an unknown token gets its
- * share of the unknown mass. */
-float token_logprob(const Lm& m, const Context& c, const std::string& token) {
-    uint32_t ids[lmfmt::kMaxOrder];
-    int n = 0;
-    const int keep = static_cast<int>(m.hdr->order) - 1;
-    std::vector<uint32_t> all;
-    if (c.start) all.push_back(lmfmt::kBos);
-    for (const auto& t : c.tokens) all.push_back(lm_id(m, t));
-    for (size_t i = all.size() > static_cast<size_t>(keep) ? all.size() - static_cast<size_t>(keep) : 0;
-         i < all.size(); ++i)
-        ids[n++] = all[i];
-    const uint32_t w = lm_id(m, token);
-    float p = lm_logprob(m, ids, n, w);
-    if (w == lmfmt::kUnk) p -= lm_unk_share(m);
-    return p;
-}
-
-/* log10 P(the Vietnamese reading `vi` next). */
-double vi_score(const XKStateImpl& s, const std::string& vi) {
-    return std::log10(frame_prob(previous_lang(s.ctx), LANG_VI)) + token_logprob(*s.vi_lm, s.ctx, vi);
-}
-
-/* log10 P(the English reading `en` next): used in Vietnamese text, or a
- * switch into English. */
-double en_score(const XKStateImpl& s, const std::string& en) {
-    const uint8_t prev = previous_lang(s.ctx);
-    const double in_vi = frame_prob(prev, LANG_VI) * std::pow(10.0, token_logprob(*s.vi_lm, s.ctx, en));
-    const double in_en = frame_prob(prev, LANG_EN) * std::pow(10.0, token_logprob(*s.en_lm, s.ctx, en));
-    return std::log10(in_vi + in_en);
-}
-
-bool is_ascii_word(const std::string& t) {
-    if (t.empty()) return false;
-    for (char c : t)
-        if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))) return false;
-    return true;
-}
-
-}  // namespace
-
 std::string context_token(const std::string& text) {
     if (text.empty()) return "<unk>";
     std::u32string letters;
@@ -111,75 +46,50 @@ std::string context_token(const std::string& text) {
 }
 
 bool bilingual_ready(const XKStateImpl& s) {
-    return s.vi_lm != nullptr && s.en_lm != nullptr;
+    return s.models && s.models->vi && s.models->en;
 }
 
 bool bilingual_prefers_english(const XKStateImpl& s, const std::string& vi, const std::string& en) {
     if (!bilingual_ready(s)) return false;
-    return en_score(s, context_token(en)) > vi_score(s, context_token(vi));
+    return mix_logprob(*s.models, s.ctx, context_token(en)) >
+           mix_logprob(*s.models, s.ctx, context_token(vi));
 }
 
 void context_note_word(XKStateImpl& s, const std::string& text) {
-    const std::string token = context_token(text);
-    uint8_t lang = LANG_VI;
-    if (token == "<num>") {
-        if (!s.ctx.tokens.empty() && s.ctx.tokens.back() == "<num>") return;
-        lang = LANG_NONE;
-    } else if (token == "<unk>") {
-        lang = LANG_NONE;
-    } else {
-        std::u32string letters;
-        int tone;
-        const bool syllable = syllable_split(text, &letters, &tone) && syllable_valid(letters, tone);
-        if (!syllable) lang = LANG_EN;
-        else if (is_ascii_word(text) && bilingual_ready(s))
-            /* The same letters in both languages ("the", "can", "my"): which
-             * one the model finds likelier here. */
-            lang = frame_prob(previous_lang(s.ctx), LANG_EN) *
-                               std::pow(10.0, token_logprob(*s.en_lm, s.ctx, token)) >
-                           frame_prob(previous_lang(s.ctx), LANG_VI) *
-                               std::pow(10.0, token_logprob(*s.vi_lm, s.ctx, token))
-                       ? LANG_EN
-                       : LANG_VI;
-    }
-    s.ctx.push(token, lang);
+    context_push_text(s.models, s.ctx, text);
 }
 
 void context_note_char(XKStateImpl& s, char c) {
-    if (c >= '0' && c <= '9') context_note_word(s, std::string(1, c));
-    else if (c == ',' || c == ';' || c == ':') {
-        if (s.ctx.tokens.empty() || s.ctx.tokens.back() != "<p>") s.ctx.push("<p>", LANG_NONE);
-    } else if (c == '.' || c == '!' || c == '?') s.ctx.clear();
+    context_push_char(s.models, s.ctx, c);
 }
 
 }  // namespace xrnikey
 
 extern "C" {
 
-void xk_state_set_models(XKState* state, const XKLm* vi, const XKLm* en) {
+XKModels* xk_models_new(const XKLm* vi, const XKLm* en) {
+    auto* m = new xrnikey::Models;
+    m->vi = reinterpret_cast<const xrnikey::Lm*>(vi);
+    m->en = reinterpret_cast<const xrnikey::Lm*>(en);
+    return reinterpret_cast<XKModels*>(m);
+}
+
+void xk_models_free(XKModels* models) {
+    delete reinterpret_cast<xrnikey::Models*>(models);
+}
+
+void xk_state_set_models(XKState* state, const XKModels* models) {
     if (!state) return;
     auto* s = reinterpret_cast<xrnikey::XKStateImpl*>(state);
-    s->vi_lm = reinterpret_cast<const xrnikey::Lm*>(vi);
-    s->en_lm = reinterpret_cast<const xrnikey::Lm*>(en);
+    s->models = reinterpret_cast<const xrnikey::Models*>(models);
 }
 
 void xk_state_set_context(XKState* state, const char* const* words, int n) {
     if (!state) return;
     auto* s = reinterpret_cast<xrnikey::XKStateImpl*>(state);
-    s->ctx.clear();
-    for (int i = 0; words && i < n; ++i) {
-        if (!words[i]) continue;
-        const std::string w = words[i];
-        if (w == "<s>") s->ctx.clear();
-        else if (w.size() == 1 && !((w[0] >= 'a' && w[0] <= 'z') || (w[0] >= 'A' && w[0] <= 'Z')))
-            xrnikey::context_note_char(*s, w[0]);
-        else xrnikey::context_note_word(*s, w);
-    }
+    s->ctx = xrnikey::context_from(s->models, words, n, true);
 }
 
-
-/* The common-English list lives in data/english.txt (compiled in; it now
- * also holds the computing words that used to be hard-coded here). */
 int xk_is_english_word(const char* word) {
     if (!word) return 0;
     if (xrnikey::lexicon_is_english(word)) return 1;
