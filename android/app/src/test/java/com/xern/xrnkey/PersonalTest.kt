@@ -128,7 +128,7 @@ class PersonalTest {
             assertEquals(listOf("ko" to "không"), sc.all())  // nothing done yet
             sc.import(sample, apply = true)
             assertEquals(listOf("dc" to "được", "ko" to "không", "vs" to "với"), sc.all())
-            val f = File(tmp.root, "shortcuts.tsv")
+            val f = File(tmp.root, "shortcuts.txt")
             assertTrue(sc.save(f))
             Shortcuts().use { again ->
                 again.load(f)

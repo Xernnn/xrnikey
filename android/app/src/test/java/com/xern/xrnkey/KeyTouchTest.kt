@@ -148,4 +148,24 @@ class KeyTouchTest {
             assertEquals(listOf("ê", "3", "đ", "ạ"), events)
         }
     }
+
+    @Test
+    fun theToolRowsCursorPadStaysUntilATap() {
+        val v = keyboard()
+        v.openCursorPad()
+        // Each drag moves from where it starts: 10 dp (30 px) a character, 28 dp (84 px) a line.
+        touch(v, MotionEvent.ACTION_DOWN, 300f, 500f)
+        touch(v, MotionEvent.ACTION_MOVE, 420f, 590f)
+        touch(v, MotionEvent.ACTION_UP, 420f, 590f)
+        touch(v, MotionEvent.ACTION_DOWN, 600f, 500f)
+        touch(v, MotionEvent.ACTION_MOVE, 450f, 500f)
+        touch(v, MotionEvent.ACTION_UP, 450f, 500f)
+        touch(v, MotionEvent.ACTION_DOWN, 500f, 500f)  // a tap: closed
+        touch(v, MotionEvent.ACTION_UP, 500f, 500f)
+        assertEquals(listOf("cursor", "move 4 1", "move -5 0", "end"), events)
+        events.clear()
+        touch(v, MotionEvent.ACTION_DOWN, 270f, 387f)  // e: the keys type again
+        touch(v, MotionEvent.ACTION_UP, 270f, 387f)
+        assertEquals(listOf("e"), events)
+    }
 }

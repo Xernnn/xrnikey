@@ -917,6 +917,25 @@ reference's own numbers where it beats them.
     - the README's Android section and parity section;
     - registering the project with the owner's other apps.
 
+### Where the build stands (round 4)
+
+Steps 1 to 10 are built, with these differences from the text above:
+
+- **Cursor pad:** the tool row's button turns the keys into a trackpad (drag to move by
+  characters and lines, tap to leave), the same pad as holding the space bar. The edit panel
+  with Home, End, Select, Copy, Cut and Paste is not built.
+- **Personal words in Settings:** on/off and Clear only. The list, search, add, delete one,
+  export and import are not built.
+- **Theme:** dark slate, light and system. True black is not built.
+- **Clipboard:** history size is fixed at 50; no time limit.
+- **Look-back** has no setting; it is always on.
+- **Next words** come from `xk_predict` (core/predict.cpp). The expanded list (≡ with more
+  candidates) is not built; ≡ shows the tool row.
+- **Composing underline:** off by default (the owner's setting), by passing the composing text as
+  a span-free `Spannable`; editors that draw their own (Chrome, WebView) may still underline it.
+
+Step 11, the pass on the phone, has not started: nothing has run on a real phone yet.
+
 ## Risks
 
 - **Training text.**
