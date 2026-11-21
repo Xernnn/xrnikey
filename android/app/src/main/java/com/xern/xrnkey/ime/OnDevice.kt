@@ -52,6 +52,8 @@ class OnDevice(private val dir: File, private val prefs: SharedPreferences) : Au
     /** Writes the personal words, if any were learned since the last save. */
     fun save() {
         val w = words ?: return
+        // Cleared in the settings since these were loaded: what is held is what was cleared.
+        if (prefs.getLong(KEY_CLEARED, 0L) != wordsCleared) return
         if (w.unsaved > 0) w.save(wordsFile)
     }
 
@@ -65,7 +67,8 @@ class OnDevice(private val dir: File, private val prefs: SharedPreferences) : Au
 
     companion object {
         const val WORDS = "personal-words.tsv"
-        const val SHORTCUTS = "shortcuts.tsv"
+        /** The laptop's macros.txt format, so one file can serve both (feature-spec, "Shortcuts"). */
+        const val SHORTCUTS = "shortcuts.txt"
         private const val KEY_CLEARED = "words-cleared"
         private const val KEY_DECAYED = "words-decayed"
         private const val MONTH = 30L * 24 * 3600 * 1000

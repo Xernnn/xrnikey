@@ -15,6 +15,8 @@ import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
+import android.text.SpannableString
+import com.xern.xrnkey.Options
 import com.xern.xrnkey.SettingsActivity
 import com.xern.xrnkey.clip.ClipHistory
 import com.xern.xrnkey.engine.EmojiIndex
@@ -51,6 +53,7 @@ class XrnkeyService :
     private var emoji: EmojiIndex? = null
     private var state: TypingState? = null
     private lateinit var typist: Typist
+    private var options = Options()
     private lateinit var strip: StripMaker
     private var keyboard: KeyboardView? = null
     private var emojiPanel: EmojiPanelView? = null
@@ -64,7 +67,8 @@ class XrnkeyService :
 
     private val editor = object : Editor {
         override fun setComposing(text: String) {
-            currentInputConnection?.setComposingText(text, 1)
+            // A Spannable with no spans of its own gets no underline from the editor's theme.
+            currentInputConnection?.setComposingText(if (options.underline) text else SpannableString(text), 1)
         }
 
         override fun commit(text: String) {
@@ -162,6 +166,7 @@ class XrnkeyService :
 
     override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
         super.onStartInputView(info, restarting)
+        applyOptions(Options.load(prefs()))
         typist.raw = isPassword(info)
         // No auto-correct where words are addresses, not language.
         typist.autoCorrect = !isAddress(info)
@@ -174,7 +179,11 @@ class XrnkeyService :
             shift = Shift.OFF
             enterAction = enterActionOf(info)
             // The number row on Auto: shown in portrait, left out in landscape.
-            numberRow = resources.configuration.orientation != Configuration.ORIENTATION_LANDSCAPE
+            numberRow = when (options.numberRow) {
+                "on" -> true
+                "off" -> false
+                else -> resources.configuration.orientation != Configuration.ORIENTATION_LANDSCAPE
+            }
             strip = Strip.Tools
         }
     }
@@ -284,8 +293,7 @@ class XrnkeyService :
             }
             Tool.EMOJI -> showEmoji()
             Tool.CLIPBOARD -> showClipboard()
-            // The cursor pad comes in a later step.
-            Tool.CURSOR -> Unit
+            Tool.CURSOR -> keyboard?.openCursorPad()
         }
     }
 
@@ -364,10 +372,10 @@ class XrnkeyService :
         if (!getSystemService(UserManager::class.java).isUserUnlocked) return
         val od = onDevice ?: OnDevice(filesDir, prefs()).also { onDevice = it }
         od.refresh()
-        val learning = prefs().getBoolean("learn", true)
+        val learning = options.learn
         typist.personal = if (learning) od.words else null
         models?.user = if (learning) od.words else null
-        typist.shortcuts = if (prefs().getBoolean("shortcuts", true)) od.shortcuts else null
+        typist.shortcuts = if (options.shortcuts) od.shortcuts else null
         // Incognito fields ask for nothing to be learned.
         typist.learnHere = info.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING == 0
     }
@@ -390,7 +398,7 @@ class XrnkeyService :
         val text = clip.takeIf { it.itemCount > 0 }?.getItemAt(0)?.text
         // typist.raw: the field that has the keyboard is a password field.
         val inPassword = typist.raw
-        if (!ClipHistory.keep(text, sensitive, inPassword)) return
+        if (!options.clipboard || !ClipHistory.keep(text, sensitive, inPassword)) return
         history()?.add(text.toString().take(MAX_CLIP), System.currentTimeMillis())
         clipPanel?.clips = history()?.clips.orEmpty()
     }
@@ -429,7 +437,45 @@ class XrnkeyService :
 
     private val memory by lazy { EmojiMemory(prefs()) }
 
-    private fun savedPalette() = if (prefs().getString("palette", "dark") == "light") Palette.LIGHT else Palette.DARK
+    private fun savedPalette(): Palette = when (Options.load(prefs()).theme) {
+        "light" -> Palette.LIGHT
+        "system" -> if (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES) Palette.DARK else Palette.LIGHT
+        else -> Palette.DARK
+    }
+
+    /**
+     * The settings, as the settings screen left them: read when a field starts. A new typing
+     * method needs a new core state (and a typist around it).
+     */
+    private fun applyOptions(o: Options) {
+        options = o
+        val mode = if (o.vni) TypingState.VNI else TypingState.TELEX
+        if (state?.mode != mode) {
+            typist.finish()
+            state?.close()
+            state = TypingState(mode).also { it.useModels(models) }
+            typist = Typist(state, editor, models)
+        }
+        state?.setOption(TypingState.OPT_MODERN_STYLE, o.modernTones)
+        state?.setOption(TypingState.OPT_AUTO_RESTORE, o.keepForeign)
+        models?.correction = o.correction
+        typist.doubleSpace = o.doubleSpace
+        strip.suggestions = o.suggestions
+        strip.emojiSuggestions = o.emojiSuggestions
+        val palette = savedPalette()
+        keyboard?.apply {
+            this.palette = palette
+            keyPreview = o.keyPopup
+            holdMillis = o.holdMillis.toLong()
+            holdDigits = o.holdDigits
+            spaceSwipe = o.spaceSwipe
+            spaceHold = o.spaceHold
+            commaHold = o.commaHold
+            heightPercent = o.height
+        }
+        emojiPanel?.palette = palette
+        clipPanel?.palette = palette
+    }
 
     companion object {
         /** ClipDescription.EXTRA_IS_SENSITIVE (API 33), by name so older phones read it too. */

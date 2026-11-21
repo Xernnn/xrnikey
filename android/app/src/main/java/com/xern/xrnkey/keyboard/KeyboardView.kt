@@ -56,6 +56,10 @@ class KeyboardView(context: Context) : View(context) {
         set(value) { field = value; invalidate() }
     var keyPreview = true
     var holdMillis = 400L
+    /** The keys' height, in percent of the usual. */
+    var heightPercent = 100
+        set(value) { if (field != value) { field = value; requestLayout() } }
+
     /** Holding a top-row letter gives its digit. */
     var holdDigits = true
         set(value) { if (field != value) { field = value; relayout() } }
@@ -69,7 +73,7 @@ class KeyboardView(context: Context) : View(context) {
     private val dp = resources.displayMetrics.density
     private val sp = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 1f, resources.displayMetrics)
     private val stripHeight = 48 * dp
-    private val rowHeight = 54 * dp
+    private val rowHeight get() = 54 * dp * heightPercent / 100f
     private val font: Typeface = try {
         resources.getFont(R.font.misans_vf)
     } catch (e: Exception) {
@@ -526,8 +530,47 @@ class KeyboardView(context: Context) : View(context) {
 
     private fun hitAt(x: Float, y: Float): Hit? = hits.firstOrNull { it.rect.contains(x, y) }
 
+    /** The cursor pad from the tool row: it stays until a tap that doesn't drag. */
+    private var padOpen = false
+    private var padMoved = false
+
+    fun openCursorPad() {
+        if (padOpen) return
+        padOpen = true
+        startCursor(Cursor.PAD)
+    }
+
+    private fun closeCursorPad() {
+        padOpen = false
+        cursor = Cursor.OFF
+        holdFired = false
+        listener?.onCursorEnd()
+        invalidate()
+    }
+
+    /** Touches while the pad is open: drags move the cursor, a tap closes it. */
+    private fun padTouch(e: MotionEvent) {
+        when (e.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                anchorX = e.x
+                anchorY = e.y
+                padMoved = false
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (!padMoved && Math.abs(e.x - anchorX) < slop && Math.abs(e.y - anchorY) < slop) return
+                padMoved = true
+                moveCursor(e.x, e.y)
+            }
+            MotionEvent.ACTION_UP -> if (!padMoved) closeCursorPad()
+        }
+    }
+
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(e: MotionEvent): Boolean {
+        if (padOpen) {
+            padTouch(e)
+            return true
+        }
         when (e.actionMasked) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
                 // A second finger lands before the first lifts: the first key counts.
