@@ -24,7 +24,7 @@ jlong handle(T* p) {
     return static_cast<jlong>(reinterpret_cast<intptr_t>(p));
 }
 
-std::string text(JNIEnv* env, jbyteArray a) {
+std::string text_of(JNIEnv* env, jbyteArray a) {
     if (!a) return {};
     const jsize n = env->GetArrayLength(a);
     std::string s(static_cast<size_t>(n), '\0');
@@ -56,7 +56,7 @@ std::vector<std::string> strings(JNIEnv* env, jobjectArray a) {
     const jsize n = env->GetArrayLength(a);
     for (jsize i = 0; i < n; ++i) {
         auto b = static_cast<jbyteArray>(env->GetObjectArrayElement(a, i));
-        v.push_back(text(env, b));
+        v.push_back(text_of(env, b));
         env->DeleteLocalRef(b);
     }
     return v;
@@ -82,7 +82,7 @@ jobjectArray result(JNIEnv* env, const XKResult& r, jintArray out) {
 #define FN(ret, name) extern "C" JNIEXPORT ret JNICALL Java_com_xern_xrnkey_engine_Native_##name
 
 FN(jlong, lmOpenPath)(JNIEnv* env, jobject, jbyteArray path) {
-    return handle(xk_lm_open(text(env, path).c_str()));
+    return handle(xk_lm_open(text_of(env, path).c_str()));
 }
 
 FN(jlong, lmOpenFd)(JNIEnv*, jobject, jint fd, jlong offset, jlong length) {
@@ -140,7 +140,7 @@ FN(jobjectArray, restoreRun)(JNIEnv* env, jobject, jlong m, jobjectArray context
                              jbyteArray next) {
     const auto c = strings(env, context), t = strings(env, typed);
     const auto cp = pointers(c), tp = pointers(t);
-    const std::string nx = text(env, next);
+    const std::string nx = text_of(env, next);
     std::vector<char*> got(t.size(), nullptr);
     const int n = xk_restore_run(as<XKModels>(m), cp.data(), static_cast<int>(cp.size()), tp.data(),
                                  static_cast<int>(tp.size()), next ? nx.c_str() : nullptr, got.data());
@@ -157,7 +157,7 @@ FN(jobjectArray, restoreWord)(JNIEnv* env, jobject, jlong m, jobjectArray contex
                               jint max, jintArray types) {
     const auto c = strings(env, context);
     const auto cp = pointers(c);
-    const std::string t = text(env, typed);
+    const std::string t = text_of(env, typed);
     std::vector<XKCandidate> cands(static_cast<size_t>(max > 0 ? max : 0));
     const int n = max > 0 ? xk_restore_word(as<XKModels>(m), cp.data(), static_cast<int>(cp.size()), t.c_str(),
                                             cands.data(), max)
@@ -169,5 +169,51 @@ FN(jobjectArray, restoreWord)(JNIEnv* env, jobject, jlong m, jobjectArray contex
         kinds.push_back(cands[static_cast<size_t>(i)].type);
     }
     if (types && env->GetArrayLength(types) >= n && n > 0) env->SetIntArrayRegion(types, 0, n, kinds.data());
+    return byte_arrays(env, out);
+}
+
+// ---- emoji (core/emoji.cpp) --------------------------------------------------------------------
+
+FN(jlong, emojiLoad)(JNIEnv* env, jobject, jbyteArray text) {
+    const std::string t = text_of(env, text);
+    return handle(xk_emoji_load_text(t.data(), t.size()));
+}
+
+FN(void, emojiFree)(JNIEnv*, jobject, jlong db) { xk_emoji_free(as<XKEmojiDB>(db)); }
+
+FN(jint, emojiCount)(JNIEnv*, jobject, jlong db) { return xk_emoji_count(as<XKEmojiDB>(db)); }
+
+/* [emoji, group, name]; skin[0] = 1 when it takes skin tones. */
+FN(jobjectArray, emojiAt)(JNIEnv* env, jobject, jlong db, jint i, jintArray skin) {
+    const char *e = nullptr, *g = nullptr, *n = nullptr;
+    int s = 0;
+    if (!xk_emoji_at(as<XKEmojiDB>(db), i, &e, &g, &n, &s)) return nullptr;
+    if (skin && env->GetArrayLength(skin) >= 1) env->SetIntArrayRegion(skin, 0, 1, &s);
+    return byte_arrays(env, {e, g, n});
+}
+
+FN(jobjectArray, emojiSearch)(JNIEnv* env, jobject, jlong db, jbyteArray query, jint max) {
+    const std::string q = text_of(env, query);
+    std::vector<char*> chars(static_cast<size_t>(max > 0 ? max : 0)), names(chars.size());
+    const int n = max > 0 ? xk_emoji_search(as<XKEmojiDB>(db), q.c_str(), chars.data(), names.data(), max) : 0;
+    std::vector<std::string> out;
+    for (int i = 0; i < n; ++i) {
+        out.emplace_back(chars[static_cast<size_t>(i)]);
+        std::free(chars[static_cast<size_t>(i)]);
+        std::free(names[static_cast<size_t>(i)]);
+    }
+    return byte_arrays(env, out);
+}
+
+FN(jobjectArray, emojiSuggest)(JNIEnv* env, jobject, jlong db, jobjectArray words, jint max) {
+    const auto w = strings(env, words);
+    const auto p = pointers(w);
+    std::vector<char*> got(static_cast<size_t>(max > 0 ? max : 0));
+    const int n = max > 0 ? xk_emoji_suggest(as<XKEmojiDB>(db), p.data(), static_cast<int>(p.size()), got.data(), max) : 0;
+    std::vector<std::string> out;
+    for (int i = 0; i < n; ++i) {
+        out.emplace_back(got[static_cast<size_t>(i)]);
+        std::free(got[static_cast<size_t>(i)]);
+    }
     return byte_arrays(env, out);
 }

@@ -2,6 +2,8 @@
 // and the suggestion strip use it.
 #include <catch2/catch_test_macros.hpp>
 #include <cstdlib>
+#include <fstream>
+#include <iterator>
 #include <string>
 #include <vector>
 
@@ -105,4 +107,16 @@ TEST_CASE("the words just typed suggest emoji, common keywords do not", "[emoji]
         for (size_t j = i + 1; j < ok.size(); ++j) CHECK(ok[i] != ok[j]);
     CHECK(suggest(x.db, {"mặt"}).empty());  // too many emoji share it
     CHECK(suggest(x.db, {"bàn", "phím", "qwerty"}).empty());
+}
+
+TEST_CASE("the index loads from its text as from its file", "[emoji]") {
+    std::ifstream f(XRNKEY_EMOJI_INDEX, std::ios::binary);
+    std::string text((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+    XKEmojiDB* db = xk_emoji_load_text(text.data(), text.size());
+    REQUIRE(db != nullptr);
+    CHECK(xk_emoji_count(db) == 1914);
+    CHECK(search(db, "cuoi toe toet").at(0) == "😀");
+    xk_emoji_free(db);
+    CHECK(xk_emoji_load_text("", 0) == nullptr);
+    CHECK(xk_emoji_load_text(nullptr, 0) == nullptr);
 }

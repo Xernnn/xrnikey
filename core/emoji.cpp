@@ -105,10 +105,9 @@ using xrnkey::EmojiDB;
 
 extern "C" {
 
-XKEmojiDB* xk_emoji_load(const char* path) {
-    if (!path) return nullptr;
-    std::ifstream f(path);
-    if (!f) return nullptr;
+namespace {
+
+XKEmojiDB* load_from(std::istream& f) {
     auto* db = new EmojiDB;
     std::string line;
     while (std::getline(f, line)) {
@@ -141,6 +140,21 @@ XKEmojiDB* xk_emoji_load(const char* path) {
         return nullptr;
     }
     return reinterpret_cast<XKEmojiDB*>(db);
+}
+
+}  // namespace
+
+XKEmojiDB* xk_emoji_load(const char* path) {
+    if (!path) return nullptr;
+    std::ifstream f(path);
+    if (!f) return nullptr;
+    return load_from(f);
+}
+
+XKEmojiDB* xk_emoji_load_text(const char* text, size_t length) {
+    if (!text) return nullptr;
+    std::istringstream in(std::string(text, length));
+    return load_from(in);
 }
 
 void xk_emoji_free(XKEmojiDB* db) { delete reinterpret_cast<EmojiDB*>(db); }

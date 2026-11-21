@@ -31,4 +31,11 @@ internal object Native {
 
     external fun restoreRun(models: Long, context: Array<ByteArray>, typed: Array<ByteArray>, next: ByteArray?): Array<ByteArray>?
     external fun restoreWord(models: Long, context: Array<ByteArray>, typed: ByteArray, max: Int, types: IntArray): Array<ByteArray>
+
+    external fun emojiLoad(text: ByteArray): Long
+    external fun emojiFree(db: Long)
+    external fun emojiCount(db: Long): Int
+    external fun emojiAt(db: Long, index: Int, skin: IntArray): Array<ByteArray>?
+    external fun emojiSearch(db: Long, query: ByteArray, max: Int): Array<ByteArray>
+    external fun emojiSuggest(db: Long, words: Array<ByteArray>, max: Int): Array<ByteArray>
 }

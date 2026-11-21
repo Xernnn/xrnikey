@@ -95,6 +95,9 @@ sealed interface Strip {
 
     /** Up to three candidates; [centre] is what Space would commit. */
     data class Candidates(val left: String?, val centre: String?, val right: String?, val more: Boolean = false) : Strip
+
+    /** Emoji search: the query typed so far and the emoji it finds. */
+    data class Search(val query: String, val results: List<String>) : Strip
 }
 
 /** What Enter does in this field, drawn as its icon. */

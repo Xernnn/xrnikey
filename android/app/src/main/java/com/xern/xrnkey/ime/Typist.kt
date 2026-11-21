@@ -252,6 +252,16 @@ class Typist(
         state?.setContext(context())
     }
 
+    /** Text from a panel (an emoji, a clip): the word in progress ends as it is, then the text. */
+    fun insert(text: String) {
+        if (composing.isNotEmpty()) finish()
+        undo = null
+        spaceAfterWord = false
+        run.clear()
+        commit(text)
+        state?.setContext(context())
+    }
+
     /** A candidate from the strip, in place of the word in progress, and a space. */
     fun pick(word: String) {
         commit("$word ")

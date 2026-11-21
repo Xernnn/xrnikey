@@ -1,6 +1,7 @@
 #ifndef XRNKEY_H
 #define XRNKEY_H
 
+#include <stddef.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -281,6 +282,8 @@ int  xk_bilingual_app_disabled(const char* wm_class, const char* overrides_path)
 /* Emoji: the index in data/emoji/emoji-index.tsv (Unicode's list with
  * CLDR's English and Vietnamese names and keywords; data/emoji/README.md). */
 XKEmojiDB* xk_emoji_load(const char* index_path);
+/* The same index, from its text (an APK asset the caller has read). */
+XKEmojiDB* xk_emoji_load_text(const char* text, size_t length);
 void       xk_emoji_free(XKEmojiDB* db);
 /* How many emoji, and the i-th in Unicode's order, for the panel: the
  * emoji, its group ("Smileys & Emotion" ...), its name (Vietnamese, else
