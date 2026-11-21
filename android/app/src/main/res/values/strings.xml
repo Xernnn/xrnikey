@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">xrnkey</string>
+    <string name="subtype">Tiếng Việt</string>
+    <string name="enable">Enable</string>
+    <string name="choose">Choose</string>
+</resources>
