@@ -129,7 +129,7 @@ check_wayland() {
 check_data_files() {
     log "=== Data Files ==="
     local data_dir="/usr/share/xrnikey"
-    for f in dict/vi.dict ngram/vi.arpa emoji/emoji.json; do
+    for f in dict/vi.dict ngram/vi.arpa emoji/emoji-index.tsv; do
         if [ -f "$data_dir/$f" ]; then
             ok "$data_dir/$f exists"
         else
