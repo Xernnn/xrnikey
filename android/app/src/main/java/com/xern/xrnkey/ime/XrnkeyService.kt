@@ -54,6 +54,7 @@ class XrnkeyService :
     private var emojiPanel: EmojiPanelView? = null
     private var clipPanel: ClipboardPanelView? = null
     private var clips: ClipHistory? = null
+    private var onDevice: OnDevice? = null
     private val clipListener = ClipboardManager.OnPrimaryClipChangedListener { onCopied() }
 
     /** The emoji search's query, while the keys type into it rather than the field. */
@@ -114,6 +115,10 @@ class XrnkeyService :
     }
 
     override fun onDestroy() {
+        models?.user = null
+        typist.personal = null
+        typist.shortcuts = null
+        onDevice?.close()
         clipboard().removePrimaryClipChangedListener(clipListener)
         state?.close()
         models?.close()
@@ -157,6 +162,7 @@ class XrnkeyService :
         typist.raw = isPassword(info)
         // No auto-correct where words are addresses, not language.
         typist.autoCorrect = !isAddress(info)
+        loadOnDevice(info)
         typist.reset()
         searchQuery = null
         showKeys()
@@ -172,6 +178,7 @@ class XrnkeyService :
 
     override fun onFinishInputView(finishingInput: Boolean) {
         typist.finish()
+        onDevice?.save()
         super.onFinishInputView(finishingInput)
     }
 
@@ -337,6 +344,21 @@ class XrnkeyService :
     override fun onSearchClose() {
         searchQuery = null
         showEmoji()
+    }
+
+    // ---- personal words and shortcuts --------------------------------------------------------
+
+    /** After the first unlock: the personal words and shortcuts, as the settings left them. */
+    private fun loadOnDevice(info: EditorInfo) {
+        if (!getSystemService(UserManager::class.java).isUserUnlocked) return
+        val od = onDevice ?: OnDevice(filesDir, prefs()).also { onDevice = it }
+        od.refresh()
+        val learning = prefs().getBoolean("learn", true)
+        typist.personal = if (learning) od.words else null
+        models?.user = if (learning) od.words else null
+        typist.shortcuts = if (prefs().getBoolean("shortcuts", true)) od.shortcuts else null
+        // Incognito fields ask for nothing to be learned.
+        typist.learnHere = info.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING == 0
     }
 
     // ---- the clipboard ------------------------------------------------------------------------

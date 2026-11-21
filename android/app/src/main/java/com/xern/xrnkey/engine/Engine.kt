@@ -44,6 +44,13 @@ class Models(vi: Model?, en: Model?) : AutoCloseable {
         return texts.mapIndexed { i, t -> Candidate(t.text(), types[i]) }
     }
 
+    /** The owner's personal words, which scoring leans towards (null: none). Not owned. */
+    var user: PersonalWords? = null
+        set(value) {
+            field = value
+            Native.modelsSetUser(handle, value?.handle ?: 0L)
+        }
+
     override fun close() = Native.modelsFree(handle)
 
     companion object {
