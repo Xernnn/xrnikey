@@ -99,7 +99,13 @@ struct Context {
     std::vector<uint8_t> langs;       /* Lang of each token */
     bool start = true;                /* tokens follow the start of a sentence */
     static constexpr size_t kKeep = 3;
-    void clear() { tokens.clear(); langs.clear(); start = true; }
+    /* The tokens' ids in each model (<s> first when `start`), looked up once
+     * and kept until the context changes (score.cpp): scoring every
+     * candidate used to look them up again, string by string. */
+    mutable const void* id_model[2] = {nullptr, nullptr};
+    mutable std::vector<uint32_t> id_cache[2];
+    void forget_ids() const { id_model[0] = id_model[1] = nullptr; }
+    void clear() { tokens.clear(); langs.clear(); start = true; forget_ids(); }
     void push(std::string token, uint8_t lang) {
         tokens.push_back(std::move(token));
         langs.push_back(lang);
@@ -108,6 +114,7 @@ struct Context {
             langs.erase(langs.begin());
             start = false;
         }
+        forget_ids();
     }
 };
 
@@ -195,6 +202,9 @@ std::string utf8_of(const std::u32string& s);
 bool lexicon_is_english(const std::string& word);
 /* The syllable is in the list of attested Vietnamese syllables. */
 bool lexicon_is_attested(const std::u32string& letters, int tone);
+/* The ASCII shape of a syllable ("được" -> "duoc"), or "" if `word` is not
+ * one: how accent restoration indexes syllables (restore.cpp). */
+std::string syllable_shape(const std::string& word);
 /* Every attested syllable, as the list writes it (NFC, the engine's tone
  * placement). */
 const std::vector<std::string>& lexicon_attested_words();

@@ -23,9 +23,11 @@ struct Lm {
     const char* base = nullptr;  /* the model's first byte */
     uint64_t size = 0;
     const lmfmt::Header* hdr = nullptr;
-    /* Built on first use, so opening a model stays cheap. */
+    /* For models without the shape index in the file: built on first use. */
     mutable std::once_flag shapes_once;
     mutable ShapeIndex* shapes = nullptr;
+    /* Tests only: act as if the file had no shape index. */
+    bool ignore_shape_index = false;
 };
 
 /* Map `length` bytes of `fd` from `offset` and check them; nullptr if they
@@ -53,6 +55,13 @@ float lm_logprob(const Lm& m, const uint32_t* ctx, int n, uint32_t w);
  * folded into <unk>. Without it a word the model never saw would outrank
  * every rare word it did see. */
 float lm_unk_share(const Lm& m);
+
+/* The syllables an ASCII shape may stand for, from the model file's index:
+ * the word and its vocabulary id (lmfmt::kUnk for an attested syllable the
+ * vocabulary lacks), in the index's order. -1 when the model has no index;
+ * 0 when the shape is not in it. */
+int lm_shape_candidates(const Lm& m, std::string_view shape, const char** words, uint32_t* ids,
+                        int max_out);
 
 inline const Lm& lm_of(const XKLm* lm) { return *reinterpret_cast<const Lm*>(lm); }
 

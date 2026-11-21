@@ -58,6 +58,7 @@ if(XRNKEY_ENABLE_TESTS)
     set(XK_TEST_LM_MIN_vi 2)
     set(XK_TEST_LM_MIN_vi-general 2)
     set(XK_TEST_LM_MIN_en 1)
+    set(XK_TEST_LM_OPTS_en --no-shape-index)
     set(XK_TEST_LM_FILES "")
     foreach(name vi vi-general en)
         set(srcs "")
@@ -75,6 +76,7 @@ if(XRNKEY_ENABLE_TESTS)
         add_custom_command(
             OUTPUT "${XK_TEST_LM_DIR}/${name}.xklm"
             COMMAND xk-lm-build --order 3 --min-count ${XK_TEST_LM_MIN_${name}} --prune 0,0
+                    ${XK_TEST_LM_OPTS_${name}}
                     -o "${XK_TEST_LM_DIR}/${name}.xklm" "${XK_TEST_LM_DIR}/${name}.tok"
             DEPENDS xk-lm-build "${XK_TEST_LM_DIR}/${name}.tok"
             COMMENT "Training the ${name} test model")

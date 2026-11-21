@@ -27,6 +27,7 @@
 #include <deque>
 #include <mutex>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -57,8 +58,9 @@ char ascii_of(char32_t c) {
     }
 }
 
-/* The ASCII shape of a syllable, or "" if `word` is not one. */
-std::string shape_of(const std::string& word) {
+}  // namespace
+
+std::string syllable_shape(const std::string& word) {
     std::u32string letters;
     int tone;
     if (!syllable_split(word, &letters, &tone) || !syllable_valid(letters, tone)) return "";
@@ -71,17 +73,21 @@ std::string shape_of(const std::string& word) {
     return out;
 }
 
+namespace {
+
+/* For a model without the index in its file (lm_format.h, version 2 has
+ * it): built on first use, the same way xk-lm-build builds it. */
 const ShapeIndex& shapes(const Lm& m) {
     std::call_once(m.shapes_once, [&] {
         auto* idx = new ShapeIndex;
         for (uint32_t id = 3; id < m.hdr->vocab; ++id) {
             const std::string w = lm_word(m, id);
-            const std::string s = shape_of(w);
+            const std::string s = syllable_shape(w);
             if (!s.empty()) idx->by_shape[s].push_back({w, id});
         }
         for (const std::string& w : lexicon_attested_words()) {
             if (lm_id(m, w) != kUnk) continue;
-            const std::string s = shape_of(w);
+            const std::string s = syllable_shape(w);
             if (!s.empty()) idx->by_shape[s].push_back({w, kUnk});
         }
         m.shapes = idx;
@@ -134,8 +140,9 @@ std::string with_case(const std::string& text, Case cs) {
 }
 
 struct Cand {
-    const std::string* text;
+    std::string_view text;  /* in the model's mapping, its built index, or the call's store */
     uint32_t id;
+    uint32_t en_id;  /* the English model's id (kUnk without one) */
     bool as_typed;
     float penalty;  /* log10 cost of the slips that make it this (0: none) */
     int slips;
@@ -178,22 +185,35 @@ void spellings_near(const std::string& typed, int max_slips,
 void add_spelling(const Models& models, const std::string& spelling, float penalty, int slips,
                   bool typed, std::deque<std::string>& store, std::vector<Cand>& out) {
     const Lm& m = *models.vi;
-    const ShapeIndex& idx = shapes(m);
-    auto it = idx.by_shape.find(spelling);
     bool listed = false;
-    if (it != idx.by_shape.end()) {
-        for (const auto& e : it->second) {
-            out.push_back({&e.text, e.id, typed && e.text == spelling, penalty, slips});
-            if (e.text == spelling) listed = true;
-        }
+    auto add = [&](std::string_view text, uint32_t id) {
+        out.push_back({text, id, kUnk, typed && text == spelling, penalty, slips});
+        if (text == spelling) listed = true;
+    };
+    const char* words[64];
+    uint32_t ids[64];
+    const int n = lm_shape_candidates(m, spelling, words, ids, 64);
+    if (n >= 0) {
+        for (int i = 0; i < n; ++i) add(words[i], ids[i]);
+    } else {
+        const ShapeIndex& idx = shapes(m);
+        auto it = idx.by_shape.find(spelling);
+        if (it != idx.by_shape.end())
+            for (const auto& e : it->second) add(e.text, e.id);
     }
-    if (listed) return;
+    /* Only an a-z spelling can be English, and only the typed or corrected
+     * spelling itself, never a syllable with marks. */
+    const uint32_t en = models.en ? lm_id(*models.en, spelling) : kUnk;
+    if (listed) {
+        for (Cand& c : out)
+            if (c.text == spelling) c.en_id = en;
+        return;
+    }
     const uint32_t id = lm_id(m, spelling);
-    const bool english = models.en && lm_id(*models.en, spelling) != kUnk;
     /* The word as typed always stays on offer when nothing else fits. */
-    if (id != kUnk || english || (typed && out.empty())) {
+    if (id != kUnk || en != kUnk || (typed && out.empty())) {
         store.push_back(spelling);
-        out.push_back({&store.back(), id, typed, penalty, slips});
+        out.push_back({store.back(), id, en, typed, penalty, slips});
     }
 }
 
@@ -234,7 +254,7 @@ std::vector<Cand> candidates(const Models& models, const std::string& lower, std
     for (const Cand& f : fixes) {
         bool dup = false;
         for (size_t i = 0; i < own; ++i)
-            if (*out[i].text == *f.text) { dup = true; break; }
+            if (out[i].text == f.text) { dup = true; break; }
         if (!dup) out.push_back(f);
     }
     return out;
@@ -261,17 +281,17 @@ int xk_restore_word(const XKModels* models, const char* const* context, int ctx_
     struct Scored { Cand c; float score; };
     std::vector<Scored> scored;
     for (const Cand& c : cands)
-        scored.push_back({c, static_cast<float>(mix_logprob(*mp, ctx, *c.text) + c.penalty)});
+        scored.push_back({c, static_cast<float>(mix_logprob_ids(*mp, ctx, c.text, c.id, c.en_id) + c.penalty)});
     std::stable_sort(scored.begin(), scored.end(), [](const Scored& a, const Scored& b) {
         if (a.score != b.score) return a.score > b.score;
         if (a.c.as_typed != b.c.as_typed) return a.c.as_typed;
-        return *a.c.text < *b.c.text;
+        return a.c.text < b.c.text;
     });
     const int n = std::min(max_out, static_cast<int>(scored.size()));
     for (int i = 0; i < n; ++i) {
         XKCandidate& o = out[i];
         std::memset(&o, 0, sizeof(o));
-        const std::string t = with_case(*scored[static_cast<size_t>(i)].c.text, cs);
+        const std::string t = with_case(std::string(scored[static_cast<size_t>(i)].c.text), cs);
         std::strncpy(o.text, t.c_str(), sizeof(o.text) - 1);
         o.score = scored[static_cast<size_t>(i)].score;
         const Cand& c = scored[static_cast<size_t>(i)].c;
@@ -312,11 +332,11 @@ int xk_restore_run(const XKModels* models, const char* const* context, int ctx_l
         std::vector<Hyp> next_beam;
         for (const Hyp& h : beam) {
             for (size_t c = 0; c < cands[i].size(); ++c) {
-                const std::string& text = *cands[i][c].text;
+                const Cand& cand = cands[i][c];
                 uint8_t lang = LANG_VI;
                 Hyp g = h;
-                g.score += mix_logprob(*mp, h.ctx, text, &lang) + cands[i][c].penalty;
-                g.ctx.push(text, lang);
+                g.score += mix_logprob_ids(*mp, h.ctx, cand.text, cand.id, cand.en_id, &lang) + cand.penalty;
+                g.ctx.push(std::string(cand.text), lang);
                 g.pick.push_back(static_cast<int>(c));
                 next_beam.push_back(std::move(g));
             }
@@ -345,7 +365,7 @@ int xk_restore_run(const XKModels* models, const char* const* context, int ctx_l
     const Hyp& best = beam.front();
     for (size_t i = 0; i < static_cast<size_t>(n); ++i) {
         const Cand& c = cands[i][static_cast<size_t>(best.pick[i])];
-        const std::string t = with_case(*c.text, cases[i]);
+        const std::string t = with_case(std::string(c.text), cases[i]);
         out[i] = static_cast<char*>(std::malloc(t.size() + 1));
         if (out[i]) std::memcpy(out[i], t.c_str(), t.size() + 1);
     }
