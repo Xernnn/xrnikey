@@ -663,17 +663,21 @@ Rules:
 
 ### Building it
 
+`data/lm/README.md` has the commands. In short:
+
 - `data/lm/sources.json` lists each source's URL, SHA-256 and licence.
-- `data/lm/build.py` (Python standard library) does the work:
-  1. fetches each source into a scratch directory, never into the repo;
-  2. normalises the text: NFC, the engine's tone placement, lowercase, numbers as `<num>`;
-  3. splits it into train and held-out by sentence id;
-  4. trains with KenLM `lmplz`, a build-time tool only, whose LGPL doesn't reach its output;
-  5. prunes the result and converts it to the binary format.
-- The outputs (`vi.lm`, `en.lm`, `lexicon.bin`, `emoji.bin` and `MANIFEST` with the sizes,
-  hashes and counts) are **not in git**. They are published as an asset of a GitHub release, and
-  `data/lm/model.lock` pins the asset's SHA-256. The Android and Arch builds fetch it, and refuse
-  any other hash.
+- `data/lm/build.py` (Python standard library) works in three steps:
+  - **fetch** downloads each source into its own folder and refuses any other hash;
+  - **prepare** tokenizes them, streaming the archives without unpacking them: NFC, the engine's
+    tone placement, lowercase, numbers as `<num>`. It also cuts the held-out sets by a hash of
+    each sentence;
+  - **train** runs `tools/lm/xk-lm-build`, this repo's own trainer: interpolated modified
+    Kneser–Ney, count pruning, renormalised backoffs, written straight to the binary format. It
+    needs no outside tool.
+- The outputs (`vi.xklm`, `en.xklm`) are **not in git**. They are rebuilt from the pinned
+  sources, and are proposed as release assets of this repo, with `data/lm/model.lock` pinning
+  their SHA-256 for the Android and Arch builds.
+- CI builds small models from made-up text (`data/lm/test`) at build time.
 
 ### Size on the phone
 

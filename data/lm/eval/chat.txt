@@ -1,0 +1,309 @@
+# Evaluation set C: made-up chat messages, written for this project (MIT, like the code).
+# One message per line. English words and chat abbreviations are written as they are typed.
+# An English word that could also be read as a Vietnamese syllable is in [brackets], so the
+# evaluation knows it is meant as English. Nothing here is anyone's real message.
+Tối nay mình đi ăn lẩu không?
+Mai có meeting lúc 9 giờ nhé.
+Anh gửi file cho em qua email rồi đó.
+Em check lại giúp anh cái link này với.
+Ok, để tối về mình xem.
+Hôm nay trời mưa to quá, ko đi được.
+Bạn đã làm xong bài tập chưa?
+Mình đang ở quán cà phê gần công ty.
+Cho mình xin số điện thoại của chị Lan nhé.
+Deadline là thứ sáu tuần này đấy.
+Sáng nay kẹt xe kinh khủng luôn.
+Cuối tuần này cả nhà về quê ăn giỗ.
+Em ơi, tối nay order pizza nha.
+Cái laptop của mình bị hỏng màn hình rồi.
+Anh ấy vừa update app mới, giờ chạy nhanh hơn hẳn.
+Nhớ mang theo áo mưa nhé, chiều nay có thể mưa.
+Mình không hiểu câu này lắm, bạn giải thích được không?
+Tuần sau team mình đi team building ở Đà Lạt.
+Mẹ dặn về sớm ăn cơm.
+Chị gửi lại cái slide hôm qua được không ạ?
+Hôm qua xem phim hay cực.
+Đừng quên đóng tiền điện trước ngày mười lăm nhé.
+Mình đặt bàn lúc bảy giờ rưỡi rồi.
+Có ai đi chợ thì mua giùm mình ít rau với.
+Wifi ở nhà chậm quá, chắc phải gọi kỹ thuật.
+Bạn có thấy cái ví của mình đâu không?
+Mai em xin nghỉ một buổi vì bị ốm.
+Chúc mừng sinh nhật em, chúc em luôn vui vẻ nhé!
+Sếp vừa duyệt cái proposal rồi, tuyệt vời.
+Mình chưa nhận được tin nhắn của bạn.
+Cảm ơn anh nhiều lắm.
+Không sao đâu, lần sau cẩn thận hơn là được.
+Đợi mình mười phút, đang trên đường tới.
+Nhà mình hết gạo rồi, chiều nay đi siêu thị nhé.
+Cái áo này size M hay size L vậy?
+Shop ơi, đơn hàng của em giao chưa ạ?
+Giá này đã bao gồm phí ship chưa?
+Em muốn đổi sang màu đen được không?
+Tối nay có trận bóng đá, qua nhà mình xem chung đi.
+Con mèo nhà mình lại trốn dưới gầm giường.
+Bố bảo cuối tháng này sửa lại mái nhà.
+Hôm nay học được nhiều thứ mới lắm.
+Thầy giao bài tập về nhà nhiều quá.
+Bài thuyết trình của nhóm mình được điểm cao.
+Mình cần mượn cuốn sách đó vài hôm.
+Sáng mai bạn rảnh không, đi chạy bộ với mình?
+Cuối cùng cũng xong việc, mệt muốn xỉu.
+Chiều nay họp online qua Zoom nhé mọi người.
+Mọi người nhớ bật camera khi họp nha.
+Link họp mình để trong group chat rồi.
+Ai có password wifi phòng họp không?
+Máy in lại kẹt giấy nữa rồi.
+Anh đang bận, lát anh gọi lại sau nhé.
+Em đến nơi rồi, anh ra cổng đón em với.
+Trời lạnh quá, nhớ mặc thêm áo ấm.
+Mình mới mua cái điện thoại mới, chụp ảnh đẹp lắm.
+Gửi mình mấy tấm ảnh hôm đi biển với.
+Hình như hôm nay là ngày lễ, ngân hàng đóng cửa.
+Đi đường cẩn thận nhé, về đến nhà nhắn mình.
+Mình thấy cái review trên mạng khen quán này lắm.
+Quán này đồ ăn ngon mà giá cũng hợp lý.
+Hôm nay mình nấu canh chua cá lóc.
+Tối nay ăn gì đây, mình đói quá rồi.
+Có ai muốn uống trà sữa không, mình order luôn.
+Bạn thích uống cà phê đen hay cà phê sữa?
+Mình bỏ cà phê rồi, giờ chỉ uống trà thôi.
+Sáng nào mình cũng dậy lúc sáu giờ.
+Dạo này bạn có khỏe không?
+Lâu quá không gặp, cuối tuần cà phê không?
+Mình vừa đọc xong cuốn sách bạn giới thiệu, hay thật.
+Phim này có trên Netflix không nhỉ?
+Tập mới ra chưa, hóng quá.
+Bài hát này nghe hoài không chán.
+Mai đi concert không, mình còn dư một vé.
+Vé máy bay dịp Tết đắt quá trời.
+Mình đặt phòng khách sạn qua app rồi, có cả bữa sáng.
+Check in lúc hai giờ chiều nha.
+Hành lý quá cân rồi, phải bỏ bớt đồ ra.
+Chuyến bay bị delay hai tiếng.
+Đến sân bay rồi, đang làm thủ tục.
+Ở đây đẹp lắm, lần sau cả nhóm đi chung nhé.
+Nhớ chụp nhiều ảnh nha.
+Mình đăng story rồi đó, vào xem đi.
+Bài post này được nhiều like ghê.
+Đừng share cái này ra ngoài nhé.
+Bạn comment giúp mình một cái cho có tương tác.
+Video này dài quá, mình xem không hết.
+Cái clip hôm qua buồn cười thật sự.
+Em gái mình đang ôn thi đại học.
+Kỳ thi năm nay khó hơn năm ngoái nhiều.
+Chúc bạn thi tốt nhé, cố lên!
+Kết quả có rồi, mình đậu rồi!
+Mình được nhận vào làm rồi, tháng sau bắt đầu.
+Lương cũng ổn, nhưng hơi xa nhà.
+Công ty mới có văn phòng đẹp lắm.
+Đồng nghiệp ai cũng thân thiện.
+Hôm nay làm thêm giờ, chắc về muộn.
+Sếp bắt sửa lại báo cáo lần thứ ba rồi.
+Báo cáo tài chính quý này phải nộp trước thứ năm.
+Mình đang viết code cho tính năng mới.
+Cái bug này fix mãi không được.
+Test lại thấy vẫn lỗi, chắc phải debug thêm.
+Server bị sập từ sáng tới giờ.
+Mọi người push code lên trước năm giờ nhé.
+Pull request của anh em review giúp được không?
+Merge xong rồi, deploy luôn nha.
+Bản build mới chạy ổn rồi.
+Khách hàng muốn đổi lại giao diện.
+Bên thiết kế gửi mockup mới rồi đó.
+Mình thấy màu xanh này đẹp hơn.
+Font chữ hơi nhỏ, tăng lên một chút được không?
+Nút bấm này để ở góc trên bên phải nhé.
+Cuối tuần mình đi leo núi, ai đi cùng không?
+Mình mới tập gym được một tháng.
+Hôm nay chạy được năm cây số.
+Đau chân quá, chắc mai nghỉ tập.
+Nhớ uống đủ nước nha.
+Bác sĩ bảo phải nghỉ ngơi nhiều hơn.
+Mình đi khám rồi, không có gì nghiêm trọng.
+Uống thuốc rồi đi ngủ sớm đi.
+Mẹ nấu cơm xong rồi, về ăn đi con.
+Ông bà khỏe không mẹ?
+Tết này nhà mình về quê nội.
+Năm nay nhà mình gói bánh chưng.
+Lì xì năm nay được nhiều không?
+Chúc mừng năm mới, an khang thịnh vượng!
+Trung thu này mua bánh nướng hay bánh dẻo?
+Đèn ông sao năm nay đẹp quá.
+Con trai mình mới biết đi.
+Bé nhà mình bị sốt từ tối qua.
+Mai đưa con đi tiêm phòng.
+Trường của bé tổ chức họp phụ huynh.
+Cô giáo khen bé ngoan lắm.
+Chiều nay ai đón con vậy?
+Anh nhớ mua sữa cho con nhé.
+Nhà mình sắp chuyển sang chỗ mới.
+Căn hộ mới có ban công nhìn ra sông.
+Tiền thuê nhà tháng này tăng rồi.
+Chủ nhà bảo cuối tháng sửa máy lạnh.
+Máy giặt kêu to quá, chắc hỏng rồi.
+Gọi thợ sửa ống nước giúp mình với.
+Đèn phòng khách bị cháy bóng rồi.
+Mình mua cái nồi chiên không dầu, dùng tiện lắm.
+Cuối tuần dọn nhà cho sạch sẽ.
+Bạn tính đi xe máy hay đi Grab?
+Đặt Grab mà đợi mãi không có xe.
+Kẹt xe ở ngã tư, chắc trễ mười lăm phút.
+Xe mình hết xăng giữa đường, khổ ghê.
+Đổ đầy bình hết gần một trăm nghìn.
+Gửi xe ở đâu vậy bạn?
+Mình đi bộ ra, gần lắm.
+Trời nắng quá, nhớ bôi kem chống nắng.
+Mưa cả tuần rồi, đường ngập hết.
+Bão sắp vào, mọi người chuẩn bị đồ ăn nhé.
+Hôm nay nhiệt độ xuống thấp lắm.
+Mình thích mùa thu ở Hà Nội nhất.
+Sài Gòn dạo này nóng kinh khủng.
+Đà Nẵng biển đẹp mà đồ ăn cũng rẻ.
+Huế mưa nhiều nhưng rất thơ.
+Mình đang học tiếng Anh để đi du học.
+Bài thi IELTS khó nhất là phần writing.
+Speaking thì mình còn hơi run.
+Bạn học từ vựng bằng app nào vậy?
+Mỗi ngày học hai mươi từ mới.
+Thầy dạy tiếng Nhật rất dễ thương.
+Mình định học thêm một khóa marketing online.
+Khóa học này có chứng chỉ không?
+Học phí bao nhiêu vậy bạn?
+Đăng ký trước ngày ba mươi thì được giảm giá.
+Shop đang sale năm mươi phần trăm đó.
+Mua hai tặng một luôn.
+Hàng về rồi, đẹp hơn trong hình.
+Giày hơi chật, mình đổi size lớn hơn.
+Ship nhanh ghê, đặt hôm qua nay đã tới.
+Hàng bị lỗi, mình muốn trả lại.
+Mã giảm giá này còn dùng được không?
+Thanh toán bằng thẻ hay chuyển khoản?
+Mình chuyển khoản rồi, bạn kiểm tra giúp nhé.
+Nhận được tiền rồi, cảm ơn bạn.
+Tháng này chi tiêu hơi nhiều.
+Phải tiết kiệm lại thôi.
+Lương về rồi, đi ăn mừng thôi!
+Mình mời, lần sau bạn mời lại.
+Chia đôi tiền nhé, mỗi người hai trăm.
+Quán này phục vụ chậm quá.
+Món này hơi mặn.
+Cho em thêm đá nha chị.
+Ít đường thôi, mình đang giảm cân.
+Bún bò ở đây ngon nhất khu này.
+Sáng nay ăn bánh mì với trứng.
+Phở gà hay phở bò?
+Tối nay nhậu không anh em?
+Uống ít thôi, mai còn đi làm.
+Về đến nhà chưa, nhắn mình một tiếng.
+Ngủ ngon nha, mai gặp.
+Chúc buổi sáng tốt lành.
+Hôm nay là một ngày dài.
+Mình buồn ngủ quá rồi.
+Cuối tuần chỉ muốn nằm nhà ngủ.
+Có gì vui kể mình nghe với.
+Haha, buồn cười quá đi mất.
+Thôi được rồi, để mình lo.
+Không cần đâu, mình tự làm được.
+Bạn nói đúng đấy.
+Mình không đồng ý lắm.
+Để mình suy nghĩ thêm đã.
+Ừ, vậy cũng được.
+Chắc chắn luôn.
+Thật hả, sao không nói sớm?
+Sorry nha, mình quên mất.
+Xin lỗi vì đã làm phiền.
+Không có gì đâu.
+Lần sau nhớ báo trước nhé.
+Cuộc họp dời sang thứ ba tuần sau.
+Lịch làm việc tuần này mình gửi trong file Excel.
+Mình đã cập nhật lại bảng tính.
+Số liệu này lấy từ báo cáo tháng trước.
+Doanh thu tháng này tăng mười phần trăm.
+Khách hàng phản hồi rất tốt về sản phẩm mới.
+Chiến dịch quảng cáo trên Facebook hiệu quả hơn mong đợi.
+Bài viết này cần chỉnh sửa lại tiêu đề.
+Mình đã gửi hợp đồng cho bên đối tác.
+Bên kia hẹn ký vào sáng thứ hai.
+Nhớ in hai bản và đóng dấu nhé.
+Hồ sơ thiếu bản photo căn cước.
+Mình nộp hồ sơ online rồi, đang chờ duyệt.
+Tài khoản ngân hàng của mình bị khóa.
+Quên mật khẩu rồi, phải đặt lại.
+Mã OTP không gửi về điện thoại.
+Điện thoại sắp hết pin rồi.
+Ai có sạc dự phòng cho mình mượn với.
+Tai nghe bluetooth của mình bị mất một bên.
+Màn hình bị vỡ, sửa hết bao nhiêu nhỉ?
+Mình mới cài lại Windows.
+Máy tính chạy chậm quá, chắc phải nâng cấp RAM.
+Ổ cứng gần đầy rồi.
+Nhớ backup dữ liệu thường xuyên nhé.
+File này nặng quá, gửi qua Drive đi.
+Mình share quyền chỉnh sửa cho bạn rồi.
+Bạn có nhận được lời mời vào nhóm không?
+Nhóm mình có thêm thành viên mới.
+Chào mừng bạn đến với team!
+Mọi người giới thiệu bản thân đi.
+Mình tên Minh, làm designer.
+Rất vui được làm quen.
+Mình đang tìm phòng trọ gần trường.
+Phòng có máy lạnh và chỗ để xe không?
+Giá điện nước tính riêng nha.
+Ở ghép hai người thì tiết kiệm hơn.
+Con chó nhà hàng xóm sủa cả đêm.
+Hàng xóm mới chuyển đến rất dễ thương.
+Hôm nay đi làm tóc mới.
+Mình nhuộm màu nâu, nhìn hợp không?
+Cuối tuần đi xem triển lãm tranh không?
+Bảo tàng mở cửa đến năm giờ chiều.
+Vé vào cửa miễn phí cho sinh viên.
+Mình đang nghe podcast về lịch sử.
+Cuốn tiểu thuyết này đọc cuốn lắm.
+Mình mê truyện tranh từ hồi nhỏ.
+Game này chơi vui mà hơi khó.
+Tối nay leo rank không?
+Team mình thua liền ba trận rồi.
+Mai có giải đấu, mọi người nhớ online đúng giờ.
+Đội tuyển Việt Nam thắng rồi!
+Trận này hay quá, xem mà hồi hộp.
+Cầu thủ số mười chơi xuất sắc.
+Mình ủng hộ đội nhà hết mình.
+Tối nay xem chung kết ở đâu?
+Bạn đi chậm thôi, đợi mình với.
+Nhanh lên kẻo trễ giờ.
+Mình tới trước rồi, ngồi bàn gần cửa sổ.
+Hẹn gặp lại bạn vào tuần sau.
+Giữ gìn sức khỏe nhé.
+Mai mình bay vào Sài Gòn công tác.
+Ba ngày nữa mình mới về.
+Có cần mua gì ở đó không?
+Mua giúp mình hai hộp bánh pía nhé.
+Cuối cùng cũng được nghỉ phép.
+Kế hoạch tuần này là ngủ thật nhiều.
+Mình thử làm bánh flan, thành công rồi.
+Công thức này dễ làm lắm, để mình gửi.
+Nhớ để tủ lạnh hai tiếng rồi mới ăn.
+Cảm ơn công thức nha, mai mình làm thử.
+Bạn có biết chỗ nào sửa đồng hồ không?
+Tiệm đó ở cuối con hẻm, bên tay trái.
+Đi thẳng rồi rẽ phải ở ngã ba.
+Mình gửi location rồi đó.
+Bản đồ chỉ đường sai, mình bị lạc.
+Gọi cho mình nếu không tìm thấy nhé.
+Mình đến rồi mà không thấy ai.
+Mọi người đâu hết rồi?
+Đang trên đường, năm phút nữa tới.
+Tối nay [chat] tiếp nhé, giờ mình bận.
+[Hi] mọi người, hôm nay thế nào?
+Bạn [can] giúp mình một chút được không?
+Mình nói [no] với lời mời đó rồi.
+Ok bye, mai nói tiếp.
+Gửi mình cái list việc cần làm tuần này.
+Danh sách khách mời mình để trong list này.
+Mua hai lít nước mắm với một lít dầu ăn.
+Đội mình vừa giành cúp vô địch.
+Thứ bảy này check out sớm nha.
+Cái tips này hay ghê, cảm ơn bạn.
+Đến turn của bạn rồi đó.
+Máy tính bị nhiễm virus rồi.

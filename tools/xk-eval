@@ -1,0 +1,318 @@
+#!/usr/bin/env python3
+"""xk-eval: measure the engine against the targets in android/docs/feature-spec.md.
+
+usage: xk-eval --lib LIBXRNIKEY --vi VI.xklm [--en EN.xklm] [--work WORK]
+               [--chat data/lm/eval/chat.txt] [--json OUT] [--quick]
+
+Sets (feature-spec.md, "Done means"):
+  H1    held-out news and web sentences   WORK/H1.txt   (data/lm/build.py prepare)
+  H2    held-out short sentences          WORK/H2.txt
+  C     made-up chat messages             data/lm/eval/chat.txt
+  E     common English words              core/data/english.txt
+  V     attested Vietnamese syllables     core/data/vi-syllables.txt
+
+Every number is printed whether or not it reaches its target. --quick
+samples the sets (for CI, where the models are the small test ones and the
+numbers mean nothing beyond "it runs").
+"""
+
+import argparse
+import ctypes
+import hashlib
+import json
+import os
+import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, "data", "lm"))
+import xklm_text  # noqa: E402
+
+
+class Lm:
+    def __init__(self, lib, path):
+        L = lib
+        L.xk_lm_open.restype = ctypes.c_void_p
+        L.xk_lm_open.argtypes = [ctypes.c_char_p]
+        L.xk_lm_vocab_size.argtypes = [ctypes.c_void_p]
+        L.xk_lm_word.restype = ctypes.c_char_p
+        L.xk_lm_word.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        L.xk_lm_logprob.restype = ctypes.c_float
+        L.xk_lm_logprob.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_int,
+                                    ctypes.c_char_p]
+        self.L = L
+        self.path = path
+        self.ptr = L.xk_lm_open(path.encode())
+        if not self.ptr:
+            sys.exit(f"xk-eval: cannot open model {path}")
+        self._uni = {}
+
+    def words(self):
+        for i in range(self.L.xk_lm_vocab_size(self.ptr)):
+            yield self.L.xk_lm_word(self.ptr, i).decode()
+
+    def logprob(self, ctx, word):
+        arr = (ctypes.c_char_p * max(len(ctx), 1))(*[c.encode() for c in ctx])
+        return self.L.xk_lm_logprob(self.ptr, arr, len(ctx), word.encode())
+
+    def unigram(self, word):
+        if word not in self._uni:
+            self._uni[word] = self.logprob([], word)
+        return self._uni[word]
+
+
+def sha(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()[:12]
+
+
+def read_lines(path):
+    with open(path, encoding="utf-8") as f:
+        return [line.rstrip("\n") for line in f if line.strip() and not line.startswith("#")]
+
+
+# ---- what is typed ----------------------------------------------------------
+
+def chat_items(engine, path):
+    """Set C as (intended token, is Vietnamese) lists, one per message. A
+    token is English (or an abbreviation) when it is not a syllable, or when
+    the message wrote it in [brackets]."""
+    messages = []
+    for line in read_lines(path):
+        bracketed = set()
+        text = []
+        for part in line.replace("[", " [").replace("]", "] ").split():
+            if part.startswith("[") and part.endswith("]"):
+                bracketed.add(part[1:-1].lower())
+                text.append(part[1:-1])
+            else:
+                text.append(part)
+        for sent in xklm_text.sentences(engine, " ".join(text)):
+            items = []
+            for tok in sent:
+                if tok.startswith("<"):
+                    items.append((tok, None))
+                else:
+                    vi = engine.syllable(tok) is not None and tok not in bracketed
+                    items.append((tok, vi))
+            messages.append(items)
+    return messages
+
+
+def sentence_items(engine, path):
+    out = []
+    for line in read_lines(path):
+        items = []
+        for tok in line.split():
+            if tok.startswith("<"):
+                items.append((tok, None))
+            else:
+                items.append((tok, engine.syllable(tok) is not None))
+        out.append(items)
+    return out
+
+
+# ---- restoration -------------------------------------------------------------
+
+class Shapes:
+    """ASCII shape -> the syllables it may stand for (the model's and the
+    attested list's)."""
+
+    def __init__(self, engine, lm, syllable_file):
+        self.by_shape = {}
+        words = set(w for w in lm.words() if not w.startswith("<"))
+        words.update(read_lines(syllable_file))
+        for w in words:
+            if engine.syllable(w) == w:
+                self.by_shape.setdefault(xklm_text.strip_marks(w), []).append(w)
+
+    def candidates(self, typed):
+        return self.by_shape.get(typed, [])
+
+
+def restore_unigram(lm, shapes, typed):
+    cands = shapes.candidates(typed)
+    if not cands:
+        return typed
+    return max(cands, key=lambda c: (lm.unigram(c), c == typed))
+
+
+def eval_restoration(sentences, restore):
+    """Top-1 over the Vietnamese syllables of `sentences`, each typed without
+    marks. `restore(context_tokens, typed)` gives the chosen token."""
+    right = total = 0
+    exact = 0
+    for items in sentences:
+        ctx = ["<s>"]
+        ok_sentence = True
+        for tok, vi in items:
+            if vi is None:
+                ctx.append(tok)
+                continue
+            typed = xklm_text.strip_marks(tok) if vi else tok
+            got = restore(ctx, typed)
+            if vi:
+                total += 1
+                if got == tok:
+                    right += 1
+                else:
+                    ok_sentence = False
+            ctx.append(got)
+        exact += ok_sentence
+    return right, total, exact, len(sentences)
+
+
+# ---- Telex through the engine -------------------------------------------------
+
+def type_words(engine, words):
+    """Type `words` with Telex, each followed by Space, into one fresh state;
+    return what each word was committed as."""
+    lib = engine.lib
+    s = lib.xk_state_new(0)
+    out = []
+    try:
+        for keys in words:
+            for c in keys:
+                lib.xk_process_key(s, ord(c), 0)
+            r = lib.xk_process_key(s, 0x20, 0)
+            out.append(r.commit.decode("utf-8", "replace").rstrip(" "))
+    finally:
+        lib.xk_state_free(s)
+    return out
+
+
+def eval_english(engine, words, before=None):
+    """English words typed with Telex: how many come out as typed. `before`
+    is typed first, as context."""
+    kept = []
+    for w in words:
+        seq = ([before] if before else []) + [w]
+        got = type_words(engine, seq)[-1]
+        kept.append(got == w)
+    return sum(kept), len(kept), [w for w, k in zip(words, kept) if not k]
+
+
+def eval_vietnamese(engine, syllables, before="tooi"):
+    """Attested syllables typed with Telex after a Vietnamese word: how many
+    come out as something else."""
+    bad = []
+    for syl in syllables:
+        got = type_words(engine, [before, xklm_text.telex_keys(syl)])[-1]
+        if got != syl:
+            bad.append((syl, got))
+    return len(bad), len(syllables), bad
+
+
+NINETEEN = [
+    # word, English context (typed first), Vietnamese context keys, Vietnamese result
+    ("boost", "the", "ddooi", "bốt"), ("boots", "my", "ddooi", "bốt"),
+    ("corn", "the", "chuyeenj", "cỏn"), ("cups", "two", "giafnh", "cúp"),
+    ("hangs", "it", "ddau", "háng"), ("keeps", "she", "banhs", "kếp"),
+    ("lifts", "it", "hai", "lít"), ("list", "my", "hai", "lít"),
+    ("lips", "her", "booj", "líp"), ("lisp", "the", "booj", "líp"),
+    ("lust", "the", "ngaapj", "lút"), ("photos", "my", "dinhs", "phốt"),
+    ("row", "the", "bij", "rơ"), ("runs", "he", "loox", "rún"),
+    ("sits", "she", "raats", "sít"), ("tips", "the", "ddungs", "típ"),
+    ("turn", "your", "ngawns", "tủn"), ("verse", "the", "hai", "vế"),
+    ("virus", "the", "nius", "víu"),
+]
+
+
+def eval_nineteen(engine):
+    rows = []
+    for word, en_ctx, vi_ctx, vi_word in NINETEEN:
+        en_got = type_words(engine, [en_ctx, word])[-1]
+        vi_got = type_words(engine, [vi_ctx, word])[-1]
+        rows.append((f"{en_ctx} {word}", word, en_got))
+        rows.append((f"{vi_ctx} {word}", vi_word, vi_got))
+    return rows
+
+
+# ---- report -------------------------------------------------------------------
+
+def pct(a, b):
+    return 100.0 * a / b if b else float("nan")
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--lib", required=True)
+    ap.add_argument("--vi", required=True)
+    ap.add_argument("--en")
+    ap.add_argument("--work")
+    ap.add_argument("--chat", default=os.path.join(ROOT, "data", "lm", "eval", "chat.txt"))
+    ap.add_argument("--english", default=os.path.join(ROOT, "core", "data", "english.txt"))
+    ap.add_argument("--syllables", default=os.path.join(ROOT, "core", "data", "vi-syllables.txt"))
+    ap.add_argument("--json")
+    ap.add_argument("--quick", action="store_true")
+    args = ap.parse_args()
+
+    engine = xklm_text.Engine(os.path.abspath(args.lib))
+    vi = Lm(engine.lib, args.vi)
+    shapes = Shapes(engine, vi, args.syllables)
+    results = []
+
+    def row(set_name, metric, value, target, higher=True, detail=""):
+        met = None if target is None else (value >= target if higher else value <= target)
+        results.append({"set": set_name, "metric": metric, "value": round(value, 2),
+                        "target": target, "higher_is_better": higher, "met": met, "detail": detail})
+
+    sets = {}
+    if args.work:
+        for name in ("H1", "H2"):
+            path = os.path.join(args.work, f"{name}.txt")
+            if os.path.exists(path):
+                sets[name] = sentence_items(engine, path)
+    sets["C"] = chat_items(engine, args.chat)
+    if args.quick:
+        sets = {k: v[:100] for k, v in sets.items()}
+
+    targets = {"H1": 95.0, "H2": 94.0, "C": 93.0}
+    for name, sentences in sets.items():
+        r, t, ex, n = eval_restoration(sentences, lambda ctx, typed: typed)
+        row(name, "restoration top-1, baseline: left without marks", pct(r, t), None,
+            detail=f"{r}/{t} syllables")
+        r, t, ex, n = eval_restoration(sentences, lambda ctx, typed: restore_unigram(vi, shapes, typed))
+        row(name, "restoration top-1, baseline: most frequent syllable", pct(r, t), None,
+            detail=f"{r}/{t} syllables, {ex}/{n} sentences exact")
+
+    english = read_lines(args.english)
+    syllables = read_lines(args.syllables)
+    if args.quick:
+        english, syllables = english[::50], syllables[::50]
+    k, n, missed = eval_english(engine, english, before="the")
+    row("E", "English typed with Telex after 'the', kept as typed", pct(k, n), 99.5,
+        detail=f"{k}/{n}; e.g. {', '.join(missed[:12])}")
+    bad, n, examples = eval_vietnamese(engine, syllables)
+    row("V", "syllables typed with Telex after 'tôi', turned into something else", pct(bad, n), 0.5,
+        higher=False, detail=f"{bad}/{n}; e.g. {', '.join(f'{a}->{b}' for a, b in examples[:8])}")
+
+    en_tokens = [tok for items in sets["C"] for tok, v in items if v is False]
+    k, n, missed = eval_english(engine, en_tokens)
+    row("C", "English and abbreviations typed with Telex, kept as typed", pct(k, n), 98.0,
+        detail=f"{k}/{n}; e.g. {', '.join(missed[:12])}")
+
+    rows19 = eval_nineteen(engine)
+    ok = sum(1 for _, want, got in rows19 if want == got)
+    row("19", "the 19 words, right in both contexts", pct(ok, len(rows19)), 100.0,
+        detail=f"{ok}/{len(rows19)} rows; wrong: " +
+               ", ".join(f"{c} -> {g}" for c, w, g in rows19 if w != g))
+
+    print(f"xk-eval  lib {os.path.basename(args.lib)}  vi {os.path.basename(args.vi)} {sha(args.vi)}"
+          + (f"  en {os.path.basename(args.en)} {sha(args.en)}" if args.en else ""))
+    print(f"{'set':<4} {'result':>9} {'target':>9}  {'':5}  metric")
+    for r in results:
+        tgt = "" if r["target"] is None else ("≥ " if r["higher_is_better"] else "≤ ") + f"{r['target']:.1f}"
+        mark = "" if r["met"] is None else ("ok" if r["met"] else "short")
+        print(f"{r['set']:<4} {r['value']:>8.2f}% {tgt:>9}  {mark:5}  {r['metric']}")
+        if r["detail"]:
+            print(f"{'':31}{r['detail']}")
+    if args.json:
+        with open(args.json, "w", encoding="utf-8") as f:
+            json.dump(results, f, indent=2, ensure_ascii=False)
+
+
+if __name__ == "__main__":
+    main()

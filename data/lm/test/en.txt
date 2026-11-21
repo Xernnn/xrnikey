@@ -1,0 +1,51 @@
+# Made-up English text for the small test model the unit tests and CI use (MIT, like the code).
+The boost from the new engine is huge.
+I need the boost before the race.
+My boots are wet from the rain.
+She bought new boots for winter.
+The corn grows tall in summer.
+We ate the corn with butter.
+Two cups of coffee, please.
+I drink two cups of tea every day.
+It hangs on the wall.
+The picture hangs above the bed.
+She keeps her keys in the drawer.
+She keeps the house clean.
+It lifts the box with ease.
+The crane lifts heavy steel.
+My list is too long.
+Add milk to my list.
+Her lips are red.
+She smiled with her lips closed.
+The lisp makes him shy.
+He spoke with the lisp as a child.
+The lust for power ruins people.
+They warned about the lust for money.
+My photos are on the laptop.
+I sent you my photos from the trip.
+Sit in the row at the back.
+The row of houses is old.
+He runs every morning.
+He runs the shop with his brother.
+She sits by the window.
+She sits at the front of the class.
+The tips were very useful.
+Read the tips before you start.
+It is your turn now.
+Wait for your turn.
+The verse was hard to learn.
+Read the verse aloud.
+The virus spread fast.
+The virus slowed my computer down.
+I have a meeting at nine.
+Send me the file by email.
+Check the link before you click it.
+The deadline is on Friday.
+Thank you very much.
+See you tomorrow.
+Can you help me with this?
+Is it ok if I call you later?
+I am sorry I am late.
+We will update the app next week.
+The team is working on the project.
+Please share the slides after the meeting.
