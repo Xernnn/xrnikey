@@ -459,8 +459,8 @@ spellings a key away.
 
 - **The table**: abbreviation → expansion, matched ignoring case, with the expansion's case
   following the keys. The same rules as the laptop's `Macro` and `CapitalizeMacro`. The matching
-  code moves from the Fcitx5 addon (`macro_table.cpp`) into the core, so both devices behave the
-  same.
+  code has moved from the Fcitx5 addon into the core (`core/shortcuts.cpp`, `xk_shortcuts_*`), so
+  both devices behave the same. The addon now only watches its file.
 - **When it expands**: on Space or punctuation, as auto-correct's first rule. The expansion also
   shows in the centre slot while the abbreviation is typed, so a tap works too.
 - **Storage**: `shortcuts.txt` in private storage. Each line is `abbreviation<TAB>expansion`,
@@ -473,6 +473,9 @@ spellings a key away.
 
   The import shows the counts it found: new, same, changed and skipped. Nothing is written until
   the owner confirms. A changed entry replaces the old one.
+  - The separator used is whichever comes first on the line, TAB taking precedence.
+  - An abbreviation is one word of at most 32 bytes. Of repeated ones, the last counts.
+  - A byte-order mark and Windows line ends are fine (`xk_shortcuts_import`).
 - **Export** writes the table in the TAB format.
 - The owner's own table is imported later, from their device. **It is never committed to this
   repo.** Tests use made-up tables.
