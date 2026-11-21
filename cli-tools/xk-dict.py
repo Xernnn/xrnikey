@@ -6,6 +6,22 @@ import ctypes
 import os
 import sys
 
+def data_dir():
+    """The folder of the user's files, where the Fcitx5 addon reads them
+    (user_paths.cpp, userDataDir). Until 1.1.0 it was called xrnikey; when
+    only that one exists it is moved to the new name."""
+    data_home = os.environ.get("XDG_DATA_HOME", "")
+    if not data_home.startswith("/"):
+        data_home = os.path.expanduser("~/.local/share")
+    new, old = os.path.join(data_home, "xrnkey"), os.path.join(data_home, "xrnikey")
+    if not os.path.lexists(new) and os.path.lexists(old):
+        try:
+            os.rename(old, new)
+        except OSError:
+            if not os.path.lexists(new):
+                return old
+    return new
+
 def load_lib():
     for path in ["/usr/lib/libxrnkey.so", "/usr/local/lib/libxrnkey.so"]:
         if os.path.exists(path):
@@ -102,11 +118,7 @@ def main():
     sub.add_parser("stats")
 
     args = parser.parse_args()
-    # Same place the Fcitx5 addon reads (candidate_provider.cpp, userDictPath).
-    data_home = os.environ.get("XDG_DATA_HOME", "")
-    if not data_home.startswith("/"):
-        data_home = os.path.expanduser("~/.local/share")
-    user_dict = os.path.join(data_home, "xrnkey", "user-dict.txt")
+    user_dict = os.path.join(data_dir(), "user-dict.txt")
 
     if args.command == "lookup":
         lib = load_lib()

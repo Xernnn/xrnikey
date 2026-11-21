@@ -1,4 +1,5 @@
 #include "macro_table.h"
+#include "user_paths.h"
 
 #include <fcitx-utils/utf8.h>
 #include <cstdlib>
@@ -70,12 +71,7 @@ bool hasUpper(const std::string &s) { return toLowerVi(s) != s; }
 std::string toUpperVi(const std::string &s) { return mapChars(s, upperCp); }
 std::string toLowerVi(const std::string &s) { return mapChars(s, lowerCp); }
 
-std::string MacroTable::defaultPath() {
-    const char *xdg = std::getenv("XDG_DATA_HOME");
-    if (xdg && *xdg == '/') return std::string(xdg) + "/xrnkey/macros.txt";
-    const char *home = std::getenv("HOME");
-    return std::string(home ? home : "") + "/.local/share/xrnkey/macros.txt";
-}
+std::string MacroTable::defaultPath() { return userDataDir() + "/macros.txt"; }
 
 MacroTable::MacroTable(std::string path) : path_(std::move(path)) { refresh(); }
 

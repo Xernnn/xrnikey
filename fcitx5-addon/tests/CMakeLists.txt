@@ -24,9 +24,18 @@ target_compile_definitions(test_fcitx5_addon PRIVATE
 ## data/ has defined build_dict.)
 add_dependencies(test_fcitx5_addon xrnkey_addon)
 
+## Moving the user's files from before the rename; plain functions, no
+## Fcitx5 needed.
+add_executable(test_user_paths test_user_paths.cpp ../user_paths.cpp)
+target_link_libraries(test_user_paths PRIVATE Catch2::Catch2WithMain)
+target_include_directories(test_user_paths PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
+target_compile_definitions(test_user_paths PRIVATE
+    XRNKEY_TEST_TMP="${CMAKE_CURRENT_BINARY_DIR}")
+
 include(CTest)
 include(Catch)
 catch_discover_tests(test_fcitx5_addon TEST_PREFIX "addon: ")
+catch_discover_tests(test_user_paths TEST_PREFIX "addon: ")
 
 ## The same addon in the real fcitx5 binary, typed into over D-Bus like the
 ## GTK/Qt modules do (skipped where fcitx5, dbus-daemon or python3-gi is

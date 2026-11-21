@@ -18,6 +18,9 @@ ENV_FILE="$CONFIG_HOME/environment.d/90-xrnkey.conf"
 AUTOSTART_FILE="$CONFIG_HOME/autostart/fcitx5.desktop"
 # Files this script may create; a rollback only ever touches these.
 MANAGED=("$ENV_FILE" "$AUTOSTART_FILE")
+# Until 1.1.0 the project was called xrnikey, and so were these two.
+OLD_STATE_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/xrnikey"
+OLD_ENV_FILE="$CONFIG_HOME/environment.d/90-xrnikey.conf"
 
 # Qt's plugin folders (Qt 6 and 5; Arch, Fedora, Debian-style multiarch).
 # XK_QT_PLUGIN_DIRS, space-separated, replaces the list (for tests).
@@ -58,6 +61,35 @@ profile_ims() {
     local profile="$CONFIG_HOME/fcitx5/profile"
     [ -f "$profile" ] || return 0
     sed -n 's/^Name=\(.*\)$/\1/p' "$profile" | grep -v -x Default | tr '\n' ' ' || true
+}
+
+move_old() {
+    if [ "$MODE" = dry ]; then
+        log "(dry run) would: move $1 to $2"
+    else
+        mv "$1" "$2"
+    fi
+}
+
+# Give what an older xk-setup left under the old name the new one: its
+# backups, and the environment file it wrote with its marker, so that
+# --rollback still finds them. Only when nothing has the new name yet.
+adopt_old_names() {
+    local b
+    if [ ! -e "$STATE_DIR" ] && [ -d "$OLD_STATE_DIR" ]; then
+        move_old "$OLD_STATE_DIR" "$STATE_DIR"
+    fi
+    if [ ! -e "$ENV_FILE" ] && [ ! -e "$ENV_FILE.xk-setup" ] && [ -f "$OLD_ENV_FILE.xk-setup" ]; then
+        if [ -e "$OLD_ENV_FILE" ]; then
+            move_old "$OLD_ENV_FILE" "$ENV_FILE"
+        fi
+        move_old "$OLD_ENV_FILE.xk-setup" "$ENV_FILE.xk-setup"
+        for b in "$BACKUP_DIR"/90-xrnikey.conf.*; do
+            if [ -e "$b" ]; then
+                move_old "$b" "$BACKUP_DIR/90-xrnkey.conf.${b##*/90-xrnikey.conf.}"
+            fi
+        done
+    fi
 }
 
 backup_file() {
@@ -223,12 +255,13 @@ step_apps() {
 
 main() {
     case "${1:-}" in
-        --rollback) rollback; exit 0 ;;
+        --rollback) adopt_old_names; rollback; exit 0 ;;
         --dry-run) MODE=dry ;;
         --yes) MODE=yes ;;
         "") ;;
         *) echo "usage: xk-setup [--dry-run | --yes | --rollback]" >&2; exit 2 ;;
     esac
+    adopt_old_names
 
     log "Session: $(session_type), desktop: ${XDG_CURRENT_DESKTOP:-unknown}, running: $(running_imf)"
     if [ "$(running_imf)" != none ] || [ -n "${QT_IM_MODULE:-}${GTK_IM_MODULE:-}${XMODIFIERS:-}" ]; then

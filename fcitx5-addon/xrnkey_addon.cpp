@@ -1,6 +1,7 @@
 #include "candidate_provider.h"
 #include "config.h"
 #include "macro_table.h"
+#include "user_paths.h"
 #include <fcitx-config/iniparser.h>
 #include <fcitx-utils/capabilityflags.h>
 #include <fcitx-utils/key.h>
@@ -320,6 +321,14 @@ public:
           factory_([this](InputContext &) {
               return new XrnkeyState(configuredMode());
           }) {
+        /* Settings saved before the rename (macros_ above has already
+         * moved the user's data folder the same way). Fcitx5 has no user
+         * folder in its testing environment. */
+        const auto &config =
+            StandardPaths::global().userDirectory(StandardPathsType::PkgConfig);
+        if (!config.empty()) {
+            adoptOldPath(config / "conf/xrnikey5.conf", config / "conf/xrnkey.conf");
+        }
         instance_->inputContextManager().registerProperty("xrnkeyState",
                                                             &factory_);
         /* Every surrounding-text report from an app, to check that the text

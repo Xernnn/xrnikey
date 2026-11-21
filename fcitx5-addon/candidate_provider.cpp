@@ -1,4 +1,5 @@
 #include "candidate_provider.h"
+#include "user_paths.h"
 
 #include <cstdlib>
 #include <fcitx-utils/i18n.h>
@@ -20,12 +21,7 @@ void CandidateProvider::setConfig(std::shared_ptr<XrnkeyConfig> config) {
 }
 
 /* Where xk-dict add writes the user's own words. */
-static std::string userDictPath() {
-    const char* xdg = std::getenv("XDG_DATA_HOME");
-    if (xdg && *xdg == '/') return std::string(xdg) + "/xrnkey/user-dict.txt";
-    const char* home = std::getenv("HOME");
-    return std::string(home ? home : "") + "/.local/share/xrnkey/user-dict.txt";
-}
+static std::string userDictPath() { return userDataDir() + "/user-dict.txt"; }
 
 void CandidateProvider::load(const std::string& dataDir) {
     /* Idempotent: reloadConfig() calls this again, which is when words added with

@@ -57,7 +57,11 @@ Layout=
 [GroupOrder]
 0=Default
 PROF
-: > "$T/home/.config/fcitx5/conf/xrnkey.conf"
+# Settings and abbreviations where a version from before the rename
+# (xrnikey) kept them; the addon moves them when it loads (dbus_driver.py).
+printf 'Macro=True\n' > "$T/home/.config/fcitx5/conf/xrnikey5.conf"
+mkdir -p "$T/home/.local/share/xrnikey"
+printf 'ko\tkhông\n' > "$T/home/.local/share/xrnikey/macros.txt"
 
 ENVS=(PATH="$PATH" HOME="$T/home" XDG_RUNTIME_DIR="$T/run"
       XDG_CONFIG_HOME="$T/home/.config" XDG_DATA_HOME="$T/home/.local/share"

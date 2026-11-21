@@ -14,12 +14,25 @@ import sys
 import tempfile
 
 
-def macro_path():
-    # Same place the Fcitx5 addon reads (macro_table.cpp, MacroTable::defaultPath).
+def data_dir():
+    """The folder of the user's files, where the Fcitx5 addon reads them
+    (user_paths.cpp, userDataDir). Until 1.1.0 it was called xrnikey; when
+    only that one exists it is moved to the new name."""
     data_home = os.environ.get("XDG_DATA_HOME", "")
     if not data_home.startswith("/"):
         data_home = os.path.expanduser("~/.local/share")
-    return os.path.join(data_home, "xrnkey", "macros.txt")
+    new, old = os.path.join(data_home, "xrnkey"), os.path.join(data_home, "xrnikey")
+    if not os.path.lexists(new) and os.path.lexists(old):
+        try:
+            os.rename(old, new)
+        except OSError:
+            if not os.path.lexists(new):
+                return old
+    return new
+
+
+def macro_path():
+    return os.path.join(data_dir(), "macros.txt")
 
 
 def read_lines(path):
