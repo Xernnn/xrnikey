@@ -73,6 +73,11 @@ add_executable(test_shortcuts test_shortcuts.cpp)
 target_link_libraries(test_shortcuts PRIVATE xrnikey Catch2::Catch2WithMain)
 target_compile_definitions(test_shortcuts PRIVATE XRNIKEY_TEST_TMP="${CMAKE_CURRENT_BINARY_DIR}")
 
+add_executable(test_emoji test_emoji.cpp)
+target_link_libraries(test_emoji PRIVATE xrnikey Catch2::Catch2WithMain)
+target_compile_definitions(test_emoji PRIVATE
+    XRNIKEY_EMOJI_INDEX="${CMAKE_CURRENT_SOURCE_DIR}/../data/emoji/emoji-index.tsv")
+
 include(CTest)
 include(Catch)
 catch_discover_tests(test_telex)
@@ -88,3 +93,4 @@ catch_discover_tests(test_bilingual)
 catch_discover_tests(test_learn)
 catch_discover_tests(test_typos)
 catch_discover_tests(test_shortcuts)
+catch_discover_tests(test_emoji)

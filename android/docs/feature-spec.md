@@ -513,6 +513,12 @@ The panel replaces the strip and the keys.
 - **Symbols tab**: Unicode symbols by group: arrows, maths, currency, bullets, boxes and stars.
 - Only emoji that the phone's emoji font can draw are listed (`Paint.hasGlyph`). The emoji are
   drawn with the system font, and no emoji artwork ships with the app.
+- **The data**: `data/emoji/emoji-index.tsv`, read by the core (`xk_emoji_*`).
+  - It holds 1,914 emoji from Unicode Emoji 17.0, in Unicode's order and groups, each with its
+    CLDR 48 names and keywords in Vietnamese and English (Unicode License v3).
+  - Skin-tone variants are folded into the base, which is flagged as taking them.
+  - Suggestions match the last three, two or one words as a keyword (`sinh nhật` → 🎂, `cà phê` →
+    ☕). Keywords that over 24 emoji share (`mặt`) are left out.
 
 ## The clipboard panel
 

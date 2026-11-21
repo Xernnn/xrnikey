@@ -278,11 +278,28 @@ void xk_bilingual_load_state(XKState* state, const char* state_path);
 void xk_bilingual_save_state(XKState* state, const char* state_path);
 int  xk_bilingual_app_disabled(const char* wm_class, const char* overrides_path);
 
-/* Emoji */
-XKEmojiDB* xk_emoji_load(const char* json_path);
+/* Emoji: the index in data/emoji/emoji-index.tsv (Unicode's list with
+ * CLDR's English and Vietnamese names and keywords; data/emoji/README.md). */
+XKEmojiDB* xk_emoji_load(const char* index_path);
 void       xk_emoji_free(XKEmojiDB* db);
+/* How many emoji, and the i-th in Unicode's order, for the panel: the
+ * emoji, its group ("Smileys & Emotion" ...), its name (Vietnamese, else
+ * English) and whether it takes skin tones. Strings are the index's. */
+int        xk_emoji_count(const XKEmojiDB* db);
+int        xk_emoji_at(const XKEmojiDB* db, int i, const char** emoji, const char** group,
+                       const char** name, int* skin_tones);
+/* Emoji whose name or keyword matches `query`, in Vietnamese or English,
+ * with or without accents ("cuoi" finds "cười"), best first: exact before
+ * prefix before inside, names before keywords. chars[i] and names[i] are
+ * newly allocated (the caller frees them). */
 int        xk_emoji_search(XKEmojiDB* db, const char* query,
                            char** chars, char** names, int max_results);
+/* Emoji for the words just typed (oldest first), for the suggestion strip:
+ * those with the last three, two, then one words as a keyword ("không
+ * đời nào", "trái tim", "yêu"), leaving out keywords that over 24 emoji
+ * share ("mặt"). out[i] is newly allocated. */
+int        xk_emoji_suggest(const XKEmojiDB* db, const char* const* words, int n,
+                            char** out, int max_out);
 
 #ifdef __cplusplus
 }
