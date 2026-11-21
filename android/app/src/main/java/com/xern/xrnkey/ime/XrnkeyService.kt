@@ -50,6 +50,10 @@ class XrnkeyService : InputMethodService(), KeyboardView.Listener {
 
         override fun backspace() = sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
 
+        override fun deleteBefore(codePoints: Int) {
+            currentInputConnection?.deleteSurroundingTextInCodePoints(codePoints, 0)
+        }
+
         override fun textBefore(n: Int): String =
             currentInputConnection?.getTextBeforeCursor(n, 0)?.toString() ?: ""
 
@@ -67,8 +71,9 @@ class XrnkeyService : InputMethodService(), KeyboardView.Listener {
         vi = openModel("vi.xklm")
         en = openModel("en.xklm")
         models = Models(vi, en)
+        models?.correction = Models.CORRECT_FLEXIBLE
         state = TypingState().also { it.useModels(models) }
-        typist = Typist(state, editor)
+        typist = Typist(state, editor, models)
         strip = StripMaker(models)
     }
 
@@ -98,6 +103,8 @@ class XrnkeyService : InputMethodService(), KeyboardView.Listener {
     override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         typist.raw = isPassword(info)
+        // No auto-correct where words are addresses, not language.
+        typist.autoCorrect = !isAddress(info)
         typist.reset()
         keyboard?.apply {
             page = Page.LETTERS
@@ -195,6 +202,14 @@ class XrnkeyService : InputMethodService(), KeyboardView.Listener {
                 InputType.TYPE_CLASS_NUMBER -> variation == InputType.TYPE_NUMBER_VARIATION_PASSWORD
                 else -> false
             }
+        }
+
+        fun isAddress(info: EditorInfo): Boolean {
+            if (info.inputType and InputType.TYPE_MASK_CLASS != InputType.TYPE_CLASS_TEXT) return false
+            val variation = info.inputType and InputType.TYPE_MASK_VARIATION
+            return variation == InputType.TYPE_TEXT_VARIATION_URI ||
+                variation == InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS ||
+                variation == InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS
         }
 
         fun enterActionOf(info: EditorInfo): EnterAction {

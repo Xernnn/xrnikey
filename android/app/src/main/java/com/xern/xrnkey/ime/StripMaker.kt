@@ -4,9 +4,10 @@ import com.xern.xrnkey.engine.Models
 import com.xern.xrnkey.keyboard.Strip
 
 /**
- * What the strip shows for the word in progress. A word typed without marks ("duoc") gets its
- * accented readings in context: the best in the centre, the next two beside it. A word typed
- * with Telex marks shows as it is. With no word, the tool row.
+ * What the strip shows for the word in progress. For a word typed without marks ("duoc"), the
+ * centre is exactly what Space would commit (with look-back over the words before it), and the
+ * two sides are its next readings. A word typed with Telex marks shows as it is. With no word,
+ * the tool row.
  */
 class StripMaker(private val models: Models?) {
     private var offered: List<String?> = emptyList()
@@ -17,15 +18,15 @@ class StripMaker(private val models: Models?) {
             offered = emptyList()
             return Strip.Tools
         }
-        val keys = t.keys()
-        val plain = keys == word && keys.all { it in 'a'..'z' || it in 'A'..'Z' }
-        if (models == null || !plain) {
+        val centre = t.preview()
+        if (models == null || centre == null) {
             offered = listOf(null, word, null)
             return Strip.Candidates(null, word, null)
         }
-        val c = models.restoreWord(t.context(), keys, 6).map { it.text }
-        offered = listOf(c.getOrNull(1), c.getOrNull(0), c.getOrNull(2))
-        return Strip.Candidates(offered[0], offered[1], offered[2], more = c.size > 3)
+        val all = models.restoreWord(t.context(), t.keys(), 6).map { it.text }
+        val others = all.filter { it != centre }
+        offered = listOf(others.getOrNull(0), centre, others.getOrNull(1))
+        return Strip.Candidates(offered[0], offered[1], offered[2], more = others.size > 2)
     }
 
     /** The candidate in slot 0 (left), 1 (centre) or 2 (right). */

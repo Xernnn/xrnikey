@@ -40,6 +40,14 @@ class FakeEditor(initial: String = "") : Editor {
         log += "backspace"
     }
 
+    override fun deleteBefore(codePoints: Int) {
+        var n = codePoints
+        while (n-- > 0 && committed.isNotEmpty()) {
+            committed.setLength(committed.length - Character.charCount(committed.codePointBefore(committed.length)))
+        }
+        log += "delete:$codePoints"
+    }
+
     override fun enter() {
         committed.append('\n')
         log += "enter"

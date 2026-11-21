@@ -9,10 +9,11 @@ import org.junit.Test
 import java.io.File
 
 /**
- * What a keystroke costs on the JVM, through the JNI bridge, without any instrumentation: the
- * core's Telex step plus the strip's restoration for the word in progress, as the keyboard does
- * on every key, and the restoration run at a word's end. With the real models when this
- * machine has them. Prints p50/p95/p99 and writes build/reports/engine-bench.txt.
+ * What a keystroke costs on the JVM, through the JNI bridge, without any instrumentation: all
+ * the keyboard does for one key (the core's Telex step, the strip's centre and readings for the
+ * word in progress, and, when Space or punctuation ends a word, its restoration with look-back
+ * and correction), and the restoration run alone. With the real models when this machine has
+ * them. Prints p50/p95/p99 and writes build/reports/engine-bench.txt.
  */
 class EngineBenchmarkTest {
     private val text = listOf(
@@ -36,7 +37,7 @@ class EngineBenchmarkTest {
         val times = ArrayList<Long>()
         TypingState().use { state ->
             state.useModels(models)
-            val typist = Typist(state, FakeEditor()).also { it.reset() }
+            val typist = Typist(state, FakeEditor(), models).also { it.reset() }
             val strip = StripMaker(models)
             repeat(rounds) {
                 for (c in text) {
@@ -68,10 +69,11 @@ class EngineBenchmarkTest {
     fun whatAKeystrokeCosts() {
         val lines = mutableListOf<String>()
         TestModels.best().use { m ->
+            m.models.correction = Models.CORRECT_FLEXIBLE
             lines += "models: " + if (TestModels.realAvailable) "real (vi-phone.xklm, en.xklm)" else "small test models"
             keystrokes(m.models, 3)  // warm the JIT
             val keys = keystrokes(m.models, 20)
-            lines += percentiles("key: Telex step + strip, through JNI", keys)
+            lines += percentiles("key: all the keyboard does, through JNI", keys)
             m.models.correction = Models.CORRECT_OFF
             wordEnds(m.models, 3)
             lines += percentiles("word end: run of up to 3, correction off", wordEnds(m.models, 20))
