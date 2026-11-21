@@ -88,4 +88,27 @@ class TypistTest {
         t.enter()
         assertEquals(listOf("<s>"), t.context())
     }
+
+    @Test
+    fun aHeldLettersFormJoinsTheWordInProgress() {
+        val f = FakeEditor()
+        val t = typist(f)
+        t.text("vi"); t.text("ê"); t.text("tj")
+        t.text(" ")
+        assertEquals("việt ", f.text)
+        t.text("đi ")
+        assertEquals("việt đi ", f.text)
+    }
+
+    @Test
+    fun theKeysForEachForm() {
+        assertEquals("eej", com.xern.xrnkey.ime.VietKeys.of('ệ', com.xern.xrnkey.engine.TypingState.TELEX))
+        assertEquals("uw", com.xern.xrnkey.ime.VietKeys.of('ư', com.xern.xrnkey.engine.TypingState.TELEX))
+        assertEquals("OWX", com.xern.xrnkey.ime.VietKeys.of('Ỡ', com.xern.xrnkey.engine.TypingState.TELEX)?.uppercase())
+        assertEquals("a8", com.xern.xrnkey.ime.VietKeys.of('ă', com.xern.xrnkey.engine.TypingState.VNI))
+        assertEquals("e65", com.xern.xrnkey.ime.VietKeys.of('ệ', com.xern.xrnkey.engine.TypingState.VNI))
+        assertEquals("dd", com.xern.xrnkey.ime.VietKeys.of('đ', com.xern.xrnkey.engine.TypingState.TELEX))
+        assertEquals(null, com.xern.xrnkey.ime.VietKeys.of('e', com.xern.xrnkey.engine.TypingState.TELEX))
+        assertEquals(null, com.xern.xrnkey.ime.VietKeys.of('ç', com.xern.xrnkey.engine.TypingState.TELEX))
+    }
 }

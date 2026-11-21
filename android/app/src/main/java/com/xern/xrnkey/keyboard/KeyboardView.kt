@@ -13,6 +13,7 @@ import android.os.SystemClock
 import android.util.TypedValue
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import com.xern.xrnkey.R
 
 /**
@@ -30,6 +31,11 @@ class KeyboardView(context: Context) : View(context) {
         fun onTool(tool: Tool) {}
         fun onPickKeyboard() {}
         fun onStripMenu() {}
+        /** The space bar became a cursor pad: the word in progress ends. */
+        fun onCursorStart() {}
+        /** Move the cursor by characters (dx) and lines (dy). */
+        fun onCursor(dx: Int, dy: Int) {}
+        fun onCursorEnd() {}
         fun onSearchClose() {}
         fun onSearchPick(emoji: String) {}
     }
@@ -50,6 +56,15 @@ class KeyboardView(context: Context) : View(context) {
         set(value) { field = value; invalidate() }
     var keyPreview = true
     var holdMillis = 400L
+    /** Holding a top-row letter gives its digit. */
+    var holdDigits = true
+        set(value) { if (field != value) { field = value; relayout() } }
+    /** Sliding along the space bar moves the cursor. */
+    var spaceSwipe = true
+    /** Holding the space bar turns the keys into a cursor pad. */
+    var spaceHold = true
+    /** Holding the comma picks another keyboard. */
+    var commaHold = true
 
     private val dp = resources.displayMetrics.density
     private val sp = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 1f, resources.displayMetrics)
@@ -86,7 +101,7 @@ class KeyboardView(context: Context) : View(context) {
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) = relayout()
 
     private fun relayout() {
-        val rows = Layouts.rows(page, shift, numberRow)
+        val rows = Layouts.rows(page, shift, numberRow, holdDigits)
         val w = width.toFloat()
         val rowH = (height - stripHeight) / rows.size
         val out = ArrayList<Hit>()
@@ -116,6 +131,57 @@ class KeyboardView(context: Context) : View(context) {
         }
         for (h in hits) drawKey(canvas, h, h === pressed && !holdFired)
         pressed?.let { if (keyPreview && it.key.kind == KeyKind.CHAR && !holdFired) drawPreview(canvas, it) }
+        if (cursor != Cursor.OFF) drawCursorPad(canvas)
+        if (variantsOf != null) drawVariants(canvas)
+    }
+
+    /** The cursor pad: the keys fade, the space bar shows the arrows. */
+    private fun drawCursorPad(canvas: Canvas) {
+        fill.color = palette.background
+        fill.alpha = 225
+        canvas.drawRect(0f, stripHeight, width.toFloat(), height.toFloat(), fill)
+        fill.alpha = 255
+        val space = hits.firstOrNull { it.key.kind == KeyKind.SPACE } ?: return
+        val cx = space.rect.centerX()
+        val cy = space.rect.centerY()
+        val s = 7 * dp
+        stroke(palette.glyph, 2.2f * dp)
+        for (dir in listOf(-1f, 1f)) {
+            val x = cx + dir * 22 * dp
+            canvas.drawLine(x, cy - s, x + dir * s, cy, line)
+            canvas.drawLine(x + dir * s, cy, x, cy + s, line)
+        }
+        if (cursor == Cursor.PAD) {
+            canvas.drawLine(cx - s, cy - 14 * dp, cx, cy - 14 * dp - s, line)
+            canvas.drawLine(cx, cy - 14 * dp - s, cx + s, cy - 14 * dp, line)
+            canvas.drawLine(cx - s, cy + 14 * dp, cx, cy + 14 * dp + s, line)
+            canvas.drawLine(cx, cy + 14 * dp + s, cx + s, cy + 14 * dp, line)
+        }
+    }
+
+    /** The row of a held letter's forms, above it; the one the finger is on is marked. */
+    private fun variantRects(): List<RectF> {
+        val h = variantsOf ?: return emptyList()
+        val n = h.key.variants.size
+        val w = h.rect.width()
+        val left = (h.rect.left).coerceIn(0f, maxOf(0f, width - n * w))
+        val top = maxOf(0f, h.rect.top - h.rect.height() - 4 * dp)
+        return List(n) { RectF(left + it * w, top, left + (it + 1) * w, top + h.rect.height()) }
+    }
+
+    private fun drawVariants(canvas: Canvas) {
+        val h = variantsOf ?: return
+        val rects = variantRects()
+        fill.color = palette.preview
+        canvas.drawRoundRect(RectF(rects.first().left, rects.first().top, rects.last().right, rects.last().bottom), 10 * dp, 10 * dp, fill)
+        h.key.variants.forEachIndexed { i, v ->
+            val r = RectF(rects[i]).apply { inset(3 * dp, 3 * dp) }
+            if (i == variantChoice) {
+                fill.color = palette.accent
+                canvas.drawRoundRect(r, 8 * dp, 8 * dp, fill)
+            }
+            drawLabel(canvas, v, r.centerX(), r.centerY(), 24 * sp, if (i == variantChoice) palette.onAccent else palette.glyph)
+        }
     }
 
     private fun textSize(k: Key): Float = when (k.kind) {
@@ -397,13 +463,57 @@ class KeyboardView(context: Context) : View(context) {
     private var holdFired = false
     private var lastShiftTap = 0L
 
+    private enum class Cursor { OFF, SWIPE, PAD }
+
+    private var cursor = Cursor.OFF
+    private var anchorX = 0f
+    private var anchorY = 0f
+    private val cursorStep get() = 10 * dp
+    private val lineStep get() = 28 * dp
+    private val slop = ViewConfiguration.get(context).scaledTouchSlop
+
+    /** The key whose forms are showing, and the one the finger is on. */
+    private var variantsOf: Hit? = null
+    private var variantChoice = 0
+
     private val hold = Runnable {
         val h = pressed ?: return@Runnable
         when {
-            h.key.kind == KeyKind.COMMA -> { holdFired = true; listener?.onPickKeyboard() }
-            h.key.hold != null -> { holdFired = true; listener?.onText(h.key.hold) }
+            h.key.kind == KeyKind.COMMA -> if (commaHold) { holdFired = true; listener?.onPickKeyboard() }
+            h.key.kind == KeyKind.SPACE -> if (spaceHold && cursor == Cursor.OFF) startCursor(Cursor.PAD)
+            h.key.variants.size > 1 -> { holdFired = true; variantsOf = h; variantChoice = 0 }
+            h.key.hold != null -> { holdFired = true; typeChar(h.key.hold!!) }
         }
         invalidate()
+    }
+
+    private fun startCursor(mode: Cursor) {
+        cursor = mode
+        holdFired = true
+        listener?.onCursorStart()
+        invalidate()
+    }
+
+    private fun typeChar(text: String) {
+        listener?.onText(text)
+        if (shift == Shift.ONCE) shift = Shift.OFF
+    }
+
+    /** The finger moved while the space bar is held or swiped. */
+    private fun moveCursor(x: Float, y: Float) {
+        if (cursor == Cursor.OFF) {
+            if (!spaceSwipe || Math.abs(x - anchorX) < slop) return
+            removeCallbacks(hold)
+            startCursor(Cursor.SWIPE)
+            anchorX += if (x > anchorX) slop.toFloat() else -slop.toFloat()
+        }
+        val dx = ((x - anchorX) / cursorStep).toInt()
+        val dy = if (cursor == Cursor.PAD) ((y - anchorY) / lineStep).toInt() else 0
+        if (dx != 0 || dy != 0) {
+            listener?.onCursor(dx, dy)
+            anchorX += dx * cursorStep
+            anchorY += dy * lineStep
+        }
     }
 
     private val repeat = object : Runnable {
@@ -429,11 +539,18 @@ class KeyboardView(context: Context) : View(context) {
                     tapStrip(x)
                     return true
                 }
-                press(hitAt(x, y), e.getPointerId(i))
+                press(hitAt(x, y), e.getPointerId(i), x, y)
             }
             MotionEvent.ACTION_MOVE -> {
                 val i = e.findPointerIndex(pressedPointer)
-                if (i >= 0) {
+                if (i >= 0 && pressed?.key?.kind == KeyKind.SPACE) {
+                    moveCursor(e.getX(i), e.getY(i))
+                } else if (i >= 0 && variantsOf != null) {
+                    val rects = variantRects()
+                    val x = e.getX(i).coerceIn(rects.first().left, rects.last().right - 1)
+                    val c = rects.indexOfFirst { x >= it.left && x < it.right }
+                    if (c >= 0 && c != variantChoice) { variantChoice = c; invalidate() }
+                } else if (i >= 0) {
                     val h = hitAt(e.getX(i), e.getY(i))
                     if (h != null && h !== pressed && pressed?.key?.kind == KeyKind.CHAR && !holdFired) {
                         removeCallbacks(hold)
@@ -450,12 +567,15 @@ class KeyboardView(context: Context) : View(context) {
         return true
     }
 
-    private fun press(h: Hit?, pointer: Int) {
+    private fun press(h: Hit?, pointer: Int, x: Float = 0f, y: Float = 0f) {
         pressed = h
         pressedPointer = pointer
         holdFired = false
+        anchorX = x
+        anchorY = y
         if (h == null) return
         when (h.key.kind) {
+            KeyKind.SPACE -> postDelayed(hold, holdMillis)
             KeyKind.BACKSPACE -> {
                 listener?.onBackspace()
                 postDelayed(repeat, holdMillis)
@@ -472,7 +592,16 @@ class KeyboardView(context: Context) : View(context) {
         removeCallbacks(repeat)
         pressed = null
         pressedPointer = -1
-        if (h != null && act && !holdFired) tap(h.key)
+        val shown = variantsOf
+        variantsOf = null
+        when {
+            cursor != Cursor.OFF -> {
+                cursor = Cursor.OFF
+                listener?.onCursorEnd()
+            }
+            shown != null -> if (act) typeChar(shown.key.variants[variantChoice])
+            h != null && act && !holdFired -> tap(h.key)
+        }
         holdFired = false
         invalidate()
     }

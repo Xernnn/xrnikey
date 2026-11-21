@@ -110,7 +110,11 @@ class Typist(
 
     /** Typed text: each character is a key. */
     fun text(t: String) {
-        for (c in t) key(c)
+        val s = state
+        // A letter's Vietnamese form (held on its key) goes in as the keys that make it, so the
+        // word goes on taking marks: "vi" + "ê" + "tj" is "việt".
+        val keys = if (s != null && !raw && t.length == 1) VietKeys.of(t[0], s.mode) ?: t else t
+        for (c in keys) key(c)
     }
 
     private fun key(c: Char) {

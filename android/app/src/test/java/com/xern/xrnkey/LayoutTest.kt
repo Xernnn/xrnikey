@@ -29,7 +29,7 @@ class LayoutTest {
         val top = Layouts.rows(Page.LETTERS)[1].keys
         assertEquals("1", top.first().hold)
         assertEquals("0", top.last().hold)
-        assertTrue(Layouts.rows(Page.LETTERS)[2].keys.all { it.hold == null })
+        assertTrue(Layouts.rows(Page.LETTERS)[3].keys.all { it.hold == null })
     }
 
     @Test
@@ -58,5 +58,22 @@ class LayoutTest {
         assertTrue(symbols.any { it.kind == KeyKind.MORE_SYMBOLS })
         assertFalse(symbols.any { it.kind == KeyKind.SHIFT })
         assertTrue(Layouts.rows(Page.MORE_SYMBOLS).flatMap { it.keys }.any { it.kind == KeyKind.SYMBOLS })
+    }
+
+    @Test
+    fun holdingALetterOffersItsVietnameseForms() {
+        val top = Layouts.rows(Page.LETTERS, numberRow = false)[0].keys.associateBy { it.label }
+        assertEquals(listOf("3", "ê", "é", "è", "ẻ", "ẽ", "ẹ"), top["e"]!!.variants)
+        assertEquals(listOf("9", "ô", "ơ", "ó", "ò", "ỏ", "õ", "ọ"), top["o"]!!.variants)
+        assertEquals(listOf("1"), top["q"]!!.variants)
+        val home = Layouts.rows(Page.LETTERS)[2].keys.associateBy { it.label }
+        assertEquals(listOf("â", "ă", "á", "à", "ả", "ã", "ạ"), home["a"]!!.variants)
+        assertEquals(listOf("đ"), home["d"]!!.variants)
+        val shifted = Layouts.rows(Page.LETTERS, Shift.ONCE)[2].keys.associateBy { it.label }
+        assertEquals("Đ", shifted["D"]!!.hold)
+        // Without the digits, the forms come first.
+        val plain = Layouts.rows(Page.LETTERS, numberRow = false, holdDigits = false)[0].keys.associateBy { it.label }
+        assertEquals("ê", plain["e"]!!.hold)
+        assertEquals(null, plain["q"]!!.hold)
     }
 }

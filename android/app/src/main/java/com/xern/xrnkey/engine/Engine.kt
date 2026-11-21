@@ -66,7 +66,7 @@ data class Candidate(val text: String, val type: Int) {
 data class KeyResult(val commit: String, val preedit: String, val consumed: Boolean, val deleteBefore: Int)
 
 /** One field's Telex (or VNI) state in the core. */
-class TypingState(mode: Int = TELEX) : AutoCloseable {
+class TypingState(val mode: Int = TELEX) : AutoCloseable {
     private val handle = Native.stateNew(mode)
     private val out = IntArray(2)
 
