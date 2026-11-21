@@ -13,8 +13,8 @@
   build.py train WORK OUT --tool XK_LM_BUILD
       Train OUT/vi.xklm (order 4, for the laptop), OUT/vi-phone.xklm (pruned
       for the phone) and OUT/en.xklm (order 3) with xk-lm-build.
-  build.py tokenize --lib LIBXRNIKEY IN OUT
-      Tokenize one plain-text file (the made-up test corpora in data/lm/test).
+  build.py tokenize --lib LIBXRNIKEY OUT IN...
+      Tokenize plain-text files into one (the made-up test corpora in data/lm/test).
 
 A sentence is held out when a hash of its tokens falls in the first 4 % of
 the range, whatever its source, so a sentence that two sources share is held
@@ -218,12 +218,14 @@ def cmd_train(args):
 
 def cmd_tokenize(args):
     engine = xklm_text.Engine(os.path.abspath(args.lib))
-    with open(args.input, encoding="utf-8") as f, open(args.output + ".part", "w", encoding="utf-8") as out:
-        for line in f:
-            if line.startswith("#"):
-                continue
-            for toks in xklm_text.sentences(engine, line):
-                out.write(" ".join(toks) + "\n")
+    with open(args.output + ".part", "w", encoding="utf-8") as out:
+        for path in args.inputs:
+            with open(path, encoding="utf-8") as f:
+                for line in f:
+                    if line.startswith("#"):
+                        continue
+                    for toks in xklm_text.sentences(engine, line):
+                        out.write(" ".join(toks) + "\n")
     os.replace(args.output + ".part", args.output)
 
 
@@ -245,8 +247,8 @@ def main():
     p.add_argument("--tool", required=True)
     p.set_defaults(func=cmd_train)
     p = sub.add_parser("tokenize")
-    p.add_argument("input")
     p.add_argument("output")
+    p.add_argument("inputs", nargs="+")
     p.add_argument("--lib", required=True)
     p.set_defaults(func=cmd_tokenize)
     args = ap.parse_args()

@@ -32,6 +32,7 @@ static void show_word(XKStateImpl* s, XKResult* r) {
  * non-letter key that ends a word. */
 static void finalize_word(XKStateImpl* s, XKResult* r, char trailing) {
     std::string final_text = word_final(s->word, s->opt, s);
+    context_learn_word(*s, final_text);
     context_note_word(*s, final_text);
     if (trailing) context_note_char(*s, trailing);
 
@@ -146,6 +147,7 @@ void xk_state_set_option(XKState* state, int option, int value) {
         case XK_OPT_MODERN_STYLE: s->opt.modern_style = value != 0; break;
         case XK_OPT_FREE_MARKING: s->opt.free_marking = value != 0; break;
         case XK_OPT_W_SHORTCUT: s->opt.w_shortcut = value != 0; break;
+        case XK_OPT_LEARN: s->opt.learn = value != 0; return;  /* nothing to recompose */
         default: return;
     }
     /* The word in progress is recomposed under the new option. */
@@ -160,6 +162,7 @@ int xk_state_get_option(XKState* state, int option) {
         case XK_OPT_MODERN_STYLE: return s->opt.modern_style ? 1 : 0;
         case XK_OPT_FREE_MARKING: return s->opt.free_marking ? 1 : 0;
         case XK_OPT_W_SHORTCUT: return s->opt.w_shortcut ? 1 : 0;
+        case XK_OPT_LEARN: return s->opt.learn ? 1 : 0;
         default: return -1;
     }
 }

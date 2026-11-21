@@ -67,6 +67,9 @@ void xk_state_set_instant_commit(XKState* state, int enabled);
                                   tone before it, a mark right after its letter */
 #define XK_OPT_W_SHORTCUT   4  /* default 1: Telex w with no vowel to mark is
                                   ư (w -> ư, tw -> tư); ww -> w */
+#define XK_OPT_LEARN        5  /* default 0: learn each word this state commits
+                                  into the personal words of its models (off
+                                  in password fields and the like) */
 void xk_state_set_option(XKState* state, int option, int value);
 int  xk_state_get_option(XKState* state, int option);
 
@@ -124,6 +127,34 @@ int         xk_lm_id(const XKLm* lm, const char* word);
 typedef struct XKModels XKModels;
 XKModels* xk_models_new(const XKLm* vi, const XKLm* en);
 void      xk_models_free(XKModels* models);
+
+/* Personal words: what the owner types, learned on the device only. Counts
+ * of words and of word pairs, never sentences; a word or pair counts once
+ * typed twice. With them in the models, scoring leans towards what the
+ * owner writes ("ngắn tủn" after they typed it twice). The file holds
+ * "word<TAB>count" and "word word<TAB>count" lines and is saved atomically.
+ * Words are given as text and stored as model tokens (lowercase). */
+typedef struct XKUser XKUser;
+XKUser* xk_user_new(void);
+void    xk_user_free(XKUser* user);
+/* Replaces what `user` holds; returns the entries read, -1 if unreadable.
+ * Bad lines are skipped. */
+int     xk_user_load(XKUser* user, const char* path);
+/* 0 on success; the old file stays as it was otherwise. */
+int     xk_user_save(const XKUser* user, const char* path);
+/* `word` was committed after `prev` (NULL or "<s>" at the start of a
+ * sentence, "<p>" after a comma). */
+void    xk_user_learn(XKUser* user, const char* prev, const char* word);
+/* How often `word` was learned (after `prev`, when not NULL). */
+double  xk_user_count(const XKUser* user, const char* prev, const char* word);
+/* Remove `word` and every pair it is in. */
+void    xk_user_forget(XKUser* user, const char* word);
+/* Multiply every count by `factor` (0..1), dropping what falls below 0.5:
+ * old habits fade. */
+void    xk_user_decay(XKUser* user, double factor);
+/* Score with these personal words (NULL: none). The bundle does not own
+ * them. */
+void    xk_models_set_user(XKModels* models, XKUser* user);
 
 /* log10 P(word | context), the context oldest first ("<s>" may start it).
  * A word the model does not know gets its share of the unknown words' mass

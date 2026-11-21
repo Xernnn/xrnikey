@@ -1,5 +1,7 @@
 #include "score.h"
 
+#include "learn.h"
+
 #include <cmath>
 #include <vector>
 
@@ -58,7 +60,11 @@ double mix_logprob(const Models& m, const Context& c, const std::string& token, 
     if (m.en && is_ascii_word(token))
         pe = (both ? frame_prob(prev, LANG_EN) : 1.0) * std::pow(10.0, token_logprob(*m.en, c, token));
     if (lang) *lang = pe > pv ? LANG_EN : LANG_VI;
-    const double p = pv + pe;
+    double p = pv + pe;
+    if (m.user) {
+        const std::string prev = !c.tokens.empty() ? c.tokens.back() : c.start ? "<s>" : "";
+        p = m.user->blend(p, prev, token);
+    }
     return p > 0.0 ? std::log10(p) : static_cast<double>(lmfmt::kNever);
 }
 

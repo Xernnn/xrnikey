@@ -405,22 +405,33 @@ the Telex result whatever the context, like `AutoRestore=False` on the laptop.
 
 ### What is learned
 
-- Every committed word and word pair, in fields that allow learning, adds to its count. This
-  includes English words, names, and Vietnamese phrases the shipped model doesn't know. A word
-  becomes a candidate after it has been typed twice and kept (not reverted).
+- **Counts.** Every committed word and word pair, in fields that allow learning, adds to its
+  count. A pair is a word together with the word before it (`<s>` at the start of a sentence).
+  This includes English words, names, and Vietnamese phrases the shipped model doesn't know.
+- **Scoring is by pair** (`core/learn.cpp`): P = (1 − b) · P_models + b · P_pair(word | word
+  before), with b = n / (n + 2) for the n times the word before was typed.
+  - A pair counts once it has been typed twice and kept (not reverted): one is taken off every
+    count before use.
+  - Learning a word on its own, everywhere, was tried and dropped. Once "bốt" was learned, the
+    real models made "my boots" Vietnamese.
+  - With the real models, the five pairs they get wrong (`ngắn tủn`, `đôi bốt` …) all come out
+    right once each has been typed twice, and every English context stays English (xk-eval).
+- **Counts of single words** are kept for listing and completing the owner's words.
 - **Reverts**: a typed form reverted twice in a similar context is kept as typed from then on.
 - **Strip picks**: picking a side slot over the centre pick raises that candidate in that
   context.
-- Counts decay: they are halved every 90 days of typing, so old habits fade.
+- **Decay**: counts are halved every 90 days of typing (`xk_user_decay`), so old habits fade.
 
 ### Where it is kept
 
-- In the app's credential-encrypted private storage, as two text files the core reads and writes
-  atomically (a temporary file, then rename):
-  - `user-dict.txt`: `word<TAB>count`, the same format as the laptop's
-    `~/.local/share/xrnikey/user-dict.txt`;
-  - `user-pairs.txt`: `word<TAB>word<TAB>count`.
-- They are read only after the phone is first unlocked. Before that, the keyboard types with the
+- One text file, `learned.txt`, in the app's credential-encrypted private storage. The core
+  reads it and writes it atomically (a temporary file, then rename).
+  - A word's line is `word<TAB>count`, the same shape as the laptop's
+    `~/.local/share/xrnikey/user-dict.txt`.
+  - A pair's line is `word word<TAB>count`.
+  - Bad lines are skipped on load. The file holds at most 50,000 words and 200,000 pairs; the
+    rarest go first.
+- It is read only after the phone is first unlocked. Before that, the keyboard types with the
   shipped model alone.
 - `allowBackup="false"`. Nothing is synced. Export and import are by hand (see Settings).
 

@@ -376,6 +376,35 @@ NINETEEN = [
 ]
 
 
+def unambiguous_keys(syllable, english):
+    """Telex keys for a syllable that do not spell an English word: the
+    usual order ("tủn" -> "tunr"), or the tone key right after the first
+    vowel when that order is English ("bốt": "boots" -> "bosot")."""
+    keys = xklm_text.telex_keys(syllable)
+    if keys not in english:
+        return keys
+    body, tone = keys[:-1], keys[-1]
+    for i, c in enumerate(body):
+        if c in "aeiouy":
+            alt = body[:i + 1] + tone + body[i + 1:]
+            if alt not in english:
+                return alt
+    return keys
+
+
+def type_words_learning(engine, words):
+    """type_words with XK_OPT_LEARN on."""
+    lib = engine.lib
+    s = lib.xk_state_new(0)
+    lib.xk_state_set_models(s, MODELS[0])
+    lib.xk_state_set_option(s, 5, 1)
+    for keys in words:
+        for c in keys:
+            lib.xk_process_key(s, ord(c), 0)
+        lib.xk_process_key(s, 0x20, 0)
+    lib.xk_state_free(s)
+
+
 def eval_nineteen(engine):
     rows = []
     for word, en_ctx, vi_ctx, vi_word in NINETEEN:
@@ -471,11 +500,36 @@ def main():
     row("C", "English and abbreviations, the Vietnamese typed without marks, kept as typed",
         pct(k, n), None, detail=f"{k}/{n}; e.g. {', '.join(missed[:12])}")
 
+    english_set = set(read_lines(args.english))
     rows19 = eval_nineteen(engine)
     ok = sum(1 for _, want, got in rows19 if want == got)
     row("19", "the 19 words, right in both contexts", pct(ok, len(rows19)), 100.0,
         detail=f"{ok}/{len(rows19)} rows; wrong: " +
                ", ".join(f"{c} -> {g}" for c, w, g in rows19 if w != g))
+    if MODELS:
+        # The owner fixes each Vietnamese row that came out wrong by typing it
+        # twice with keys that can only be Vietnamese, learning on; then every
+        # row, English ones included, is typed again.
+        L = engine.lib
+        L.xk_user_new.restype = ctypes.c_void_p
+        L.xk_models_set_user.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        L.xk_user_free.argtypes = [ctypes.c_void_p]
+        L.xk_state_set_option.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
+        user = L.xk_user_new()
+        L.xk_models_set_user(MODELS[0], user)
+        fixed = []
+        for word, en_ctx, vi_ctx, vi_word in NINETEEN:
+            if type_words(engine, [vi_ctx, word])[-1] != vi_word:
+                fixed.append(vi_word)
+                for _ in range(2):
+                    type_words_learning(engine, [vi_ctx, unambiguous_keys(vi_word, english_set)])
+        rows_after = eval_nineteen(engine)
+        ok = sum(1 for _, want, got in rows_after if want == got)
+        row("19", "the 19 words, after the owner typed each wrong pair twice", pct(ok, len(rows_after)),
+            100.0, detail=f"{ok}/{len(rows_after)} rows; learned: {', '.join(fixed) or '-'}; wrong: " +
+                          ", ".join(f"{c} -> {g}" for c, w, g in rows_after if w != g))
+        L.xk_models_set_user(MODELS[0], None)
+        L.xk_user_free(user)
 
     print(f"xk-eval  lib {os.path.basename(args.lib)}  vi {os.path.basename(args.vi)} {sha(args.vi)}"
           + (f"  en {os.path.basename(args.en)} {sha(args.en)}" if args.en else ""))

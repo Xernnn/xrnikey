@@ -12,10 +12,13 @@
 
 namespace xrnikey {
 
+struct User;
+
 /* What scoring uses, behind XKModels. Nothing is owned. */
 struct Models {
     const Lm* vi = nullptr;
     const Lm* en = nullptr;
+    User* user = nullptr;  /* personal words (learn.cpp); learning writes to it */
 };
 
 /* P(next frame | language of the word before); LANG_NONE is the start of
@@ -33,11 +36,14 @@ float token_logprob(const Lm& m, const Context& c, const std::string& token);
  *   P = P(vi frame | prev) * P_vi(token) + P(en frame | prev) * P_en(token)
  *
  * The English part counts only for a-z tokens, and only with both models
- * (with one model, it is that model alone). `lang`, when given, gets the
- * frame that explains the token better. */
+ * (with one model, it is that model alone). The owner's personal words,
+ * when there are any, are mixed in on top (learn.cpp). `lang`, when given,
+ * gets the frame that explains the token better. */
 double mix_logprob(const Models& m, const Context& c, const std::string& token, uint8_t* lang = nullptr);
 
 bool is_ascii_word(const std::string& t);
+/* Learn `text` as typed after the context's last word (learn.cpp). */
+void learn_word(User& u, const Context& c, const std::string& text);
 /* Add a finished word, or a number, to the context, with its language. */
 void context_push_text(const Models* m, Context& c, const std::string& text);
 /* Add a punctuation key to the context: , ; : pause, . ! ? end the sentence. */
