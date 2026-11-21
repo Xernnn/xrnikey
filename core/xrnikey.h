@@ -156,6 +156,17 @@ void    xk_user_decay(XKUser* user, double factor);
  * them. */
 void    xk_models_set_user(XKModels* models, XKUser* user);
 
+/* Typo correction in accent restoration. A word may also stand for one a
+ * key away on the QWERTY layout ("khonh" -> "không"), or two keys away from
+ * 5 letters (4 when STRONG); each slip costs what the layout says it is
+ * unlikely to be, so a correction wins only when the words around make it
+ * worth it. Words of one letter, and chat abbreviations ("ko", "dc", "oke"),
+ * are never corrected. Off by default. */
+#define XK_CORRECT_OFF      0
+#define XK_CORRECT_FLEXIBLE 1
+#define XK_CORRECT_STRONG   2
+void    xk_models_set_correction(XKModels* models, int level);
+
 /* log10 P(word | context), the context oldest first ("<s>" may start it).
  * A word the model does not know gets its share of the unknown words' mass
  * (all unknown words score alike); "<unk>" itself gets all of it. */
@@ -185,6 +196,8 @@ int xk_autocorrect(XKDict* dict, XKNgram* ng, const char* word,
  * as in the English/Vietnamese choice below). */
 #define XK_CAND_RESTORED  3  /* XKCandidate.type: an accented reading of the typed word */
 #define XK_CAND_AS_TYPED  4  /* XKCandidate.type: the word exactly as typed */
+#define XK_CAND_CORRECTED 1  /* XKCandidate.type: a key or two away from what was typed
+                                (edit_distance says how many) */
 #define XK_RESTORE_MAX_RUN 8
 /* The words `typed` (a-z and A-Z only, no marks: "khong") may stand for,
  * best first, scored log10 P(word | context): the Vietnamese syllables of

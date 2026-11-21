@@ -220,6 +220,94 @@ def eval_lookback(sentences, restorer, back=2):
     return right, total, exact, len(sentences)
 
 
+def decode(items, typed, restorer, back=2):
+    """What the keyboard ends with for one sentence typed as `typed` (one
+    entry per item; None for numbers and pauses), with look-back as in
+    eval_lookback."""
+    out, run_start = ["<s>"], 1
+    typed = [None] + list(typed)
+
+    def close(nxt):
+        frm = max(run_start, len(out) - 1 - back)
+        if frm < len(out) and all(t is not None for t in typed[frm:len(out)]):
+            out[frm:] = restorer.run(out[:frm], typed[frm:len(out)], nxt)
+
+    for k, (tok, vi) in enumerate(items):
+        if vi is None:
+            if tok == "<p>":
+                close("<p>")
+            out.append(tok)
+            run_start = len(out)
+            continue
+        out.append(None)
+        frm = max(run_start, len(out) - 1 - back)
+        out[frm:] = restorer.run(out[:frm], typed[frm:len(out)])
+    close("</s>")
+    return out[1:]
+
+
+# The phone's QWERTY rows in key widths, as in core/keys.cpp.
+KEY_POS = {}
+for _r, (_row, _x0) in enumerate((("qwertyuiop", 0.0), ("asdfghjkl", 0.5), ("zxcvbnm", 1.5))):
+    for _i, _c in enumerate(_row):
+        KEY_POS[_c] = (_x0 + _i, float(_r))
+
+
+def neighbours(c):
+    """The keys within 1.5 key widths of `c`, weighted as keys.cpp does."""
+    import math
+    x, y = KEY_POS[c]
+    out = []
+    for k, (kx, ky) in KEY_POS.items():
+        d = math.hypot(kx - x, ky - y)
+        if k != c and d <= 1.5:
+            out.append((k, math.exp(-d * d / (2 * 0.6 * 0.6))))
+    return out
+
+
+def corrupt(word, rng, rate):
+    """Each letter, with probability `rate`, typed as a neighbouring key."""
+    out = []
+    for c in word:
+        if c in KEY_POS and rng.random() < rate:
+            keys, weights = zip(*neighbours(c))
+            c = rng.choices(keys, weights)[0]
+        out.append(c)
+    return "".join(out)
+
+
+def eval_typos(sentences, restorer, set_level, seed, rate=0.03):
+    """Typos at `rate` per letter, deterministic for `seed`, in sentences
+    typed without marks. Returns (fixed, mistyped, right, changed, clean):
+    mistyped words that come out as their clean typing does, mistyped words
+    that come out as meant, and clean words that correction changes."""
+    import random
+    rng = random.Random(seed)
+    fixed = mistyped = right = changed = clean = 0
+    for items in sentences:
+        typed = [None if vi is None else (xklm_text.strip_marks(tok) if vi else tok) for tok, vi in items]
+        bad = [None if t is None else corrupt(t, rng, rate) for t in typed]
+        set_level(0)
+        off = decode(items, typed, restorer)
+        set_level(1)
+        on = decode(items, typed, restorer)
+        if bad == typed:
+            got = on
+        else:
+            got = decode(items, bad, restorer)
+        for (tok, vi), t, b, o_off, o_on, g in zip(items, typed, bad, off, on, got):
+            if t is None:
+                continue
+            clean += 1
+            changed += o_on != o_off
+            if b != t:
+                mistyped += 1
+                fixed += g == o_on
+                right += g == tok
+    set_level(0)
+    return fixed, mistyped, right, changed, clean
+
+
 def eval_topk(sentences, restorer, k=3):
     """How often the intended syllable is among the first k candidates, the
     words before it typed right (what the strip would offer)."""
@@ -459,13 +547,18 @@ def main():
             path = os.path.join(args.work, f"{name}.txt")
             if os.path.exists(path):
                 sets[name] = sentence_items(engine, path)
+    dev = sentence_items(engine, os.path.join(args.work, "dev.txt"))[:500] if args.work and \
+        os.path.exists(os.path.join(args.work, "dev.txt")) else None
     sets["C"] = chat_items(engine, args.chat)
     if args.quick:
         sets = {k: v[:100] for k, v in sets.items()}
+    restoration_sets = dict(sets)
+    if dev:
+        sets["dev"] = dev[:100] if args.quick else dev
 
     targets = {"H1": 95.0, "H2": 94.0, "C": 93.0}
     restorer = Restorer(engine.lib, models)
-    for name, sentences in sets.items():
+    for name, sentences in restoration_sets.items():
         r, t, ex, n = eval_restoration(sentences, lambda ctx, typed: typed)
         row(name, "restoration top-1, baseline: left without marks", pct(r, t), None,
             detail=f"{r}/{t} syllables")
@@ -499,6 +592,18 @@ def main():
     k, n, missed = eval_english_restored(sets["C"], restorer)
     row("C", "English and abbreviations, the Vietnamese typed without marks, kept as typed",
         pct(k, n), None, detail=f"{k}/{n}; e.g. {', '.join(missed[:12])}")
+
+    L.xk_models_set_correction.argtypes = [ctypes.c_void_p, ctypes.c_int]
+    set_level = lambda level: L.xk_models_set_correction(models, level)
+    typo_sets = {"T": ("C", 2026)}
+    if "dev" in sets:
+        typo_sets["dev"] = ("dev", 7)
+    for name, (base, seed) in typo_sets.items():
+        f, m, r, ch, cl = eval_typos(sets[base], restorer, set_level, seed)
+        row(name, "typos fixed: mistyped words that come out as their clean typing does", pct(f, m),
+            85.0 if name == "T" else None, detail=f"{f}/{m} mistyped words; {r} come out as meant")
+        row(name, "correct words changed by correction", pct(ch, cl), 1.0 if name == "T" else None,
+            higher=False, detail=f"{ch}/{cl} words")
 
     english_set = set(read_lines(args.english))
     rows19 = eval_nineteen(engine)

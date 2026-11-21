@@ -82,6 +82,12 @@ void xk_models_free(XKModels* models) {
     delete reinterpret_cast<xrnikey::Models*>(models);
 }
 
+void xk_models_set_correction(XKModels* models, int level) {
+    if (!models) return;
+    reinterpret_cast<xrnikey::Models*>(models)->correction =
+        level < XK_CORRECT_OFF ? XK_CORRECT_OFF : level > XK_CORRECT_STRONG ? XK_CORRECT_STRONG : level;
+}
+
 void xk_state_set_models(XKState* state, const XKModels* models) {
     if (!state) return;
     auto* s = reinterpret_cast<xrnikey::XKStateImpl*>(state);
