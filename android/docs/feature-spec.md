@@ -687,6 +687,11 @@ keep passing.
     test read, so the two can't disagree.
   - The InputConnection logic (composing, revert, look-back guards, cursor-moved detection) runs
     against a fake text buffer, like the laptop addon's fake client.
+  - The keyboard's screenshots are drawn by the real view with Robolectric's native graphics
+    (`KeyboardShotsTest`). This is the only use of Robolectric; each test class gets a JVM of its own,
+    since a native library binds to one class loader.
+  - A JVM benchmark (`EngineBenchmarkTest`) times a keystroke through JNI (the Telex step plus the
+    strip) and the restoration run at a word's end, with the real models when present.
 - **CI** (the repo is public, so minutes are free): a second job builds the debug APK, runs the
   JVM tests, and fails if the merged manifest names any `uses-permission`. CI uses a small test
   model built from the made-up test text, so it downloads no corpora.

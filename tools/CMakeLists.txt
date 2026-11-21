@@ -1,6 +1,6 @@
 ## Build-time tools: the language model builder. Nothing here is installed.
 add_executable(xk-lm-build lm/xk-lm-build.cpp)
-target_include_directories(xk-lm-build PRIVATE ${CMAKE_SOURCE_DIR}/core)
+target_include_directories(xk-lm-build PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../core)
 ## The shape index in each model is worked out by the core itself.
 target_link_libraries(xk-lm-build PRIVATE xrnkey)
 target_compile_options(xk-lm-build PRIVATE -O2)
