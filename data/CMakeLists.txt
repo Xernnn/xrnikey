@@ -42,3 +42,52 @@ install(PROGRAMS emoji/generate.py ngram/train.py
 ## icon theme, so it has to land in hicolor (the fallback every theme inherits from).
 install(FILES icons/xrnikey.svg
         DESTINATION share/icons/hicolor/scalable/apps)
+
+## The small language models the tests use, trained from made-up text in
+## lm/test (data/lm/README.md). They say nothing about quality; the real
+## models are built by lm/build.py and installed from XRNIKEY_LM_DIR.
+if(XRNIKEY_ENABLE_TESTS)
+    find_package(Python3 REQUIRED COMPONENTS Interpreter)
+    set(XK_TEST_LM_DIR "${CMAKE_BINARY_DIR}/data/lm")
+    ## vi leaves out words seen once, so the tests see words folded into
+    ## <unk> as the real models have them.
+    set(XK_TEST_LM_MIN_vi 2)
+    set(XK_TEST_LM_MIN_en 1)
+    foreach(lang vi en)
+        add_custom_command(
+            OUTPUT "${XK_TEST_LM_DIR}/${lang}.tok"
+            COMMAND ${CMAKE_COMMAND} -E make_directory "${XK_TEST_LM_DIR}"
+            COMMAND ${Python3_EXECUTABLE} -I "${CMAKE_CURRENT_SOURCE_DIR}/lm/build.py" tokenize
+                    --lib $<TARGET_FILE:xrnikey>
+                    "${CMAKE_CURRENT_SOURCE_DIR}/lm/test/${lang}.txt" "${XK_TEST_LM_DIR}/${lang}.tok"
+            DEPENDS xrnikey "${CMAKE_CURRENT_SOURCE_DIR}/lm/test/${lang}.txt"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/lm/build.py" "${CMAKE_CURRENT_SOURCE_DIR}/lm/xklm_text.py"
+            COMMENT "Tokenizing the ${lang} test corpus")
+        add_custom_command(
+            OUTPUT "${XK_TEST_LM_DIR}/${lang}.xklm"
+            COMMAND xk-lm-build --order 3 --min-count ${XK_TEST_LM_MIN_${lang}} --prune 0,0
+                    -o "${XK_TEST_LM_DIR}/${lang}.xklm" "${XK_TEST_LM_DIR}/${lang}.tok"
+            DEPENDS xk-lm-build "${XK_TEST_LM_DIR}/${lang}.tok"
+            COMMENT "Training the ${lang} test model")
+    endforeach()
+    add_custom_target(test_lm_models ALL
+        DEPENDS "${XK_TEST_LM_DIR}/vi.xklm" "${XK_TEST_LM_DIR}/en.xklm")
+
+    add_test(NAME "lm: tokenizer"
+             COMMAND ${Python3_EXECUTABLE} -I "${CMAKE_CURRENT_SOURCE_DIR}/lm/test_xklm_text.py")
+    set_tests_properties("lm: tokenizer" PROPERTIES
+                         ENVIRONMENT "XRNIKEY_LIB=$<TARGET_FILE:xrnikey>")
+    ## The harness end to end on the test models: it must run and report, the
+    ## numbers themselves mean nothing here.
+    add_test(NAME "lm: xk-eval runs"
+             COMMAND ${Python3_EXECUTABLE} -I "${CMAKE_SOURCE_DIR}/tools/xk-eval" --quick
+                     --lib $<TARGET_FILE:xrnikey>
+                     --vi "${XK_TEST_LM_DIR}/vi.xklm" --en "${XK_TEST_LM_DIR}/en.xklm")
+endif()
+
+## The real models, when built (lm/build.py train), are installed from here.
+set(XRNIKEY_LM_DIR "" CACHE PATH "Folder holding the trained vi.xklm and en.xklm to install")
+if(XRNIKEY_LM_DIR)
+    install(FILES "${XRNIKEY_LM_DIR}/vi.xklm" "${XRNIKEY_LM_DIR}/en.xklm"
+            DESTINATION share/xrnikey/lm)
+endif()

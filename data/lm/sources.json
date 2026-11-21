@@ -1,0 +1,59 @@
+{
+  "comment": "Every text the shipped language models are trained on. Licences and attribution: data/lm/README.md. sha256 pins the exact file; build.py refuses any other.",
+  "sources": [
+    {
+      "name": "vie_news_2022_1M",
+      "lang": "vi",
+      "url": "https://downloads.wortschatz-leipzig.de/corpora/vie_news_2022_1M.tar.gz",
+      "sha256": "0f85f20b637f15f4fe2dac82b38ca96bcd4310b18187c50b73c9e6aa3dab5aef",
+      "format": "leipzig",
+      "licence": "CC BY (Leipzig Corpora Collection)",
+      "heldout": "H1"
+    },
+    {
+      "name": "vie_news_2020_1M",
+      "lang": "vi",
+      "url": "https://downloads.wortschatz-leipzig.de/corpora/vie_news_2020_1M.tar.gz",
+      "sha256": "755fdd3c4d6947ff187238c98a9c55f25db710a45e520e4912df54132df4425d",
+      "format": "leipzig",
+      "licence": "CC BY (Leipzig Corpora Collection)",
+      "heldout": "H1"
+    },
+    {
+      "name": "vie-vn_web_2015_1M",
+      "lang": "vi",
+      "url": "https://downloads.wortschatz-leipzig.de/corpora/vie-vn_web_2015_1M.tar.gz",
+      "sha256": "14dd383d8870e3b0e4e54557dea7a335196d0d48696def4c866dbc62c62d842e",
+      "format": "leipzig",
+      "licence": "CC BY (Leipzig Corpora Collection)",
+      "heldout": "H1"
+    },
+    {
+      "name": "tatoeba_vie",
+      "lang": "vi",
+      "url": "https://downloads.tatoeba.org/exports/per_language/vie/vie_sentences.tsv.bz2",
+      "sha256": "e9a6451c46c43d9e15b923945325e74c8f28a8bc8e2e9c864801942337dbcb1a",
+      "format": "tatoeba",
+      "licence": "CC BY 2.0 FR (Tatoeba contributors)",
+      "heldout": "H2"
+    },
+    {
+      "name": "commonvoice_vi",
+      "lang": "vi",
+      "url": "https://raw.githubusercontent.com/common-voice/common-voice/main/server/data/vi/sentence-collector.txt",
+      "sha256": "6e6b9d0c3db850237cc916811951c6536809eeccc15786bb8bdfa5d6b63c2552",
+      "format": "lines",
+      "licence": "CC0 (Mozilla Common Voice)",
+      "heldout": "H2"
+    },
+    {
+      "name": "eng_news_2023_300K",
+      "lang": "en",
+      "url": "https://downloads.wortschatz-leipzig.de/corpora/eng_news_2023_300K.tar.gz",
+      "sha256": "b00f2d75afa76a9bcf78c4099cbffbdbf8a506d73d6a22e73e06d08072195024",
+      "format": "leipzig",
+      "licence": "CC BY (Leipzig Corpora Collection)",
+      "heldout": null
+    }
+  ]
+}

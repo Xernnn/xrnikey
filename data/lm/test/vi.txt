@@ -1,0 +1,83 @@
+# Made-up Vietnamese text for the small test model the unit tests and CI use (MIT, like the code).
+# It is not a quality model: it only has to hold the contexts the tests check.
+Tôi không biết bạn có đi không.
+Tôi không thể đến được.
+Bạn không có thời gian à?
+Không được, hôm nay tôi bận.
+Anh ấy không thể làm được việc đó.
+Chúng tôi không có tiền.
+Được rồi, mai tôi đến.
+Em có được không?
+Cái đó không được đâu.
+Công ty dược phẩm mới mở ở gần nhà.
+Ngành dược phẩm đang phát triển.
+Bạn tôi làm ở công ty dược phẩm.
+Chào bạn, bạn khỏe không?
+Chào bạn nhé.
+Bạn bè của tôi đến chơi.
+Tôi với bạn đi ăn nhé.
+Cái bàn gỗ này đẹp quá.
+Đặt cái bàn ở góc phòng.
+Cái bàn này của ai?
+Mọi người ngồi quanh cái bàn.
+Chúng ta bàn chuyện này sau nhé.
+Tôi cố gắng học thật tốt.
+Bạn hãy cố gắng lên.
+Mọi người đã cố gắng rất nhiều.
+Em sẽ cố gắng hơn.
+Tôi có một con mèo.
+Nhà tôi có ba người.
+Có ai ở nhà không?
+Hôm nay có mưa không?
+Mua hai lít nước mắm.
+Một lít sữa giá bao nhiêu?
+Mỗi ngày uống hai lít nước.
+Xe này đi một trăm cây số hết năm lít xăng.
+Cô ấy mua một đôi bốt mới.
+Đôi bốt này đi mùa đông rất ấm.
+Chuyện cỏn con thôi, đừng buồn.
+Mấy chuyện cỏn con ấy quên đi.
+Đội nhà đã giành cúp vô địch.
+Họ giành cúp sau trận chung kết.
+Chiếc cúp được đặt trong tủ kính.
+Tôi bị đau háng sau khi chạy.
+Ngã xe nên đau háng mấy hôm.
+Sáng nay ăn bánh kếp với mật ong.
+Bánh kếp Pháp rất mỏng.
+Thay bộ líp mới cho xe đạp.
+Bộ líp này dùng được lâu.
+Mưa lớn làm ngập lút bánh xe.
+Nước ngập lút đầu gối.
+Ca sĩ đó vừa dính phốt.
+Nhà hàng bị dính phốt vệ sinh.
+Tay lái bị rơ nên phải sửa.
+Bánh xe bị rơ rồi.
+Em bé bị đau lỗ rún.
+Giữ lỗ rún sạch sẽ cho bé.
+Thời gian rất sít sao.
+Lịch trình rất sít sao nên phải đi sớm.
+Anh ấy đúng típ người tôi thích.
+Cô ấy không phải đúng típ của tôi.
+Cái váy ngắn tủn.
+Quần này ngắn tủn rồi.
+Câu này có hai vế.
+Hai vế của câu đối rất chỉnh.
+Em bé níu víu lấy mẹ.
+Đừng níu víu nữa.
+Mẹ nấu cơm rồi.
+Hôm nay trời đẹp quá.
+Chúng ta đi chơi đi.
+Mai tôi đi làm sớm.
+Cảm ơn bạn rất nhiều.
+Xin lỗi, tôi đến muộn.
+Tôi đang ở nhà.
+Bạn đang làm gì vậy?
+Anh đi đâu đấy?
+Em ăn cơm chưa?
+Tôi ăn rồi, cảm ơn.
+Chiều nay họp lúc ba giờ.
+Gửi file cho tôi nhé.
+Gửi file cho bạn rồi.
+Tối nay xem phim không?
+Đi đường cẩn thận nhé.
+Về đến nhà thì nhắn tôi.

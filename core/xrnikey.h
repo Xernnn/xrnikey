@@ -100,7 +100,32 @@ int     xk_dict_lookup(XKDict* dict, const char* word);
 void    xk_dict_add_word(XKDict* dict, const char* word, int freq);
 void    xk_dict_reload_user(XKDict* dict, const char* user_path);
 
-/* N-gram language model */
+/* Language model (.xklm, built by tools/lm/xk-lm-build; data/lm/README.md).
+ * A backoff n-gram model, memory-mapped and read in place. Tokens are what
+ * data/lm/build.py writes: lowercase NFC Vietnamese syllables with the tone
+ * where this engine puts it, lowercase English words, "<num>" for a number,
+ * "<p>" for , ; and :, and "<s>" for the start of a sentence. */
+typedef struct XKLm XKLm;
+/* NULL when the file is missing or not a model this version reads. */
+XKLm*       xk_lm_open(const char* path);
+/* A model stored at `offset` in an open file (inside an APK); the
+ * descriptor may be closed afterwards. */
+XKLm*       xk_lm_open_fd(int fd, int64_t offset, int64_t length);
+void        xk_lm_free(XKLm* lm);
+int         xk_lm_order(const XKLm* lm);
+int         xk_lm_vocab_size(const XKLm* lm);
+/* The word with id 0..vocab-1 (0 is "<unk>"), owned by the model. */
+const char* xk_lm_word(const XKLm* lm, int id);
+/* The id of `word`, 0 when the model does not know it. */
+int         xk_lm_id(const XKLm* lm, const char* word);
+/* log10 P(word | context), the context oldest first ("<s>" may start it).
+ * A word the model does not know gets its share of the unknown words' mass
+ * (all unknown words score alike); "<unk>" itself gets all of it. */
+float       xk_lm_logprob(const XKLm* lm, const char* const* context, int ctx_len,
+                          const char* word);
+
+/* N-gram language model: the old ARPA reader, still used by the Fcitx5
+ * addon's suggestions. */
 XKNgram* xk_ngram_load(const char* arpa_path);
 void     xk_ngram_free(XKNgram* ng);
 float    xk_ngram_score(XKNgram* ng, const char** context, int ctx_len, const char* word);
