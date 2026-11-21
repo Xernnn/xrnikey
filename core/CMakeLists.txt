@@ -13,6 +13,7 @@ add_library(xrnikey SHARED
     syllable_validator.cpp
     dict.cpp
     ngram.cpp
+    lm.cpp
     autocorrect.cpp
     bilingual_switch.cpp
     emoji.cpp
@@ -43,7 +44,8 @@ set_target_properties(xrnikey PROPERTIES
     PUBLIC_HEADER xrnikey.h
 )
 
-target_link_libraries(xrnikey PRIVATE pthread)
+find_package(Threads REQUIRED)
+target_link_libraries(xrnikey PRIVATE Threads::Threads)
 
 install(TARGETS xrnikey
     LIBRARY DESTINATION lib

@@ -51,6 +51,7 @@ if(XRNIKEY_BUILD_IBUS)
 endif()
 
 add_subdirectory(cli-tools)
+add_subdirectory(tools)
 add_subdirectory(data)
 
 if(TARGET test_fcitx5_addon AND TARGET build_dict)

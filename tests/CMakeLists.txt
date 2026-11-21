@@ -39,6 +39,14 @@ target_compile_definitions(test_user_dict PRIVATE
     XRNIKEY_TEST_TMP="${CMAKE_CURRENT_BINARY_DIR}")
 add_dependencies(test_user_dict build_dict)
 
+add_executable(test_lm test_lm.cpp)
+target_link_libraries(test_lm PRIVATE xrnikey Catch2::Catch2WithMain)
+target_include_directories(test_lm PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../core)
+target_compile_definitions(test_lm PRIVATE
+    XRNIKEY_TEST_LM_DIR="${CMAKE_BINARY_DIR}/data/lm"
+    XRNIKEY_TEST_TMP="${CMAKE_CURRENT_BINARY_DIR}")
+add_dependencies(test_lm test_lm_models)
+
 include(CTest)
 include(Catch)
 catch_discover_tests(test_telex)
@@ -48,3 +56,4 @@ catch_discover_tests(test_instant_commit)
 catch_discover_tests(test_real_words)
 catch_discover_tests(test_user_dict)
 catch_discover_tests(test_corpus)
+catch_discover_tests(test_lm)
