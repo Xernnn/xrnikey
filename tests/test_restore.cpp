@@ -10,12 +10,18 @@
 
 namespace {
 
+/* The Vietnamese model alone: restoration as it was before the English
+ * model joined it (test_bilingual has both). */
 struct Model {
-    XKLm* lm = xk_lm_open((std::string(XRNIKEY_TEST_LM_DIR) + "/vi.xklm").c_str());
-    ~Model() { xk_lm_free(lm); }
+    XKLm* vi = xk_lm_open((std::string(XRNIKEY_TEST_LM_DIR) + "/vi.xklm").c_str());
+    XKModels* lm = xk_models_new(vi, nullptr);
+    ~Model() {
+        xk_models_free(lm);
+        xk_lm_free(vi);
+    }
 };
 
-std::vector<XKCandidate> restore(XKLm* lm, std::vector<const char*> ctx, const char* typed) {
+std::vector<XKCandidate> restore(XKModels* lm, std::vector<const char*> ctx, const char* typed) {
     std::vector<XKCandidate> out(32);
     int n = xk_restore_word(lm, ctx.data(), static_cast<int>(ctx.size()), typed, out.data(),
                             static_cast<int>(out.size()));
@@ -23,12 +29,12 @@ std::vector<XKCandidate> restore(XKLm* lm, std::vector<const char*> ctx, const c
     return out;
 }
 
-std::string best(XKLm* lm, std::vector<const char*> ctx, const char* typed) {
+std::string best(XKModels* lm, std::vector<const char*> ctx, const char* typed) {
     auto c = restore(lm, ctx, typed);
     return c.empty() ? "" : c[0].text;
 }
 
-std::vector<std::string> run(XKLm* lm, std::vector<const char*> ctx, std::vector<const char*> typed,
+std::vector<std::string> run(XKModels* lm, std::vector<const char*> ctx, std::vector<const char*> typed,
                              const char* next = nullptr) {
     std::vector<char*> raw(typed.size(), nullptr);
     int n = xk_restore_run(lm, ctx.data(), static_cast<int>(ctx.size()), typed.data(),
@@ -51,7 +57,7 @@ bool offers(const std::vector<XKCandidate>& c, const std::string& text) {
 
 TEST_CASE("a word typed without marks gets its accents back", "[restore]") {
     Model m;
-    REQUIRE(m.lm != nullptr);
+    REQUIRE(m.vi != nullptr);
     CHECK(best(m.lm, {"<s>", "tôi"}, "khong") == "không");
     CHECK(best(m.lm, {"tôi", "không"}, "duoc") == "được");
     // Every syllable of the shape is offered, not only the model's.
@@ -65,7 +71,7 @@ TEST_CASE("a word typed without marks gets its accents back", "[restore]") {
 
 TEST_CASE("the words before choose between readings of the same shape", "[restore]") {
     Model m;
-    REQUIRE(m.lm != nullptr);
+    REQUIRE(m.vi != nullptr);
     CHECK(best(m.lm, {"<s>", "cái"}, "ban") == "bàn");
     CHECK(best(m.lm, {"<s>", "chào"}, "ban") == "bạn");
     CHECK(best(m.lm, {"công", "ty"}, "duoc") == "dược");
@@ -73,7 +79,7 @@ TEST_CASE("the words before choose between readings of the same shape", "[restor
 
 TEST_CASE("the typed letters' case carries over", "[restore]") {
     Model m;
-    REQUIRE(m.lm != nullptr);
+    REQUIRE(m.vi != nullptr);
     CHECK(best(m.lm, {"<s>", "tôi"}, "Khong") == "Không");
     CHECK(best(m.lm, {"<s>", "tôi"}, "KHONG") == "KHÔNG");
     CHECK(best(m.lm, {"tôi", "không"}, "Duoc") == "Được");
@@ -81,7 +87,7 @@ TEST_CASE("the typed letters' case carries over", "[restore]") {
 
 TEST_CASE("words that are not Vietnamese stay as typed", "[restore]") {
     Model m;
-    REQUIRE(m.lm != nullptr);
+    REQUIRE(m.vi != nullptr);
     auto c = restore(m.lm, {"<s>"}, "ko");  // no syllable has this shape
     REQUIRE(c.size() == 1);
     CHECK(std::string(c[0].text) == "ko");
@@ -96,7 +102,7 @@ TEST_CASE("words that are not Vietnamese stay as typed", "[restore]") {
 
 TEST_CASE("a run is decoded whole, so a later word fixes an earlier one", "[restore]") {
     Model m;
-    REQUIRE(m.lm != nullptr);
+    REQUIRE(m.vi != nullptr);
     // Alone, "co" is "có"; with "gang" after it, the pair is "cố gắng".
     CHECK(best(m.lm, {"<s>"}, "co") == "có");
     CHECK(run(m.lm, {"<s>"}, {"co", "gang"}) == std::vector<std::string>{"cố", "gắng"});
@@ -110,7 +116,7 @@ TEST_CASE("a run is decoded whole, so a later word fixes an earlier one", "[rest
 
 TEST_CASE("knowing the sentence ends picks the reading that ends it", "[restore]") {
     Model m;
-    REQUIRE(m.lm != nullptr);
+    REQUIRE(m.vi != nullptr);
     // In the test text "nhẹ" follows "khá" most often but never ends a
     // sentence; "khá nhé" does. So "kha nhe" is "khá nhẹ" while the
     // sentence may go on, and "khá nhé" once a full stop ends it.

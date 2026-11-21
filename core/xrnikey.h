@@ -118,6 +118,13 @@ int         xk_lm_vocab_size(const XKLm* lm);
 const char* xk_lm_word(const XKLm* lm, int id);
 /* The id of `word`, 0 when the model does not know it. */
 int         xk_lm_id(const XKLm* lm, const char* word);
+/* The models that score words in context, for accent restoration and the
+ * English/Vietnamese choice. Either model may be NULL. The bundle does not
+ * own them; free it before them. */
+typedef struct XKModels XKModels;
+XKModels* xk_models_new(const XKLm* vi, const XKLm* en);
+void      xk_models_free(XKModels* models);
+
 /* log10 P(word | context), the context oldest first ("<s>" may start it).
  * A word the model does not know gets its share of the unknown words' mass
  * (all unknown words score alike); "<unk>" itself gets all of it. */
@@ -142,7 +149,9 @@ int xk_autocorrect(XKDict* dict, XKNgram* ng, const char* word,
                    const char** context, int ctx_len,
                    XKCandidate* out, int max_out);
 
-/* Accent restoration (needs a Vietnamese model). */
+/* Accent restoration (needs the Vietnamese model in `models`; with the
+ * English one too, a word typed as an English word is weighed as English,
+ * as in the English/Vietnamese choice below). */
 #define XK_CAND_RESTORED  3  /* XKCandidate.type: an accented reading of the typed word */
 #define XK_CAND_AS_TYPED  4  /* XKCandidate.type: the word exactly as typed */
 #define XK_RESTORE_MAX_RUN 8
@@ -154,7 +163,7 @@ int xk_autocorrect(XKDict* dict, XKNgram* ng, const char* word,
  * before it, oldest first, as the model writes them (accented, lowercase,
  * "<s>" for the start of a sentence). Returns how many were written to
  * `out`; 0 when `typed` is not such a word. */
-int xk_restore_word(const XKLm* lm, const char* const* context, int ctx_len,
+int xk_restore_word(const XKModels* models, const char* const* context, int ctx_len,
                     const char* typed, XKCandidate* out, int max_out);
 /* The best reading of a run of 1..XK_RESTORE_MAX_RUN words typed without
  * marks, decoded together, so a later word can change an earlier one:
@@ -164,7 +173,7 @@ int xk_restore_word(const XKLm* lm, const char* const* context, int ctx_len,
  * it: "di nhe." ends "đi nhé", where "di nhe" alone is "đi nhẹ". Writes n
  * newly allocated strings to `out` (the caller frees them) and returns n,
  * or 0 when a word is not one xk_restore_word takes. */
-int xk_restore_run(const XKLm* lm, const char* const* context, int ctx_len,
+int xk_restore_run(const XKModels* models, const char* const* context, int ctx_len,
                    const char* const* typed, int n, const char* next, char** out);
 
 /* The choice between a word's English and Vietnamese readings. Telex keys
@@ -172,10 +181,10 @@ int xk_restore_run(const XKLm* lm, const char* const* context, int ctx_len,
  * "lít"); with both models set, the words before decide ("my list", "hai
  * lít"). The state keeps those words itself from what it commits (digits,
  * , ; : count too; . ! ? Return, Tab, arrows, BackSpace over committed
- * text and xk_state_reset start afresh). Without both models the syllable
- * always wins. The state does not own the models; they must outlive it or
- * be unset first. */
-void xk_state_set_models(XKState* state, const XKLm* vi, const XKLm* en);
+ * text and xk_state_reset start afresh). Without both models in the bundle
+ * the syllable always wins. The state does not own the bundle; it must
+ * outlive the state or be unset first. */
+void xk_state_set_models(XKState* state, const XKModels* models);
 /* What comes before the cursor, for a frontend that knows (oldest first;
  * "<s>" marks the start of a sentence). Replaces what the state kept. */
 void xk_state_set_context(XKState* state, const char* const* words, int n);

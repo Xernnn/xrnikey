@@ -1,14 +1,17 @@
 /* Accent restoration: the Vietnamese a word typed without marks stands for
  * ("khong" -> "không"), ranked by the language model in context.
  *
- * Every syllable the model knows, and every attested syllable, is indexed by
- * its ASCII shape (marks and tone removed). A typed word's candidates are its
- * shape's syllables, plus the word as typed when the model knows it as a
- * token of its own (an English word, an abbreviation). One word is ranked by
- * log P(candidate | context); a run of words is decoded as a whole with a
- * small beam search, so a later word can change an earlier one ("co gang":
- * "có" alone, "cố gắng" together). */
+ * Every syllable the Vietnamese model knows, and every attested syllable, is
+ * indexed by its ASCII shape (marks and tone removed). A typed word's
+ * candidates are its shape's syllables, plus the word as typed when either
+ * model knows it as a token of its own (an English word, an abbreviation).
+ * Each is scored by the same mixture as the English/Vietnamese choice
+ * (score.cpp), so "can" after an English word stays "can". One word is
+ * ranked alone; a run of words is decoded as a whole with a small beam
+ * search, so a later word can change an earlier one ("co gang": "có"
+ * alone, "cố gắng" together). */
 #include "lm_internal.h"
+#include "score.h"
 #include "xrnikey_internal.h"
 
 #include <algorithm>
@@ -129,11 +132,12 @@ struct Cand {
     bool as_typed;
 };
 
-/* The candidates for one typed word (lowercase), best spellings first in
- * no particular order: the shape's syllables, and the word itself when it
- * is not one of them and the model knows it, or nothing else is left. */
-std::vector<Cand> candidates(const Lm& m, const std::string& lower, std::string* own) {
+/* The candidates for one typed word (lowercase), in no particular order:
+ * the shape's syllables, and the word itself when it is not one of them and
+ * a model knows it, or nothing else is left. */
+std::vector<Cand> candidates(const Models& models, const std::string& lower, std::string* own) {
     std::vector<Cand> out;
+    const Lm& m = *models.vi;
     const ShapeIndex& idx = shapes(m);
     auto it = idx.by_shape.find(lower);
     bool typed_listed = false;
@@ -145,27 +149,13 @@ std::vector<Cand> candidates(const Lm& m, const std::string& lower, std::string*
     }
     if (!typed_listed) {
         const uint32_t id = lm_id(m, lower);
-        if (id != kUnk || out.empty()) {
+        const bool english = models.en && lm_id(*models.en, lower) != kUnk;
+        if (id != kUnk || english || out.empty()) {
             *own = lower;
             out.push_back({own, id, true});
         }
     }
     return out;
-}
-
-/* log10 P(candidate | context): a syllable the model lacks gets its share
- * of the unknown mass, not all of it. */
-float score(const Lm& m, const uint32_t* ctx, int n, uint32_t id) {
-    const float p = lm_logprob(m, ctx, n, id);
-    return id == kUnk ? p - lm_unk_share(m) : p;
-}
-
-std::vector<uint32_t> context_ids(const Lm& m, const char* const* ctx, int n) {
-    std::vector<uint32_t> ids;
-    if (!ctx || n <= 0) return ids;
-    const int keep = std::min(n, static_cast<int>(m.hdr->order) - 1);
-    for (int i = n - keep; i < n; ++i) ids.push_back(ctx[i] ? lm_id(m, ctx[i]) : kUnk);
-    return ids;
 }
 
 }  // namespace
@@ -176,20 +166,20 @@ using namespace xrnikey;
 
 extern "C" {
 
-int xk_restore_word(const XKLm* lm, const char* const* context, int ctx_len,
+int xk_restore_word(const XKModels* models, const char* const* context, int ctx_len,
                     const char* typed, XKCandidate* out, int max_out) {
-    if (!lm || !out || max_out <= 0) return 0;
+    const auto* mp = reinterpret_cast<const Models*>(models);
+    if (!mp || !mp->vi || !out || max_out <= 0) return 0;
     std::string lower;
     Case cs;
     if (!typed_word(typed, &lower, &cs)) return 0;
-    const Lm& m = lm_of(lm);
-    const std::vector<uint32_t> ctx = context_ids(m, context, ctx_len);
+    const Context ctx = context_from(mp, context, ctx_len, false);
     std::string own;
-    std::vector<Cand> cands = candidates(m, lower, &own);
+    std::vector<Cand> cands = candidates(*mp, lower, &own);
     struct Scored { Cand c; float score; };
     std::vector<Scored> scored;
     for (const Cand& c : cands)
-        scored.push_back({c, score(m, ctx.data(), static_cast<int>(ctx.size()), c.id)});
+        scored.push_back({c, static_cast<float>(mix_logprob(*mp, ctx, *c.text))});
     std::stable_sort(scored.begin(), scored.end(), [](const Scored& a, const Scored& b) {
         if (a.score != b.score) return a.score > b.score;
         if (a.c.as_typed != b.c.as_typed) return a.c.as_typed;
@@ -208,50 +198,55 @@ int xk_restore_word(const XKLm* lm, const char* const* context, int ctx_len,
     return n;
 }
 
-int xk_restore_run(const XKLm* lm, const char* const* context, int ctx_len,
+int xk_restore_run(const XKModels* models, const char* const* context, int ctx_len,
                    const char* const* typed, int n, const char* next, char** out) {
-    if (!lm || !typed || !out || n <= 0 || n > XK_RESTORE_MAX_RUN) return 0;
-    const Lm& m = lm_of(lm);
-    const int order = static_cast<int>(m.hdr->order);
+    const auto* mp = reinterpret_cast<const Models*>(models);
+    if (!mp || !mp->vi || !typed || !out || n <= 0 || n > XK_RESTORE_MAX_RUN) return 0;
     std::vector<std::string> lowers(static_cast<size_t>(n)), owns(static_cast<size_t>(n));
     std::vector<Case> cases(static_cast<size_t>(n));
     std::vector<std::vector<Cand>> cands(static_cast<size_t>(n));
-    for (int i = 0; i < n; ++i) {
-        if (!typed_word(typed[i], &lowers[static_cast<size_t>(i)], &cases[static_cast<size_t>(i)])) return 0;
-        cands[static_cast<size_t>(i)] = candidates(m, lowers[static_cast<size_t>(i)], &owns[static_cast<size_t>(i)]);
+    for (size_t i = 0; i < static_cast<size_t>(n); ++i) {
+        if (!typed_word(typed[i], &lowers[i], &cases[i])) return 0;
+        cands[i] = candidates(*mp, lowers[i], &owns[i]);
     }
-    /* Beam search. A hypothesis is its last order-1 ids (what the model
-     * can still see) plus the choices that led there; two with the same
-     * history are merged, keeping the better. */
+    /* Beam search. A hypothesis is the context it leaves (the last words
+     * and their languages: all the models can still see) plus the choices
+     * that led there; two that leave the same context are merged, keeping
+     * the better. */
     struct Hyp {
-        std::vector<uint32_t> hist;
+        Context ctx;
         std::vector<int> pick;
         double score;
     };
     constexpr size_t kBeam = 16;
-    std::vector<Hyp> beam{{context_ids(m, context, ctx_len), {}, 0.0}};
-    for (int i = 0; i < n; ++i) {
-        std::vector<Hyp> next;
+    std::vector<Hyp> beam{{context_from(mp, context, ctx_len, false), {}, 0.0}};
+    auto better = [](const Hyp& a, const Hyp& b) {
+        if (a.score != b.score) return a.score > b.score;
+        return a.pick < b.pick;
+    };
+    for (size_t i = 0; i < static_cast<size_t>(n); ++i) {
+        std::vector<Hyp> next_beam;
         for (const Hyp& h : beam) {
-            for (size_t c = 0; c < cands[static_cast<size_t>(i)].size(); ++c) {
-                const Cand& cand = cands[static_cast<size_t>(i)][c];
+            for (size_t c = 0; c < cands[i].size(); ++c) {
+                const std::string& text = *cands[i][c].text;
+                uint8_t lang = LANG_VI;
                 Hyp g = h;
-                g.score += score(m, h.hist.data(), static_cast<int>(h.hist.size()), cand.id);
-                g.hist.push_back(cand.id);
-                if (static_cast<int>(g.hist.size()) > order - 1) g.hist.erase(g.hist.begin());
+                g.score += mix_logprob(*mp, h.ctx, text, &lang);
+                g.ctx.push(text, lang);
                 g.pick.push_back(static_cast<int>(c));
-                next.push_back(std::move(g));
+                next_beam.push_back(std::move(g));
             }
         }
-        std::sort(next.begin(), next.end(), [](const Hyp& a, const Hyp& b) {
-            if (a.score != b.score) return a.score > b.score;
-            return a.pick < b.pick;
-        });
+        std::sort(next_beam.begin(), next_beam.end(), better);
         beam.clear();
-        for (Hyp& h : next) {
+        for (Hyp& h : next_beam) {
             bool merged = false;
             for (const Hyp& kept : beam)
-                if (kept.hist == h.hist) { merged = true; break; }
+                if (kept.ctx.tokens == h.ctx.tokens && kept.ctx.langs == h.ctx.langs &&
+                    kept.ctx.start == h.ctx.start) {
+                    merged = true;
+                    break;
+                }
             if (merged) continue;
             beam.push_back(std::move(h));
             if (beam.size() == kBeam) break;
@@ -260,17 +255,13 @@ int xk_restore_run(const XKLm* lm, const char* const* context, int ctx_len,
     /* What comes next, when the caller knows it (the sentence ends, a
      * pause): each hypothesis is scored on how well it leads there. */
     if (next && *next) {
-        const uint32_t nid = lm_id(m, next);
-        for (Hyp& h : beam) h.score += score(m, h.hist.data(), static_cast<int>(h.hist.size()), nid);
-        std::stable_sort(beam.begin(), beam.end(), [](const Hyp& a, const Hyp& b) {
-            if (a.score != b.score) return a.score > b.score;
-            return a.pick < b.pick;
-        });
+        for (Hyp& h : beam) h.score += mix_logprob(*mp, h.ctx, next);
+        std::stable_sort(beam.begin(), beam.end(), better);
     }
     const Hyp& best = beam.front();
-    for (int i = 0; i < n; ++i) {
-        const Cand& c = cands[static_cast<size_t>(i)][static_cast<size_t>(best.pick[static_cast<size_t>(i)])];
-        const std::string t = with_case(*c.text, cases[static_cast<size_t>(i)]);
+    for (size_t i = 0; i < static_cast<size_t>(n); ++i) {
+        const Cand& c = cands[i][static_cast<size_t>(best.pick[i])];
+        const std::string t = with_case(*c.text, cases[i]);
         out[i] = static_cast<char*>(std::malloc(t.size() + 1));
         if (out[i]) std::memcpy(out[i], t.c_str(), t.size() + 1);
     }

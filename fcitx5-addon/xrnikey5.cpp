@@ -428,7 +428,7 @@ public:
         if (!state) return;
         applyOptions(state);
         /* Cheap, and covers states made since (new fields, a mode change). */
-        xk_state_set_models(state, viLm_.get(), enLm_.get());
+        xk_state_set_models(state, models_.get());
 
         /* A key the engine lets through may change the app's text in any
          * way (Return, BackSpace, a paste shortcut, an arrow key moving the
@@ -941,9 +941,10 @@ public:
          * Vietnamese readings in context (data/lm/README.md). Loaded once:
          * they are read-only, and every field's state points at them.
          * Without them the core keeps its per-word rule. */
-        if (!viLm_ && !enLm_) {
+        if (!models_) {
             viLm_.reset(xk_lm_open((dir + "/lm/vi.xklm").c_str()));
             enLm_.reset(xk_lm_open((dir + "/lm/en.xklm").c_str()));
+            models_.reset(xk_models_new(viLm_.get(), enLm_.get()));
         }
     }
 
@@ -962,6 +963,8 @@ private:
     MacroTable macros_;
     std::unique_ptr<XKLm, decltype(&xk_lm_free)> viLm_{nullptr, &xk_lm_free};
     std::unique_ptr<XKLm, decltype(&xk_lm_free)> enLm_{nullptr, &xk_lm_free};
+    /* Declared after the models it points at, so it goes first. */
+    std::unique_ptr<XKModels, decltype(&xk_models_free)> models_{nullptr, &xk_models_free};
     FactoryFor<XrnikeyState> factory_;
     std::unique_ptr<HandlerTableEntry<EventHandler>> surroundingWatcher_;
     uint32_t notifyId_ = 0;

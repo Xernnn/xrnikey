@@ -348,11 +348,17 @@ of the keys in context:
 - **English reading**: the keys as typed, as a mixture of two things. One is the Vietnamese
   model's own estimate: it has the English words Vietnamese text uses ("file", "check") as
   tokens. The other is a switch into English, scored by the English model (order 3).
-- **Frames**: P(stay | the previous word's language) and P(switch | …). The values are 0.99
-  and 0.01 after a Vietnamese word, 0.30 and 0.70 (back to Vietnamese, or on in English) after
-  an English one, and 0.85 and 0.15 at the start of a sentence. They are set from the owner's
-  mix (mostly Vietnamese, short English runs), not tuned on the evaluation sets. Adapting them
-  to the owner's own typing comes with personal learning.
+- **Frames**: P(stay | the previous word's language) and P(switch | …). The values are:
+  - after a Vietnamese word, 0.998 and 0.002;
+  - after an English one, 0.30 and 0.70 (back to Vietnamese, or on in English);
+  - at the start of a sentence, 0.85 and 0.15.
+
+  They come from the owner's mix: mostly Vietnamese, with short English runs. The one after a
+  Vietnamese word was then lowered from 0.01 until set V met its target, and no other figure
+  moved. Personal learning will adapt them to the owner's own typing.
+- **The same mixture scores accent restoration** (`core/score.cpp`). A word typed without marks
+  (`can`, `chat`) stays English in English (`we can chat`), and stays Vietnamese in Vietnamese
+  (`bạn cần`).
 
 The likelier reading wins. Ties go to Vietnamese, the laptop's rule that "typing Vietnamese
 never turns into English". The state keeps its own context:

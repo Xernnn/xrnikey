@@ -12,7 +12,9 @@ namespace {
 struct Models {
     XKLm* vi = xk_lm_open((std::string(XRNIKEY_TEST_LM_DIR) + "/vi.xklm").c_str());
     XKLm* en = xk_lm_open((std::string(XRNIKEY_TEST_LM_DIR) + "/en.xklm").c_str());
+    XKModels* both = xk_models_new(vi, en);
     ~Models() {
+        xk_models_free(both);
         xk_lm_free(vi);
         xk_lm_free(en);
     }
@@ -38,7 +40,7 @@ template <typename Setup>
 std::string type(const Models& m, bool use_models, bool instant, const std::string& keys, Setup setup) {
     XKState* s = xk_state_new(XK_MODE_TELEX);
     xk_state_set_instant_commit(s, instant ? 1 : 0);
-    if (use_models) xk_state_set_models(s, m.vi, m.en);
+    if (use_models) xk_state_set_models(s, m.both);
     setup(s);
     std::string doc, preedit;
     for (char c : keys) {
@@ -108,11 +110,13 @@ TEST_CASE("without both models the attested syllable still wins", "[bilingual]")
     check_rows({{"my list ", "my lít "}, {"the turn ", "the tủn "}}, false);
     Models m;
     XKState* s = xk_state_new(XK_MODE_TELEX);
-    xk_state_set_models(s, m.vi, nullptr);  // one model is not enough to choose
+    XKModels* vi_only = xk_models_new(m.vi, nullptr);
+    xk_state_set_models(s, vi_only);  // one model is not enough to choose
     std::string doc;
     for (char c : std::string("my list ")) doc += xk_process_key(s, keysym(c), 0).commit;
     CHECK(doc == "my lít ");
     xk_state_free(s);
+    xk_models_free(vi_only);
 }
 
 TEST_CASE("numbers and pauses are context, full stops and Return start afresh", "[bilingual]") {
@@ -149,7 +153,7 @@ TEST_CASE("a frontend can say what comes before the cursor", "[bilingual]") {
     CHECK(with({}) == type(m, true, false, "list "));
     // xk_state_reset forgets it.
     XKState* s = xk_state_new(XK_MODE_TELEX);
-    xk_state_set_models(s, m.vi, m.en);
+    xk_state_set_models(s, m.both);
     std::vector<const char*> hai = {"hai"};
     xk_state_set_context(s, hai.data(), 1);
     xk_state_reset(s);
@@ -157,4 +161,47 @@ TEST_CASE("a frontend can say what comes before the cursor", "[bilingual]") {
     for (char c : std::string("list ")) doc += xk_process_key(s, keysym(c), 0).commit;
     CHECK(doc == type(m, true, false, "list "));
     xk_state_free(s);
+}
+
+namespace {
+
+std::vector<std::string> restore_run(XKModels* m, std::vector<const char*> ctx,
+                                     std::vector<const char*> typed) {
+    std::vector<char*> raw(typed.size(), nullptr);
+    int n = xk_restore_run(m, ctx.data(), static_cast<int>(ctx.size()), typed.data(),
+                           static_cast<int>(typed.size()), nullptr, raw.data());
+    std::vector<std::string> out;
+    for (int i = 0; i < n; ++i) {
+        out.emplace_back(raw[static_cast<size_t>(i)]);
+        std::free(raw[static_cast<size_t>(i)]);
+    }
+    return out;
+}
+
+}  // namespace
+
+// Typed without marks, "can" is also the shape of "cần", and "chat" of
+// "chất". With the English model in the bundle, restoration weighs the
+// English reading as the Telex choice does; with the Vietnamese model
+// alone it had no way to.
+TEST_CASE("words typed without marks stay English in English", "[bilingual]") {
+    Models m;
+    REQUIRE(m.vi != nullptr);
+    REQUIRE(m.en != nullptr);
+    XKModels* vi_only = xk_models_new(m.vi, nullptr);
+    CHECK(restore_run(m.both, {"<s>", "i"}, {"can"}) == std::vector<std::string>{"can"});
+    CHECK(restore_run(m.both, {"<s>", "we", "can"}, {"chat"}) == std::vector<std::string>{"chat"});
+    CHECK(restore_run(m.both, {"<s>"}, {"we", "can", "chat"}) ==
+          std::vector<std::string>{"we", "can", "chat"});
+    CHECK(restore_run(m.both, {"<s>"}, {"you", "can", "do", "it"}) ==
+          std::vector<std::string>{"you", "can", "do", "it"});
+    // The Vietnamese model alone made them Vietnamese.
+    CHECK(restore_run(vi_only, {"<s>", "we", "can"}, {"chat"}) == std::vector<std::string>{"chát"});
+    CHECK(restore_run(vi_only, {"<s>"}, {"you", "can", "do", "it"}) ==
+          std::vector<std::string>{"you", "can", "đó", "ít"});
+    // In Vietnamese the Vietnamese reading still wins.
+    CHECK(restore_run(m.both, {"<s>", "bạn"}, {"can"}) == std::vector<std::string>{"cần"});
+    CHECK(restore_run(m.both, {"<s>"}, {"Toi", "can", "ban"}) ==
+          std::vector<std::string>{"Tôi", "cần", "bạn"});
+    xk_models_free(vi_only);
 }

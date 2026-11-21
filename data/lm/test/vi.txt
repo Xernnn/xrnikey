@@ -74,6 +74,8 @@ Cảm ơn bạn rất nhiều.
 Xin lỗi, tôi đến muộn.
 Tôi đang ở nhà.
 Bạn đang làm gì vậy?
+Bạn cần gì không?
+Tôi cần bạn giúp.
 Anh đi đâu đấy?
 Em ăn cơm chưa?
 Tôi ăn rồi, cảm ơn.
