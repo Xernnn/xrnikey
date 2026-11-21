@@ -15,17 +15,23 @@ class StripMakerTest {
             TypingState().use { s ->
                 s.useModels(m.models)
                 val f = FakeEditor("Tôi ")
-                val t = Typist(s, f).also { it.reset() }
+                val t = Typist(s, f, m.models).also { it.reset() }
                 val strip = StripMaker(m.models)
                 assertEquals(Strip.Tools, strip.make(t))
                 t.text("khong ")
                 t.text("duoc")
                 val shown = strip.make(t) as Strip.Candidates
                 assertEquals("được", shown.centre)
-                assertTrue(listOf(shown.left, shown.right).contains("dược"))
+                // The sides are the word's next readings (which ones depends on the model:
+                // with the real one "dược" is next).
+                val readings = m.models.restoreWord(t.context(), "duoc", 6).map { it.text }
+                for (side in listOf(shown.left, shown.right)) {
+                    assertTrue(side in readings)
+                    assertTrue(side != shown.centre)
+                }
                 assertEquals("được", strip.pick(1))
                 t.pick(strip.pick(1)!!)
-                assertEquals("Tôi khong được ", f.text)  // Space has no auto-correct yet
+                assertEquals("Tôi không được ", f.text)  // Space restored "khong"
                 assertEquals(Strip.Tools, strip.make(t))
             }
         }
