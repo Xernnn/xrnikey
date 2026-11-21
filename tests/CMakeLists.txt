@@ -47,6 +47,11 @@ target_compile_definitions(test_lm PRIVATE
     XRNIKEY_TEST_TMP="${CMAKE_CURRENT_BINARY_DIR}")
 add_dependencies(test_lm test_lm_models)
 
+add_executable(test_restore test_restore.cpp)
+target_link_libraries(test_restore PRIVATE xrnikey Catch2::Catch2WithMain)
+target_compile_definitions(test_restore PRIVATE XRNIKEY_TEST_LM_DIR="${CMAKE_BINARY_DIR}/data/lm")
+add_dependencies(test_restore test_lm_models)
+
 include(CTest)
 include(Catch)
 catch_discover_tests(test_telex)
@@ -57,3 +62,4 @@ catch_discover_tests(test_real_words)
 catch_discover_tests(test_user_dict)
 catch_discover_tests(test_corpus)
 catch_discover_tests(test_lm)
+catch_discover_tests(test_restore)

@@ -8,9 +8,14 @@
 #include "xrnikey.h"
 
 #include <cstdint>
+#include <mutex>
 #include <string_view>
 
 namespace xrnikey {
+
+/* Syllables by ASCII shape, for accent restoration (restore.cpp). */
+struct ShapeIndex;
+void shape_index_free(ShapeIndex* s);
 
 struct Lm {
     void* map = nullptr;      /* the whole mapping, for munmap */
@@ -18,6 +23,9 @@ struct Lm {
     const char* base = nullptr;  /* the model's first byte */
     uint64_t size = 0;
     const lmfmt::Header* hdr = nullptr;
+    /* Built on first use, so opening a model stays cheap. */
+    mutable std::once_flag shapes_once;
+    mutable ShapeIndex* shapes = nullptr;
 };
 
 /* Map `length` bytes of `fd` from `offset` and check them; nullptr if they

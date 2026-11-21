@@ -132,6 +132,107 @@ class Shapes:
         return self.by_shape.get(typed, [])
 
 
+class Candidate(ctypes.Structure):
+    _fields_ = [("text", ctypes.c_char * 128), ("score", ctypes.c_float),
+                ("edit_distance", ctypes.c_int), ("type", ctypes.c_int)]
+
+
+class Restorer:
+    """The engine's accent restoration (xk_restore_word, xk_restore_run)."""
+
+    def __init__(self, lib, lm):
+        L = lib
+        L.xk_restore_word.restype = ctypes.c_int
+        L.xk_restore_word.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_int,
+                                      ctypes.c_char_p, ctypes.POINTER(Candidate), ctypes.c_int]
+        L.xk_restore_run.restype = ctypes.c_int
+        L.xk_restore_run.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_int,
+                                     ctypes.POINTER(ctypes.c_char_p), ctypes.c_int, ctypes.c_char_p,
+                                     ctypes.POINTER(ctypes.c_void_p)]
+        self.L, self.lm = L, lm
+        self.libc = ctypes.CDLL(None)
+        self.libc.free.argtypes = [ctypes.c_void_p]
+
+    @staticmethod
+    def _ctx(ctx):
+        ctx = ctx[-3:]
+        return (ctypes.c_char_p * max(len(ctx), 1))(*[c.encode() for c in ctx]), len(ctx)
+
+    def word(self, ctx, typed, k=1):
+        arr, n = self._ctx(ctx)
+        out = (Candidate * k)()
+        got = self.L.xk_restore_word(self.lm.ptr, arr, n, typed.encode(), out, k)
+        return [out[i].text.decode() for i in range(got)] or [typed]
+
+    def run(self, ctx, typed, nxt=None):
+        arr, n = self._ctx(ctx)
+        words = (ctypes.c_char_p * len(typed))(*[t.encode() for t in typed])
+        out = (ctypes.c_void_p * len(typed))()
+        got = self.L.xk_restore_run(self.lm.ptr, arr, n, words, len(typed),
+                                    nxt.encode() if nxt else None, out)
+        if got != len(typed):
+            return list(typed)
+        res = []
+        for i in range(got):
+            res.append(ctypes.string_at(out[i]).decode())
+            self.libc.free(out[i])
+        return res
+
+
+def eval_lookback(sentences, restorer, back=2):
+    """Top-1 when each word, as it is typed, may also change the `back`
+    words before it (the keyboard's look-back): the run of typed words since
+    the last number or pause, at most back+1 long, is decoded again whole.
+    A pause (",") or the end of the sentence decodes the run once more,
+    knowing what follows it, as the keyboard does when that key is typed."""
+    right = total = exact = 0
+    for items in sentences:
+        out, typed, run_start = ["<s>"], [None], 1
+
+        def close(nxt):
+            frm = max(run_start, len(out) - 1 - back)
+            if frm < len(out) and all(t is not None for t in typed[frm:]):
+                out[frm:] = restorer.run(out[:frm], typed[frm:], nxt)
+
+        for tok, vi in items:
+            if vi is None:
+                if tok == "<p>":
+                    close("<p>")
+                out.append(tok)
+                typed.append(None)
+                run_start = len(out)
+                continue
+            out.append(None)
+            typed.append(xklm_text.strip_marks(tok) if vi else tok)
+            frm = max(run_start, len(out) - 1 - back)
+            out[frm:] = restorer.run(out[:frm], typed[frm:])
+        close("</s>")
+        ok = True
+        for (tok, vi), got in zip(items, out[1:]):
+            if vi:
+                total += 1
+                if got == tok:
+                    right += 1
+                else:
+                    ok = False
+        exact += ok
+    return right, total, exact, len(sentences)
+
+
+def eval_topk(sentences, restorer, k=3):
+    """How often the intended syllable is among the first k candidates, the
+    words before it typed right (what the strip would offer)."""
+    hit = total = 0
+    for items in sentences:
+        ctx = ["<s>"]
+        for tok, vi in items:
+            if vi:
+                total += 1
+                hit += tok in restorer.word(ctx, xklm_text.strip_marks(tok), k)
+            ctx.append(tok)
+    return hit, total
+
+
 def restore_unigram(lm, shapes, typed):
     cands = shapes.candidates(typed)
     if not cands:
@@ -270,6 +371,7 @@ def main():
         sets = {k: v[:100] for k, v in sets.items()}
 
     targets = {"H1": 95.0, "H2": 94.0, "C": 93.0}
+    restorer = Restorer(engine.lib, vi)
     for name, sentences in sets.items():
         r, t, ex, n = eval_restoration(sentences, lambda ctx, typed: typed)
         row(name, "restoration top-1, baseline: left without marks", pct(r, t), None,
@@ -277,6 +379,15 @@ def main():
         r, t, ex, n = eval_restoration(sentences, lambda ctx, typed: restore_unigram(vi, shapes, typed))
         row(name, "restoration top-1, baseline: most frequent syllable", pct(r, t), None,
             detail=f"{r}/{t} syllables, {ex}/{n} sentences exact")
+        r, t, ex, n = eval_restoration(sentences, lambda ctx, typed: restorer.word(ctx, typed)[0])
+        row(name, "restoration top-1, word by word", pct(r, t), None,
+            detail=f"{r}/{t} syllables, {ex}/{n} sentences exact")
+        r, t, ex, n = eval_lookback(sentences, restorer)
+        row(name, "restoration top-1, with look-back", pct(r, t), targets[name],
+            detail=f"{r}/{t} syllables, {ex}/{n} sentences exact")
+        if name == "H1":
+            h, t = eval_topk(sentences, restorer)
+            row(name, "restoration in the strip (top-3)", pct(h, t), 99.0, detail=f"{h}/{t} syllables")
 
     english = read_lines(args.english)
     syllables = read_lines(args.syllables)

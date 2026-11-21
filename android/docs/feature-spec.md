@@ -326,8 +326,13 @@ measured by the eval harness ("Done means").
   of the run, or from `getTextBeforeCursor` when the word starts in existing text.
 - **Phrases** for the side slots: the best next syllable when P(next | this) is high
   (`không` → `thể`, `có`). Phrases are never the centre pick.
-- **Look-back**: a beam search (width 8) over the unaccented run of at most three syllables.
-  This is cheap: at most 26 candidates per position.
+- **Look-back**: a beam search (width 16, `xk_restore_run`) over the unaccented run of at most
+  three syllables. This is cheap: at most 26 candidates per position. When the key that ends the
+  run is known (a full stop, a comma), the run is decoded once more, scored on leading to it:
+  `di nhe.` ends `đi nhé`, where `di nhe` alone is `đi nhẹ`.
+- **Unknown syllables**: an attested syllable the model never saw gets its share of the unknown
+  mass, not all of it. Otherwise any unseen spelling would beat every rare one the model knows
+  (`rội` over `rồi`).
 - **Personal words** add their counts on top, as an interpolated user unigram and bigram model.
   This is how names, slang and the owner's own phrasing win after a couple of uses.
 - **Capitals**: matching is on lowercase, and the commit gets the case of the typed keys back
