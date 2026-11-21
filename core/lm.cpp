@@ -100,6 +100,7 @@ Lm* lm_map(int fd, uint64_t offset, uint64_t length) {
 void lm_unmap(Lm* m) {
     if (!m) return;
     if (m->map) munmap(m->map, m->map_size);
+    shape_index_free(m->shapes);
     delete m;
 }
 

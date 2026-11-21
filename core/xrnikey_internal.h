@@ -162,6 +162,9 @@ std::string utf8_of(const std::u32string& s);
 bool lexicon_is_english(const std::string& word);
 /* The syllable is in the list of attested Vietnamese syllables. */
 bool lexicon_is_attested(const std::u32string& letters, int tone);
+/* Every attested syllable, as the list writes it (NFC, the engine's tone
+ * placement). */
+const std::vector<std::string>& lexicon_attested_words();
 
 /* Utility */
 bool is_vowel_char(char c);

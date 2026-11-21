@@ -135,12 +135,37 @@ typedef struct XKCandidate {
     char  text[128];
     float score;
     int   edit_distance;
-    int   type; /* 0=dict 1=correction 2=prediction */
+    int   type; /* 0=dict 1=correction 2=prediction, XK_CAND_* */
 } XKCandidate;
 
 int xk_autocorrect(XKDict* dict, XKNgram* ng, const char* word,
                    const char** context, int ctx_len,
                    XKCandidate* out, int max_out);
+
+/* Accent restoration (needs a Vietnamese model). */
+#define XK_CAND_RESTORED  3  /* XKCandidate.type: an accented reading of the typed word */
+#define XK_CAND_AS_TYPED  4  /* XKCandidate.type: the word exactly as typed */
+#define XK_RESTORE_MAX_RUN 8
+/* The words `typed` (a-z and A-Z only, no marks: "khong") may stand for,
+ * best first, scored log10 P(word | context): the Vietnamese syllables of
+ * its shape, and the word as typed when the model knows it as a token
+ * ("file") or nothing else fits ("ko"). The case of the typed letters is
+ * kept ("Khong" -> "Không", "KHONG" -> "KHÔNG"). The context is the tokens
+ * before it, oldest first, as the model writes them (accented, lowercase,
+ * "<s>" for the start of a sentence). Returns how many were written to
+ * `out`; 0 when `typed` is not such a word. */
+int xk_restore_word(const XKLm* lm, const char* const* context, int ctx_len,
+                    const char* typed, XKCandidate* out, int max_out);
+/* The best reading of a run of 1..XK_RESTORE_MAX_RUN words typed without
+ * marks, decoded together, so a later word can change an earlier one:
+ * "co gang" -> "cố gắng", where "co" alone is "có". `next`, when not NULL,
+ * is the token known to follow the run ("</s>" when a full stop ended the
+ * sentence, "<p>" for a comma), and the run is also scored on leading to
+ * it: "di nhe." ends "đi nhé", where "di nhe" alone is "đi nhẹ". Writes n
+ * newly allocated strings to `out` (the caller frees them) and returns n,
+ * or 0 when a word is not one xk_restore_word takes. */
+int xk_restore_run(const XKLm* lm, const char* const* context, int ctx_len,
+                   const char* const* typed, int n, const char* next, char** out);
 
 /* Bilingual switch */
 int  xk_is_english_word(const char* word);

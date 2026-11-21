@@ -5,7 +5,19 @@ n-gram models:
 
 - `vi.xklm`: Vietnamese, order 4, over syllables. English words seen in Vietnamese text are
   ordinary tokens.
+- `vi-phone.xklm`: the same, pruned harder for the phone's 25 MB budget.
 - `en.xklm`: English, order 3, over words.
+
+Built from the pinned sources, measured with `tools/xk-eval` (restoration top-1 with look-back):
+
+| Model | Size | H1 | H2 | C |
+|---|---|---|---|---|
+| `vi.xklm` (prune 0,1,2) | 81 MB | 97.80 % | 96.29 % | 95.85 % |
+| prune 1,3,3 | 40 MB | 97.56 % | 95.93 % | 95.80 % |
+| prune 2,4,4 | 31 MB | 97.44 % | 95.80 % | 95.45 % |
+| `vi-phone.xklm` (prune 3,6,6) | 22.6 MB | 97.26 % | 95.59 % | 95.22 % |
+
+`en.xklm` is 6.5 MB.
 
 Both are `.xklm` files (`core/lm_format.h`), memory-mapped and read in place by `core/lm.cpp`.
 `tools/lm/xk-lm-build` trains them with interpolated modified Kneser–Ney smoothing, then prunes
