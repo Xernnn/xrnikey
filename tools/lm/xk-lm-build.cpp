@@ -6,6 +6,7 @@
  *   --max-vocab V    at most V words, specials included (default 65536)
  *   --prune a,b,c    drop n-grams of order 2, 3, 4 seen this many times or fewer
  *                    (default 0,1,1); each must be >= the one before
+ *   --no-shape-index leave out the shape index (an English model needs none)
  *
  * Each CORPUS line is one sentence of tokens separated by spaces, already
  * normalised (data/lm/build.py writes them). Smoothing is interpolated
@@ -13,11 +14,16 @@
  * n-grams are then dropped and every context's backoff weight renormalised
  * so each distribution still sums to one.
  *
+ * The model also carries the shape index accent restoration reads: every
+ * ASCII shape with the syllables it may stand for, the vocabulary's and the
+ * attested ones it lacks, worked out by the core itself (linked in).
+ *
  * Counting packs an n-gram's 16-bit ids into one 64-bit key, whose numeric
  * order is the n-gram's lexicographic order, and sorts the keys: memory is
  * 8 bytes per running token for the order being counted, plus the unique
  * n-grams kept. */
 #include "lm_format.h"
+#include "xrnkey_internal.h"  /* syllable_shape, lexicon_attested_words: the core's own */
 
 #include <algorithm>
 #include <array>
@@ -28,6 +34,7 @@
 #include <cstring>
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -42,6 +49,7 @@ struct Options {
     uint64_t min_count = 2;
     uint32_t max_vocab = kMaxVocab;
     std::array<uint32_t, kMaxOrder + 1> prune{0, 0, 0, 1, 1, 1};
+    bool shape_index = true;
     std::string out;
     std::vector<std::string> corpora;
 };
@@ -426,6 +434,55 @@ void write(const Model& m) {
     h.vocab_index = w.put(index);
     h.vocab_sorted = w.put(sorted);
 
+    /* The shape index, in the order restoration used to build it: the
+     * vocabulary's syllables by id (frequency), then attested ones it
+     * lacks, in the list's order. */
+    std::map<std::string, std::vector<uint32_t>> by_shape;
+    std::vector<std::string> extras;
+    for (uint32_t id = 3; m.opt.shape_index && id < m.words.size(); ++id) {
+        const std::string s = xrnkey::syllable_shape(m.words[id]);
+        if (!s.empty()) by_shape[s].push_back(id);
+    }
+    for (const std::string& w : xrnkey::lexicon_attested_words()) {
+        if (!m.opt.shape_index || m.id_of.count(w)) continue;
+        const std::string s = xrnkey::syllable_shape(w);
+        if (s.empty()) continue;
+        by_shape[s].push_back(static_cast<uint32_t>(m.words.size() + extras.size()));
+        extras.push_back(w);
+    }
+    {
+        std::vector<char> sblob, eblob;
+        std::vector<uint32_t> skey, first{0}, cand, ekey;
+        for (const auto& [shape, ids] : by_shape) {
+            skey.push_back(static_cast<uint32_t>(sblob.size()));
+            sblob.insert(sblob.end(), shape.begin(), shape.end());
+            sblob.push_back('\0');
+            cand.insert(cand.end(), ids.begin(), ids.end());
+            first.push_back(static_cast<uint32_t>(cand.size()));
+        }
+        for (const std::string& e : extras) {
+            ekey.push_back(static_cast<uint32_t>(eblob.size()));
+            eblob.insert(eblob.end(), e.begin(), e.end());
+            eblob.push_back('\0');
+        }
+        h.shape_count = skey.size();
+        if (!skey.empty()) {
+            h.shape_key = w.put(skey);
+            h.shape_blob = w.put(sblob);
+            h.shape_blob_size = sblob.size();
+            h.shape_first = w.put(first);
+            h.shape_cand = w.put(cand);
+        }
+        h.extra_count = ekey.size();
+        if (!ekey.empty()) {
+            h.extra_key = w.put(ekey);
+            h.extra_blob = w.put(eblob);
+            h.extra_blob_size = eblob.size();
+        }
+        std::cerr << "shape index: " << skey.size() << " shapes, " << cand.size() << " candidates, "
+                  << extras.size() << " attested syllables outside the vocabulary\n";
+    }
+
     const Order& uni = m.ord[1];
     h.count[1] = uni.key.size();
     h.uni_prob = w.put(uni.prob);
@@ -487,7 +544,8 @@ Options parse(int argc, char** argv) {
                 pos = comma + 1;
             }
             for (; k <= kMaxOrder; ++k) o.prune[k] = o.prune[k - 1];
-        } else if (a == "-o") o.out = next();
+        } else if (a == "--no-shape-index") o.shape_index = false;
+        else if (a == "-o") o.out = next();
         else if (!a.empty() && a[0] == '-') die("unknown option " + a);
         else o.corpora.push_back(a);
     }

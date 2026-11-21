@@ -14,6 +14,12 @@
  *     the per-order codebooks), and, below the top order, the start of its
  *     children in order k+1. Child arrays have one extra sentinel entry.
  *
+ * Version 2 adds the shape index that accent restoration reads: every
+ * ASCII shape (a syllable with its marks and tone removed, "duoc") with the
+ * syllables it may stand for, as vocabulary ids, or as extra words for
+ * attested syllables the vocabulary lacks. Building it at load time cost
+ * 0.3 s on the first call.
+ *
  * Everything is little-endian and every section starts 8-byte aligned.
  * Offsets are from the start of the model (which need not be the start of
  * the file: a model can live inside an APK). */
@@ -24,7 +30,7 @@
 
 namespace xrnkey::lmfmt {
 
-constexpr char kMagic[8] = {'X', 'K', 'L', 'M', '0', '0', '0', '1'};
+constexpr char kMagic[8] = {'X', 'K', 'L', 'M', '0', '0', '0', '2'};
 constexpr uint32_t kMaxOrder = 5;
 constexpr uint32_t kMaxVocab = 65536;
 constexpr uint32_t kUnk = 0;
@@ -49,6 +55,16 @@ struct Header {
     uint64_t count[kMaxOrder + 1];  /* entries per order; count[1] == vocab */
     uint64_t total_size;            /* bytes of the whole model */
     uint64_t unk_types;             /* distinct training words folded into <unk> */
+    uint64_t shape_count;           /* shapes in the index (0: none) */
+    uint64_t shape_key;             /* uint32[shape_count]: blob offset of each, by byte order */
+    uint64_t shape_blob;            /* NUL-terminated shapes */
+    uint64_t shape_blob_size;
+    uint64_t shape_first;           /* uint32[shape_count + 1]: each shape's first candidate */
+    uint64_t shape_cand;            /* uint32[]: a vocabulary id, or vocab + i for extra word i */
+    uint64_t extra_count;           /* attested syllables outside the vocabulary */
+    uint64_t extra_key;             /* uint32[extra_count]: blob offset of each */
+    uint64_t extra_blob;
+    uint64_t extra_blob_size;
     uint64_t vocab_blob;            /* NUL-terminated strings, in id order */
     uint64_t vocab_blob_size;
     uint64_t vocab_index;           /* uint32[vocab]: blob offset of each id */

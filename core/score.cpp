@@ -30,19 +30,43 @@ uint8_t previous_lang(const Context& c) {
     return LANG_NONE;
 }
 
-float token_logprob(const Lm& m, const Context& c, const std::string& token) {
-    uint32_t ids[lmfmt::kMaxOrder];
+namespace {
+
+/* The context's ids in model `m`, from the context's cache. */
+const std::vector<uint32_t>& context_ids(const Lm& m, const Context& c) {
+    for (int slot = 0; slot < 2; ++slot)
+        if (c.id_model[slot] == &m) return c.id_cache[slot];
+    const int slot = c.id_model[0] == nullptr ? 0 : 1;
+    std::vector<uint32_t>& ids = c.id_cache[slot];
+    ids.clear();
+    if (c.start) ids.push_back(lmfmt::kBos);
+    for (const auto& t : c.tokens) ids.push_back(lm_id(m, t));
+    c.id_model[slot] = &m;
+    return ids;
+}
+
+/* log10 P(word id | context) under one model; an unknown word gets its
+ * share of the unknown mass. */
+float id_logprob(const Lm& m, const Context& c, uint32_t w) {
+    const std::vector<uint32_t>& all = context_ids(m, c);
     const size_t keep = m.hdr->order - 1;
-    std::vector<uint32_t> all;
-    all.reserve(c.tokens.size() + 1);
-    if (c.start) all.push_back(lmfmt::kBos);
-    for (const auto& t : c.tokens) all.push_back(lm_id(m, t));
-    int n = 0;
-    for (size_t i = all.size() > keep ? all.size() - keep : 0; i < all.size(); ++i) ids[n++] = all[i];
-    const uint32_t w = lm_id(m, token);
-    float p = lm_logprob(m, ids, n, w);
+    const size_t from = all.size() > keep ? all.size() - keep : 0;
+    float p = lm_logprob(m, all.data() + from, static_cast<int>(all.size() - from), w);
     if (w == lmfmt::kUnk) p -= lm_unk_share(m);
     return p;
+}
+
+bool ascii_letters(std::string_view t) {
+    if (t.empty()) return false;
+    for (char c : t)
+        if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))) return false;
+    return true;
+}
+
+}  // namespace
+
+float token_logprob(const Lm& m, const Context& c, const std::string& token) {
+    return id_logprob(m, c, lm_id(m, token));
 }
 
 bool is_ascii_word(const std::string& t) {
@@ -52,20 +76,26 @@ bool is_ascii_word(const std::string& t) {
     return true;
 }
 
-double mix_logprob(const Models& m, const Context& c, const std::string& token, uint8_t* lang) {
+double mix_logprob_ids(const Models& m, const Context& c, std::string_view token, uint32_t vi_id,
+                       uint32_t en_id, uint8_t* lang) {
     const uint8_t prev = previous_lang(c);
     const bool both = m.vi && m.en;
     double pv = 0.0, pe = 0.0;
-    if (m.vi) pv = (both ? frame_prob(prev, LANG_VI) : 1.0) * std::pow(10.0, token_logprob(*m.vi, c, token));
-    if (m.en && is_ascii_word(token))
-        pe = (both ? frame_prob(prev, LANG_EN) : 1.0) * std::pow(10.0, token_logprob(*m.en, c, token));
+    if (m.vi) pv = (both ? frame_prob(prev, LANG_VI) : 1.0) * std::pow(10.0, id_logprob(*m.vi, c, vi_id));
+    if (m.en && ascii_letters(token))
+        pe = (both ? frame_prob(prev, LANG_EN) : 1.0) * std::pow(10.0, id_logprob(*m.en, c, en_id));
     if (lang) *lang = pe > pv ? LANG_EN : LANG_VI;
     double p = pv + pe;
     if (m.user) {
-        const std::string prev = !c.tokens.empty() ? c.tokens.back() : c.start ? "<s>" : "";
-        p = m.user->blend(p, prev, token);
+        const std::string prev_tok = !c.tokens.empty() ? c.tokens.back() : c.start ? "<s>" : "";
+        p = m.user->blend(p, prev_tok, std::string(token));
     }
     return p > 0.0 ? std::log10(p) : static_cast<double>(lmfmt::kNever);
+}
+
+double mix_logprob(const Models& m, const Context& c, const std::string& token, uint8_t* lang) {
+    return mix_logprob_ids(m, c, token, m.vi ? lm_id(*m.vi, token) : lmfmt::kUnk,
+                           m.en ? lm_id(*m.en, token) : lmfmt::kUnk, lang);
 }
 
 void context_push_text(const Models* m, Context& c, const std::string& text) {

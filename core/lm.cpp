@@ -55,6 +55,30 @@ bool check(const Lm& m) {
              !fits<uint32_t>(h, s.child, n + 1)))
             return false;
     }
+    if (h.shape_count > 0) {
+        if (!fits<uint32_t>(h, h.shape_key, h.shape_count) ||
+            !fits<char>(h, h.shape_blob, h.shape_blob_size) || h.shape_blob_size == 0 ||
+            m.base[h.shape_blob + h.shape_blob_size - 1] != '\0' ||
+            !fits<uint32_t>(h, h.shape_first, h.shape_count + 1))
+            return false;
+        const uint32_t* first = at<uint32_t>(m, h.shape_first);
+        const uint64_t n_cand = first[h.shape_count];
+        if (!fits<uint32_t>(h, h.shape_cand, n_cand)) return false;
+        if (h.extra_count > 0 &&
+            (!fits<uint32_t>(h, h.extra_key, h.extra_count) ||
+             !fits<char>(h, h.extra_blob, h.extra_blob_size) || h.extra_blob_size == 0 ||
+             m.base[h.extra_blob + h.extra_blob_size - 1] != '\0'))
+            return false;
+        const uint32_t* key = at<uint32_t>(m, h.shape_key);
+        const uint32_t* cand = at<uint32_t>(m, h.shape_cand);
+        const uint32_t* extra = h.extra_count ? at<uint32_t>(m, h.extra_key) : nullptr;
+        for (uint64_t i = 0; i < h.shape_count; ++i)
+            if (key[i] >= h.shape_blob_size || first[i] > first[i + 1]) return false;
+        for (uint64_t i = 0; i < n_cand; ++i)
+            if (cand[i] >= uint64_t{h.vocab} + h.extra_count) return false;
+        for (uint64_t i = 0; i < h.extra_count; ++i)
+            if (extra[i] >= h.extra_blob_size) return false;
+    }
     const uint32_t* index = at<uint32_t>(m, h.vocab_index);
     const uint32_t* sorted = at<uint32_t>(m, h.vocab_sorted);
     for (uint32_t i = 0; i < h.vocab; ++i)
@@ -180,6 +204,35 @@ float lm_logprob(const Lm& m, const uint32_t* ctx, int n, uint32_t w) {
         }
     }
     return backoff + lm_prob_at(m, 1, kUnk);  /* not reached: every id is a unigram */
+}
+
+int lm_shape_candidates(const Lm& m, std::string_view shape, const char** words, uint32_t* ids,
+                        int max_out) {
+    const Header& h = *m.hdr;
+    if (h.shape_count == 0 || m.ignore_shape_index) return -1;
+    const uint32_t* key = at<uint32_t>(m, h.shape_key);
+    const char* blob = m.base + h.shape_blob;
+    uint64_t lo = 0, hi = h.shape_count;
+    while (lo < hi) {
+        const uint64_t mid = lo + (hi - lo) / 2;
+        if (std::string_view(blob + key[mid]) < shape) lo = mid + 1;
+        else hi = mid;
+    }
+    if (lo >= h.shape_count || std::string_view(blob + key[lo]) != shape) return 0;
+    const uint32_t* first = at<uint32_t>(m, h.shape_first);
+    const uint32_t* cand = at<uint32_t>(m, h.shape_cand);
+    int n = 0;
+    for (uint32_t i = first[lo]; i < first[lo + 1] && n < max_out; ++i, ++n) {
+        const uint32_t c = cand[i];
+        if (c < h.vocab) {
+            words[n] = lm_word(m, c);
+            ids[n] = c;
+        } else {
+            words[n] = m.base + h.extra_blob + at<uint32_t>(m, h.extra_key)[c - h.vocab];
+            ids[n] = lmfmt::kUnk;
+        }
+    }
+    return n;
 }
 
 float lm_unk_share(const Lm& m) {

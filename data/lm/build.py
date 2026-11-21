@@ -203,7 +203,7 @@ def cmd_prepare(args):
 MODELS = [
     ("vi", "vi", ["--order", "4", "--min-count", "3", "--prune", "0,1,2"]),
     ("vi-phone", "vi", ["--order", "4", "--min-count", "3", "--prune", "3,6,6"]),
-    ("en", "en", ["--order", "3", "--min-count", "3", "--prune", "1,1"]),
+    ("en", "en", ["--order", "3", "--min-count", "3", "--prune", "1,1", "--no-shape-index"]),
 ]
 
 

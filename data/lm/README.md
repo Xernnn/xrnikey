@@ -19,7 +19,11 @@ Built from the pinned sources, measured with `tools/xk-eval` (restoration top-1 
 
 `en.xklm` is 6.5 MB.
 
-Both are `.xklm` files (`core/lm_format.h`), memory-mapped and read in place by `core/lm.cpp`.
+Both are `.xklm` files (`core/lm_format.h`, version 2), memory-mapped and read in place by
+`core/lm.cpp`. A Vietnamese model also carries the shape index accent restoration reads (each
+unaccented shape with the syllables it may stand for), worked out by the core when the model is
+built, so the first call after loading costs nothing extra. Models in the first format are
+refused; rebuild them with `build.py train`.
 `tools/lm/xk-lm-build` trains them with interpolated modified Kneser–Ney smoothing, then prunes
 rare n-grams and renormalises the backoff weights.
 

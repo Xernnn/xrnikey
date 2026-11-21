@@ -13,6 +13,8 @@
 #include <vector>
 
 #include "lm_format.h"
+#include "lm_internal.h"
+#include "xrnkey_internal.h"
 #include "xrnkey.h"
 
 namespace {
@@ -131,4 +133,56 @@ TEST_CASE("files that are not whole models are refused", "[lm]") {
     CHECK(xk_lm_open(spit("offset.xklm", bad).c_str()) == nullptr);
 
     CHECK(xk_lm_logprob(nullptr, nullptr, 0, "a") == xrnkey::lmfmt::kNever);
+}
+
+// Version 2 models carry the shape index restoration reads; building it on
+// the first call took 0.3 s with the real model. The file's index must
+// give exactly what building it does, shape by shape, scores included.
+TEST_CASE("the model file's shape index gives what building it gives", "[lm]") {
+    XKLm* with = xk_lm_open(kVi.c_str());
+    XKLm* without = xk_lm_open(kVi.c_str());
+    REQUIRE(with != nullptr);
+    REQUIRE(without != nullptr);
+    const auto& h = *reinterpret_cast<xrnkey::Lm*>(with)->hdr;
+    CHECK(h.shape_count > 1000);
+    reinterpret_cast<xrnkey::Lm*>(without)->ignore_shape_index = true;
+    XKModels* a = xk_models_new(with, nullptr);
+    XKModels* b = xk_models_new(without, nullptr);
+    std::vector<std::string> shapes;
+    for (const std::string& w : xrnkey::lexicon_attested_words()) {
+        std::string s = xrnkey::syllable_shape(w);
+        if (!s.empty() && (shapes.empty() || shapes.back() != s)) shapes.push_back(s);
+    }
+    REQUIRE(shapes.size() > 1000);
+    const char* ctx[] = {"<s>", "tôi"};
+    int compared = 0;
+    for (const std::string& s : shapes) {
+        XKCandidate ca[64], cb[64];
+        const int na = xk_restore_word(a, ctx, 2, s.c_str(), ca, 64);
+        const int nb = xk_restore_word(b, ctx, 2, s.c_str(), cb, 64);
+        REQUIRE(na == nb);
+        for (int i = 0; i < na; ++i) {
+            INFO(s << " #" << i);
+            CHECK(std::string(ca[i].text) == cb[i].text);
+            CHECK(ca[i].score == cb[i].score);
+        }
+        ++compared;
+    }
+    CHECK(compared == static_cast<int>(shapes.size()));
+    // An English model needs no index.
+    XKLm* en = xk_lm_open((std::string(XRNKEY_TEST_LM_DIR) + "/en.xklm").c_str());
+    REQUIRE(en != nullptr);
+    CHECK(reinterpret_cast<xrnkey::Lm*>(en)->hdr->shape_count == 0);
+    xk_lm_free(en);
+    xk_models_free(a);
+    xk_models_free(b);
+    xk_lm_free(with);
+    xk_lm_free(without);
+}
+
+TEST_CASE("a model in the first format is refused", "[lm]") {
+    std::vector<char> model = slurp(kVi);
+    REQUIRE(model.size() > 1000);
+    model[7] = '1';  // "XKLM0001": no shape index, other offsets
+    CHECK(xk_lm_open(spit("v1.xklm", model).c_str()) == nullptr);
 }
