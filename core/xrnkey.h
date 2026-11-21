@@ -271,6 +271,13 @@ int          xk_shortcuts_at(const XKShortcuts* sc, int i, const char** abbr,
 /* The expansion of `typed`, newly allocated (the caller frees it), or NULL. */
 char*        xk_shortcuts_expand(const XKShortcuts* sc, const char* typed, int match_case);
 
+/* Next-word suggestions: the words likeliest to follow `context` (oldest
+ * first, as for xk_restore_run: "<s>" marks a sentence's start, "<p>" a
+ * pause) under the mixture, the owner's personal words included. Fills
+ * `out` with up to `max` newly allocated words (the caller frees each), the
+ * likeliest first, lowercase as the models hold them; returns how many. */
+int xk_predict(const XKModels* models, const char* const* context, int n, char** out, int max);
+
 /* Bilingual switch */
 int  xk_is_english_word(const char* word);
 void xk_bilingual_set_enabled(XKState* state, int enabled);

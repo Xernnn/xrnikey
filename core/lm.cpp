@@ -6,6 +6,7 @@
 #include <cerrno>
 #include <cmath>
 #include <cstring>
+#include <vector>
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -168,6 +169,27 @@ int64_t lm_find(const Lm& m, const uint32_t* ids, int k) {
         idx = lo;
     }
     return static_cast<int64_t>(idx);
+}
+
+int lm_followers(const Lm& m, const uint32_t* ctx, int n, uint32_t* ids, float* probs, int max) {
+    const Header& h = *m.hdr;
+    if (n < 1 || static_cast<uint32_t>(n) >= h.order || max <= 0) return 0;
+    const int64_t node = lm_find(m, ctx, n);
+    if (node < 0) return 0;
+    uint64_t lo, hi;
+    children(m, static_cast<uint32_t>(n), static_cast<uint64_t>(node), &lo, &hi);
+    const uint16_t* word = at<uint16_t>(m, h.sec[n + 1].word);
+    std::vector<std::pair<float, uint32_t>> all;
+    all.reserve(hi - lo);
+    for (uint64_t i = lo; i < hi; ++i) all.emplace_back(lm_prob_at(m, n + 1, i), word[i]);
+    const size_t k = std::min<size_t>(all.size(), static_cast<size_t>(max));
+    std::partial_sort(all.begin(), all.begin() + static_cast<std::ptrdiff_t>(k), all.end(),
+                      [](const auto& a, const auto& b) { return a.first > b.first; });
+    for (size_t i = 0; i < k; ++i) {
+        ids[i] = all[i].second;
+        if (probs) probs[i] = all[i].first;
+    }
+    return static_cast<int>(k);
 }
 
 float lm_prob_at(const Lm& m, int k, uint64_t idx) {

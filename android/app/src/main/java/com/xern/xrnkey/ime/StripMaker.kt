@@ -22,12 +22,15 @@ class StripMaker(private val models: Models?, private val emoji: EmojiIndex? = n
 
     var emojiSuggestions = true
 
+    /** Candidates at all (the settings' "suggestions"); off, the strip keeps its tools. */
+    var suggestions = true
+
     fun make(t: Typist): Strip {
         val word = t.shown
-        if (word.isEmpty()) {
+        if (!suggestions || word.isEmpty()) {
             offered = emptyList()
             centre = null
-            return Strip.Tools
+            return if (suggestions && models != null && t.afterWord()) next(t) else Strip.Tools
         }
         val restored = t.preview()
         val c = restored ?: word
@@ -42,6 +45,14 @@ class StripMaker(private val models: Models?, private val emoji: EmojiIndex? = n
         val right = face?.let { Pick(it, emoji = true) } ?: others.getOrNull(1)?.let { Pick(it) }
         offered = listOf(left, Pick(c), right)
         return Strip.Candidates(left?.text, c, right?.text, more = others.size > 2)
+    }
+
+    /** After a word and a space: the likeliest next words, the likeliest in the middle. */
+    private fun next(t: Typist): Strip {
+        val words = models!!.predict(t.context(), 3)
+        if (words.isEmpty()) return Strip.Tools
+        offered = listOf(words.getOrNull(1), words[0], words.getOrNull(2)).map { w -> w?.let { Pick(it) } }
+        return Strip.Candidates(words.getOrNull(1), words[0], words.getOrNull(2))
     }
 
     private fun emojiFor(t: Typist, word: String): String? {

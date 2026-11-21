@@ -56,6 +56,11 @@ float lm_logprob(const Lm& m, const uint32_t* ctx, int n, uint32_t w);
  * every rare word it did see. */
 float lm_unk_share(const Lm& m);
 
+/* The words the model saw right after ctx[0..n-1] (oldest first, the whole
+ * context one n-gram of the model), the likeliest first by their stored
+ * probability: at most `max` ids into `ids`. Returns how many. */
+int lm_followers(const Lm& m, const uint32_t* ctx, int n, uint32_t* ids, float* probs, int max);
+
 /* The syllables an ASCII shape may stand for, from the model file's index:
  * the word and its vocabulary id (lmfmt::kUnk for an attested syllable the
  * vocabulary lacks), in the index's order. -1 when the model has no index;

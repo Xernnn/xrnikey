@@ -19,7 +19,7 @@ class StripMakerTest {
                 val f = FakeEditor("Tôi ")
                 val t = Typist(s, f, m.models).also { it.reset() }
                 val strip = StripMaker(m.models)
-                assertEquals(Strip.Tools, strip.make(t))
+                assertTrue(strip.make(t) is Strip.Candidates)  // after "Tôi ": the next word
                 t.text("khong ")
                 t.text("duoc")
                 val shown = strip.make(t) as Strip.Candidates
@@ -34,7 +34,7 @@ class StripMakerTest {
                 assertEquals(StripMaker.Pick("được"), strip.pick(1))
                 t.pick(strip.pick(1)!!.text)
                 assertEquals("Tôi không được ", f.text)  // Space restored "khong"
-                assertEquals(Strip.Tools, strip.make(t))
+                assertTrue(strip.make(t) is Strip.Candidates)  // the next word, now
             }
         }
     }
@@ -71,5 +71,36 @@ class StripMakerTest {
             }
         }
         index.close()
+    }
+
+    @Test
+    fun afterAWordAndASpaceTheStripOffersTheNextWord() {
+        TestModels.test().use { m ->
+            TypingState().use { s ->
+                s.useModels(m.models)
+                val f = FakeEditor()
+                val t = Typist(s, f, m.models).also { it.reset() }
+                val strip = StripMaker(m.models)
+                assertEquals(Strip.Tools, strip.make(t))  // an empty field: the tools
+                t.text("Tooi khoong ")
+                val next = strip.make(t) as Strip.Candidates
+                // The test corpus has "không thể / có / được / biết".
+                assertTrue(next.centre in setOf("thể", "có", "được", "biết"))
+                t.pick(strip.pick(1)!!.text)
+                assertEquals("Tôi không ${next.centre} ", f.text)
+                assertTrue(strip.make(t) is Strip.Candidates)  // and on to the next
+                t.text(" ")  // two spaces: ". ", and words that start a sentence
+                assertTrue(f.text.endsWith(". "))
+                assertTrue(strip.make(t) is Strip.Candidates)
+                t.enter()
+                assertEquals(Strip.Tools, strip.make(t))  // a new line: the tools
+                strip.suggestions = false
+                t.text("ddi ")
+                assertEquals(Strip.Tools, strip.make(t))
+                strip.suggestions = true
+                t.raw = true
+                assertEquals(Strip.Tools, strip.make(t))
+            }
+        }
     }
 }

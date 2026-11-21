@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.inputmethodservice.InputMethodService
+import android.os.Handler
+import android.os.Looper
 import android.os.UserManager
 import android.text.InputType
 import android.view.KeyEvent
@@ -115,6 +117,7 @@ class XrnkeyService :
     }
 
     override fun onDestroy() {
+        handler.removeCallbacks(stripTask)
         models?.user = null
         typist.personal = null
         typist.shortcuts = null
@@ -286,8 +289,16 @@ class XrnkeyService :
         }
     }
 
+    private val handler = Handler(Looper.getMainLooper())
+    private val stripTask = Runnable { keyboard?.strip = strip.make(typist) }
+
+    /**
+     * The strip follows the text, after it: the key's text goes to the field first, and when
+     * keys come faster than the strip can follow, only the latest strip is worked out.
+     */
     private fun showStrip() {
-        keyboard?.strip = strip.make(typist)
+        handler.removeCallbacks(stripTask)
+        handler.post(stripTask)
     }
 
     // ---- the emoji panel ----------------------------------------------------------------------
