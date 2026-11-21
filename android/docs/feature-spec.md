@@ -1,4 +1,7 @@
-# xrnikey for Android: feature spec
+# xrnkey for Android: feature spec
+
+(The project was renamed from xrnikey to xrnkey. Paths and symbols of the existing code keep the
+old name until the rename lands.)
 
 An Android keyboard for one owner's phone (Android 15, HyperOS) that replaces the closed-source
 Vietnamese keyboard they have used for years. The owner's verdict on it: it is so good that
@@ -120,7 +123,7 @@ large, in MiSans Latin.
 4. **Bottom row**:
    - `?123`.
    - Comma, with a small globe above it, because holding it opens the keyboard picker.
-   - The space bar, about 5 keys wide. It shows only a small, faint xrnikey tile, where the
+   - The space bar, about 5 keys wide. It shows only a small, faint xrnkey tile, where the
      reference shows its name.
    - Full stop.
    - Enter, as a round key in the accent colour. Its icon follows the field's action: newline,
@@ -390,16 +393,33 @@ the Telex result whatever the context, like `AutoRestore=False` on the laptop.
 
 ## Typos
 
-- Each tap is sent to the engine as its letter plus up to four neighbouring keys, weighted by
-  the distance from the touch point to each key's centre. A tap between `n` and `m` counts for
-  both.
-- Correction candidates are the syllables (by ASCII shape) and English words reachable by one
-  substitution, insertion, deletion or swap, where a substitution costs less for a neighbouring
-  key than for a distant one. For words of 7 or more letters, two edits are allowed at the
-  Strong level.
-- A correction must beat the keys as typed by the level's margin (see "Auto-correct"). The core's
-  existing `xk_autocorrect` (Damerau–Levenshtein plus the ch/tr, s/x, d/gi/r confusions) is kept
-  and gains the key-distance cost.
+Built in the core (`core/keys.cpp`, `core/restore.cpp`) as a noisy channel over the QWERTY
+layout. Accent restoration offers, beside the readings of what was typed, the readings of the
+spellings a key away.
+
+- **Key geometry.** The phone's rows are laid out in key widths: q..p from 0, a..l from 0.5,
+  z..m from 1.5. Aiming at a key, the finger lands on a neighbour within 1.5 key widths with
+  probability e · w / Σw, where w = exp(−d² / 2·0.6²), and e = 2 % is the typo rate.
+- **Cost.** Each slip costs log10 of that probability against typing the key right, about −2.2.
+  A correction wins only when the words around it are worth more than that.
+- **Later.** A touch keyboard knows where each finger landed, and can send per-tap neighbour
+  weights instead of the layout's default. That comes with the Android keyboard.
+- **Levels:**
+  - flexible allows one slip, or two from 5 letters;
+  - strong allows two from 4 letters.
+
+  Words of any length from 2 letters are corrected. Two-letter slips mostly make another word,
+  and only context can tell: leaving them out fixed 81 % of the slips in held-out text (dev),
+  against 91 % with them. One-letter words and chat abbreviations (`ko`, `dc`, `oke`, `hihi`)
+  are never corrected.
+- **Calibration** was done on a held-out dev set with 3 % typos, before measuring T. At e = 2 %,
+  91 % of dev's slips are fixed and 0.24 % of its correct words change. At 5 %, it is 92 % and
+  0.49 %.
+- **Measured on T**, made-up chat with 3 % typos and only then: 86.4 % of the mistyped words are
+  fixed (target ≥ 85 %), and 0.34 % of correct words change (target ≤ 1 %).
+- **Insertions, deletions and swaps** are not corrected yet. Set T has only substitutions. The
+  core's older `xk_autocorrect` (Damerau–Levenshtein) still serves the laptop's suggestion
+  window.
 
 ## Personal words (learning, on the phone only)
 
@@ -534,7 +554,7 @@ The panel holds:
 ## Settings
 
 A plain Compose activity, opened from the tool row's gear and from the app's launcher icon. It
-follows the family's look: the xrnikey tile is the title, the text is MiSans Latin, and the
+follows the family's look: the xrnkey tile is the title, the text is MiSans Latin, and the
 labels are short with no explanatory sentences.
 
 ### First run
@@ -641,7 +661,7 @@ keep passing.
   - The Compose views in the IME window get the lifecycle and saved-state owners set on the
     window's decor view.
 - **Project**:
-  - The package is `com.xern.xrnikey`. The system lists the keyboard as "xrnikey", because the
+  - The package is `com.xern.xrnkey`. The system lists the keyboard as "xrnkey", because the
     OS needs text.
   - `android/` is a Gradle project copied from the family's smallest app setup (`xrn-android-app`
     skill): AGP 9, Kotlin 2.4, compileSdk and targetSdk 35, minSdk 26, Java 17, and release builds

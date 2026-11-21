@@ -19,6 +19,7 @@ struct Models {
     const Lm* vi = nullptr;
     const Lm* en = nullptr;
     User* user = nullptr;  /* personal words (learn.cpp); learning writes to it */
+    int correction = 0;    /* XK_CORRECT_*: typo correction in restoration */
 };
 
 /* P(next frame | language of the word before); LANG_NONE is the start of

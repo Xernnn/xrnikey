@@ -210,7 +210,7 @@ int xk_user_save(const XKUser* user, const char* path) {
     {
         std::ofstream f(tmp, std::ios::trunc);
         if (!f) return -1;
-        f << "# xrnikey: words and word pairs learned on this device\n";
+        f << "# xrnkey: words and word pairs learned on this device\n";
         auto put = [&](const std::unordered_map<std::string, double>& table) {
             std::vector<std::pair<std::string, double>> v(table.begin(), table.end());
             std::sort(v.begin(), v.end());

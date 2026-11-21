@@ -9,7 +9,13 @@
  * (score.cpp), so "can" after an English word stays "can". One word is
  * ranked alone; a run of words is decoded as a whole with a small beam
  * search, so a later word can change an earlier one ("co gang": "có"
- * alone, "cố gắng" together). */
+ * alone, "cố gắng" together).
+ *
+ * With correction on, a word may also stand for one a key or two away
+ * ("khonh" -> "không"): the candidates of each such spelling join in,
+ * each scored down by how unlikely the slip is (keys.cpp), so a correction
+ * wins only when the words around make it worth that. */
+#include "keys.h"
 #include "lm_internal.h"
 #include "score.h"
 #include "xrnikey_internal.h"
@@ -18,6 +24,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
+#include <deque>
 #include <mutex>
 #include <string>
 #include <unordered_map>
@@ -130,30 +137,105 @@ struct Cand {
     const std::string* text;
     uint32_t id;
     bool as_typed;
+    float penalty;  /* log10 cost of the slips that make it this (0: none) */
+    int slips;
 };
 
-/* The candidates for one typed word (lowercase), in no particular order:
- * the shape's syllables, and the word itself when it is not one of them and
- * a model knows it, or nothing else is left. */
-std::vector<Cand> candidates(const Models& models, const std::string& lower, std::string* own) {
-    std::vector<Cand> out;
-    const Lm& m = *models.vi;
-    const ShapeIndex& idx = shapes(m);
-    auto it = idx.by_shape.find(lower);
-    bool typed_listed = false;
-    if (it != idx.by_shape.end()) {
-        for (const auto& e : it->second) {
-            out.push_back({&e.text, e.id, e.text == lower});
-            if (e.text == lower) typed_listed = true;
+/* Words never "corrected": chat that is no dictionary's but is meant. */
+bool keep_as_typed(const std::string& w) {
+    static const char* const kChat[] = {"ko", "k", "dc", "vs", "ns", "mn", "nx", "ck", "vk", "bt",
+                                        "ny", "cx", "ak", "ok", "oke", "okie", "hihi", "haha",
+                                        "hehe", "hic", "huhu", "kkk", "thx", "pls", "plz", "lol",
+                                        "omg", "ntn", "bth"};
+    for (const char* c : kChat)
+        if (w == c) return true;
+    return false;
+}
+
+/* The spellings at most `max_slips` keys away from `typed`, with the cost
+ * of those slips. */
+void spellings_near(const std::string& typed, int max_slips,
+                    std::vector<std::pair<std::string, float>>& out) {
+    for (size_t i = 0; i < typed.size(); ++i) {
+        for (char meant : keys_near(typed[i])) {
+            std::string v = typed;
+            v[i] = meant;
+            const double cost = typo_cost(meant, typed[i]);
+            out.emplace_back(v, static_cast<float>(cost));
+            if (max_slips < 2) continue;
+            for (size_t j = i + 1; j < typed.size(); ++j)
+                for (char meant2 : keys_near(typed[j])) {
+                    std::string v2 = v;
+                    v2[j] = meant2;
+                    out.emplace_back(v2, static_cast<float>(cost + typo_cost(meant2, typed[j])));
+                }
         }
     }
-    if (!typed_listed) {
-        const uint32_t id = lm_id(m, lower);
-        const bool english = models.en && lm_id(*models.en, lower) != kUnk;
-        if (id != kUnk || english || out.empty()) {
-            *own = lower;
-            out.push_back({own, id, true});
+}
+
+/* The candidates for one spelling (lowercase): its shape's syllables, and
+ * the spelling itself when a model knows it as a token. */
+void add_spelling(const Models& models, const std::string& spelling, float penalty, int slips,
+                  bool typed, std::deque<std::string>& store, std::vector<Cand>& out) {
+    const Lm& m = *models.vi;
+    const ShapeIndex& idx = shapes(m);
+    auto it = idx.by_shape.find(spelling);
+    bool listed = false;
+    if (it != idx.by_shape.end()) {
+        for (const auto& e : it->second) {
+            out.push_back({&e.text, e.id, typed && e.text == spelling, penalty, slips});
+            if (e.text == spelling) listed = true;
         }
+    }
+    if (listed) return;
+    const uint32_t id = lm_id(m, spelling);
+    const bool english = models.en && lm_id(*models.en, spelling) != kUnk;
+    /* The word as typed always stays on offer when nothing else fits. */
+    if (id != kUnk || english || (typed && out.empty())) {
+        store.push_back(spelling);
+        out.push_back({&store.back(), id, typed, penalty, slips});
+    }
+}
+
+/* The candidates for one typed word (lowercase), in no particular order:
+ * the shape's syllables, and the word itself when it is not one of them
+ * and a model knows it, or nothing else is left; with correction on, the
+ * same for the spellings a key or two away, each with its cost. */
+std::vector<Cand> candidates(const Models& models, const std::string& lower, std::deque<std::string>& store) {
+    std::vector<Cand> out;
+    add_spelling(models, lower, 0.0f, 0, true, store, out);
+    /* Two-letter words too: most of their slips make another word ("la" for
+     * "ka"), and only the words around can tell. Leaving them out, or
+     * correcting only the ones that are no word, fixed 81 % of the slips
+     * in held-out text (dev); with them, 91 %, still changing 0.24 % of
+     * correct words. */
+    if (models.correction <= 0 || lower.size() < 2 || keep_as_typed(lower)) return out;
+    const size_t own = out.size();
+    std::vector<std::pair<std::string, float>> near;
+    const size_t two_from = models.correction >= XK_CORRECT_STRONG ? 4 : 5;
+    spellings_near(lower, lower.size() >= two_from ? 2 : 1, near);
+    std::vector<Cand> fixes;
+    for (const auto& [spelling, cost] : near) {
+        const int slips = static_cast<int>(std::count_if(spelling.begin(), spelling.end(), [&, i = size_t{0}](char c) mutable {
+            return c != lower[i++];
+        }));
+        add_spelling(models, spelling, cost, slips, false, store, fixes);
+    }
+    /* Keep the likeliest corrections only, by how common each word is and
+     * what its slips cost, so a long word's many spellings stay cheap. */
+    constexpr size_t kMaxFixes = 24;
+    if (fixes.size() > kMaxFixes) {
+        const Lm& m = *models.vi;
+        auto prior = [&](const Cand& c) { return lm_prob_at(m, 1, c.id < m.hdr->vocab ? c.id : kUnk) + c.penalty; };
+        std::partial_sort(fixes.begin(), fixes.begin() + kMaxFixes, fixes.end(),
+                          [&](const Cand& a, const Cand& b) { return prior(a) > prior(b); });
+        fixes.resize(kMaxFixes);
+    }
+    for (const Cand& f : fixes) {
+        bool dup = false;
+        for (size_t i = 0; i < own; ++i)
+            if (*out[i].text == *f.text) { dup = true; break; }
+        if (!dup) out.push_back(f);
     }
     return out;
 }
@@ -174,12 +256,12 @@ int xk_restore_word(const XKModels* models, const char* const* context, int ctx_
     Case cs;
     if (!typed_word(typed, &lower, &cs)) return 0;
     const Context ctx = context_from(mp, context, ctx_len, false);
-    std::string own;
-    std::vector<Cand> cands = candidates(*mp, lower, &own);
+    std::deque<std::string> store;
+    std::vector<Cand> cands = candidates(*mp, lower, store);
     struct Scored { Cand c; float score; };
     std::vector<Scored> scored;
     for (const Cand& c : cands)
-        scored.push_back({c, static_cast<float>(mix_logprob(*mp, ctx, *c.text))});
+        scored.push_back({c, static_cast<float>(mix_logprob(*mp, ctx, *c.text) + c.penalty)});
     std::stable_sort(scored.begin(), scored.end(), [](const Scored& a, const Scored& b) {
         if (a.score != b.score) return a.score > b.score;
         if (a.c.as_typed != b.c.as_typed) return a.c.as_typed;
@@ -192,8 +274,9 @@ int xk_restore_word(const XKModels* models, const char* const* context, int ctx_
         const std::string t = with_case(*scored[static_cast<size_t>(i)].c.text, cs);
         std::strncpy(o.text, t.c_str(), sizeof(o.text) - 1);
         o.score = scored[static_cast<size_t>(i)].score;
-        o.edit_distance = 0;
-        o.type = scored[static_cast<size_t>(i)].c.as_typed ? XK_CAND_AS_TYPED : XK_CAND_RESTORED;
+        const Cand& c = scored[static_cast<size_t>(i)].c;
+        o.edit_distance = c.slips;
+        o.type = c.slips ? XK_CAND_CORRECTED : c.as_typed ? XK_CAND_AS_TYPED : XK_CAND_RESTORED;
     }
     return n;
 }
@@ -202,12 +285,13 @@ int xk_restore_run(const XKModels* models, const char* const* context, int ctx_l
                    const char* const* typed, int n, const char* next, char** out) {
     const auto* mp = reinterpret_cast<const Models*>(models);
     if (!mp || !mp->vi || !typed || !out || n <= 0 || n > XK_RESTORE_MAX_RUN) return 0;
-    std::vector<std::string> lowers(static_cast<size_t>(n)), owns(static_cast<size_t>(n));
+    std::vector<std::string> lowers(static_cast<size_t>(n));
+    std::deque<std::string> store;
     std::vector<Case> cases(static_cast<size_t>(n));
     std::vector<std::vector<Cand>> cands(static_cast<size_t>(n));
     for (size_t i = 0; i < static_cast<size_t>(n); ++i) {
         if (!typed_word(typed[i], &lowers[i], &cases[i])) return 0;
-        cands[i] = candidates(*mp, lowers[i], &owns[i]);
+        cands[i] = candidates(*mp, lowers[i], store);
     }
     /* Beam search. A hypothesis is the context it leaves (the last words
      * and their languages: all the models can still see) plus the choices
@@ -231,7 +315,7 @@ int xk_restore_run(const XKModels* models, const char* const* context, int ctx_l
                 const std::string& text = *cands[i][c].text;
                 uint8_t lang = LANG_VI;
                 Hyp g = h;
-                g.score += mix_logprob(*mp, h.ctx, text, &lang);
+                g.score += mix_logprob(*mp, h.ctx, text, &lang) + cands[i][c].penalty;
                 g.ctx.push(text, lang);
                 g.pick.push_back(static_cast<int>(c));
                 next_beam.push_back(std::move(g));
