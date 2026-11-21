@@ -42,8 +42,8 @@ Swipe typing is not used.
 - **Centre pick**: the strip's middle slot. It is always what Space would commit.
 - **Auto-correct**: Space or punctuation committing the centre pick instead of the keys as typed.
 - **Revert**: Backspace right after an auto-correct, which puts back what was typed.
-- **Tool row**: the strip's other face, a row of buttons: mic, theme, settings, clipboard,
-  cursor pad and emoji.
+- **Tool row**: the strip's other face, a row of buttons: theme, settings, clipboard, cursor pad
+  and emoji.
 - **Panel**: a full-keyboard-height view in place of the keys: emoji, clipboard, cursor pad or
   the expanded candidate list.
 - **Personal words**: words and word pairs learned from what the owner types. They are kept on
@@ -81,6 +81,7 @@ Swipe typing is not used.
 
 - Haptics and key sound. The owner has both off.
 - Clipboard images, and a chip in the strip for a just-copied item.
+- The fancy-text tab (`Aa`): typed text shown in Unicode styles (𝐛𝐨𝐥𝐝, 𝘪𝘵𝘢𝘭𝘪𝘤, 𝓈𝒸𝓇𝒾𝓅𝓉).
 - Swipe on Backspace to delete a word.
 - Auto-capitalise, smart space after punctuation, and moving the cursor to a word's end. The
   owner has these off in the reference.
@@ -92,6 +93,7 @@ Swipe typing is not used.
 ## Out of scope
 
 - **Swipe (glide) typing**: not used.
+- **Voice input**: no mic key; the keyboard stays fully offline.
 - **Stickers, GIFs and a theme store**: they need the network and third-party artwork.
 - **Drawing tone marks by hand**: the reference has it, but the owner doesn't use it.
 - **Any account, sign-in, cloud sync or telemetry**: the point of the project is to have none.
@@ -235,15 +237,12 @@ The strip never shows a sentence of explanation, only candidates.
 
 ### What it shows
 
-Six buttons, evenly spaced. The mic is round and highlighted. Then the theme, settings,
-clipboard, cursor pad and emoji buttons. The tool row shows whenever there is no word in
+Five buttons, evenly spaced: theme, settings, clipboard, cursor pad and emoji. There is no mic:
+the keyboard is fully offline and has no voice typing. The tool row shows whenever there is no word in
 progress and no prediction to show, and whenever ≡ is tapped.
 
 ### What you can do
 
-- **Mic**: hands over to the phone's voice-typing keyboard, if one is enabled, and comes back
-  when it finishes. This keyboard records nothing. Whether the mic is there at all is open
-  question 1. With no voice keyboard enabled, the mic is hidden.
 - **Theme**: a small panel offering dark slate (the default), light, true black, and follow the
   system.
 - **Settings**: opens Settings.
@@ -293,15 +292,18 @@ Levels:
   the separator (`không␠` → `khong␠`). A second Backspace deletes as usual. When the owner
   reverts the same typed form twice in a similar context, it is learned: that form is committed
   as typed from then on, and its auto-correct moves to the left slot.
-- **Look-back** (open question 4): after Space, the engine re-ranks the last three syllables
-  typed without marks as one sequence. If the best sequence changes an earlier syllable, the
-  keyboard rewrites it (`có gắng` → `cố gắng`). It does this only if all of these hold:
+- **Look-back** (decided: on, as the reference does it): after Space, the engine re-ranks the
+  last three syllables typed without marks as one sequence. If the best sequence changes an
+  earlier syllable, the keyboard rewrites it (`có gắng` → `cố gắng`). It does this only if all
+  of these hold:
   - the earlier syllable was restored by the engine, not typed with marks, picked from the strip
     or reverted;
   - the cursor never left the run;
   - `getTextBeforeCursor` still shows exactly what the keyboard wrote.
 
-  Otherwise it leaves the text alone, as the laptop's instant commit does.
+  Otherwise it leaves the text alone, as the laptop's instant commit does. Backspace as the very
+  next key after a look-back fix undoes that fix (the earlier syllable goes back to what was
+  there), the same way Revert undoes an auto-correct.
 - The cursor moving by the owner's own action (a tap in the text, the cursor pad, or a selection
   change the keyboard didn't cause) ends the word in progress as Space would, without
   auto-correct, and starts a new run.
@@ -431,9 +433,9 @@ the Telex result whatever the context, like `AutoRestore=False` on the laptop.
 
 The panel replaces the strip and the keys.
 
-1. **A tab row**: back to the keyboard (`ABC`), emoji, emoticons `:-)`, symbols `Ω`, and fancy
-   text `Aa`. The emoticons and fancy text tabs depend on open question 5. A messaging app's
-   sticker tab is out of scope.
+1. **A tab row**: back to the keyboard (`ABC`), emoji, emoticons `:-)` and symbols `Ω`. Fancy
+   text `Aa` comes later. A messaging app's sticker tab is left out: its stickers are another
+   company's artwork.
 2. **An emoji suggestion row**: emoji that match the last words typed, from the Unicode CLDR
    keywords in Vietnamese and English (`không được` → 🙅 ❌).
 3. **A grid**, 8 per row, scrolling vertically. It opens on recents (up to 48), or on smileys
@@ -456,8 +458,6 @@ The panel replaces the strip and the keys.
 - **Emoticons tab**: a grid of text emoticons and kaomoji. A hand-written list, part of the
   project.
 - **Symbols tab**: Unicode symbols by group: arrows, maths, currency, bullets, boxes and stars.
-- **Fancy text tab**: what is typed is shown in Unicode styles (𝐛𝐨𝐥𝐝, 𝘪𝘵𝘢𝘭𝘪𝘤, 𝓈𝒸𝓇𝒾𝓅𝓉, ⓒⓘⓡⓒⓛⓔⓓ,
-  ｗｉｄｅ). Tap a style to insert it. Letters with no styled form stay as they are.
 - Only emoji that the phone's emoji font can draw are listed (`Paint.hasGlyph`). The emoji are
   drawn with the system font, and no emoji artwork ships with the app.
 
@@ -525,7 +525,7 @@ opens on the settings list.
 | Auto-correct | Level: off / flexible / strong | flexible |
 | | Keep non-Vietnamese words as typed | on |
 | | Double space for full stop | on |
-| | Look-back | open question 4 |
+| | Look-back | on |
 | Keys | Number row: on / off / auto | auto |
 | | Long-press top row for digits | on |
 | | Key-press popup | on |
@@ -711,8 +711,7 @@ Rules:
   - whole messages. Only word counts and word-pair counts are learned, never sentences.
 - **Leaves the phone**: nothing, except files the owner exports by hand through the system
   picker.
-- **The mic**: hands over to another keyboard that the owner enables, which has its own privacy
-  terms (open question 1). This keyboard never records.
+- **No microphone**: there is no voice input, and nothing is ever recorded.
 
 ## Sync
 
@@ -722,19 +721,21 @@ formats (`user-dict.txt`, `macros.txt`), so the same file works on both devices.
 
 ## Updates
 
-A keyboard with no internet can't update itself.
+A keyboard with no internet can't update itself, so the owner's hub app (a separate app of
+theirs that already has network access and lists every project) does it. The keyboard never
+gets INTERNET.
 
-- **Day one: adb from the laptop.** The release APK is built on the laptop, and the owner runs
-  the install command, as for their other sideloaded apps. An IME update keeps the keyboard
-  enabled and chosen as the default.
-- **Proposed (open question 3): the owner's hub app as the updater.**
-  - That app already has network access and lists every project.
-  - It would download the keyboard's APK from the owner's own server and install it with a
-    `PackageInstaller` session, the same way the owner's rules app already updates itself.
-  - After its first install it is the installer of record, so later updates need no prompt
-    (`USER_ACTION_NOT_REQUIRED`).
-  - Android installs an update only if it is signed with the keyboard's key, so a compromised
-    server can't push a different keyboard.
+- The release APK is published to the owner's own server next to the hub app's other release
+  files.
+- The hub app checks the server, and when a newer keyboard is there it shows **Keyboard update
+  ready**. The owner taps **Install**.
+- It installs the APK with a `PackageInstaller` session, the same way the owner's rules app
+  already updates itself. After its first install the hub app is the installer of record, so
+  later updates need no extra confirmation (`USER_ACTION_NOT_REQUIRED`).
+- Android installs an update only if it is signed with the keyboard's key, so a compromised
+  server can't push a different keyboard.
+- An IME update keeps the keyboard enabled and chosen as the default.
+- Until the hub app has this, a release is installed with adb from the laptop.
 
 ## Signing key
 
@@ -807,7 +808,7 @@ reference's own numbers where it beats them.
 8. **Privacy**: `aapt2 dump permissions` lists nothing. The clipboard test shows that a
    sensitive clip and a password-field copy are not kept. A password field gets every key as
    typed and learns nothing.
-9. **Parity with the reference** (if open question 2 is yes):
+9. **Parity with the reference** (decided: yes; the owner's side runs it on the phone later):
    - The run uses 300 sentences from H2 and C, with no private text, typed by adb taps at key
      coordinates into a plain text field.
    - Each keyboard types them with its own defaults, and the reference with its learning turned
@@ -857,8 +858,8 @@ reference's own numbers where it beats them.
     and the one the owner feels.
   - Mitigations: phrases learned on the phone, the made-up chat set for tuning, and the parity
     run to show the real gap.
-- **The parity run may be impossible** if the reference is removed first or the owner declines.
-  The targets then stay as written, with no direct comparison.
+- **The parity run** happens on the phone, by the owner's side, before the reference is removed.
+  Until then the targets stay as written, with no direct comparison.
 - **Typo correction** is where mature keyboards are strongest. A neighbour-weighted edit distance
   is simpler than a full touch model, so set T may show a gap.
 - **App quirks.** Composing text, `deleteSurroundingText` and `getTextBeforeCursor` behave
@@ -871,16 +872,16 @@ reference's own numbers where it beats them.
 - **Licences.** Leipzig's CC BY wording has to be confirmed on its own terms page before
   anything ships.
 
-## Open questions for the user
+## Decisions (2026-11-21)
 
-1. **Mic:** should the mic hand over to Gboard's voice typing (your voice then goes to Google),
-   or should the mic be left out?
-2. **Measuring the old keyboard:** may it be measured on your phone before you remove it? That
-   means about 300 public test sentences typed into it over adb, with its learning switched off.
-   It is the only way to prove "as good".
-3. **Updates:** adb from the laptop only, or may the hub app install keyboard updates? It would
-   gain permission to install apps.
-4. **Look-back:** when the next syllable shows that the previous one was wrong, may the keyboard
-   change it in place? For example, `có gắng` becomes `cố gắng`, visibly changing a word already
-   shown. Say no, and the wrong word stays until you fix it.
-5. **The emoticon `:-)` and fancy-text `Aa` tabs:** do you use them? If not, they are left out.
+The owner answered the spec's open questions:
+
+1. **No mic key at all.** The keyboard is fully offline, with no voice typing.
+2. **The parity run** against the reference happens later, on the phone, run by the owner's side.
+3. **Updates come through the hub app**: it shows "Keyboard update ready" and installs on a tap.
+   The keyboard itself never gets INTERNET.
+4. **Look-back is on**: the previous word is fixed in place, as the reference does, and
+   Backspace right after undoes the fix.
+5. **The emoji, `:-)` and `Ω` tabs stay.** Fancy text comes later. The sticker tab is left out.
+
+No questions are open.
