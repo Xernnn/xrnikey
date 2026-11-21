@@ -31,7 +31,7 @@ git clone https://github.com/Xernnn/xrnikey.git
 cd xrnikey
 ```
 
-## Build and install (Arch Linux)
+## Build and install
 
 ```bash
 sudo pacman -S --needed cmake extra-cmake-modules ninja fcitx5 fcitx5-configtool python
@@ -51,6 +51,16 @@ removes it again):
 
 ```bash
 cd packaging && makepkg -si
+```
+
+On other distributions, install CMake, Ninja, a C++20 compiler, extra-cmake-modules and Fcitx5's
+development files, then run the same `cmake` commands, keeping `-DCMAKE_INSTALL_PREFIX=/usr`
+(`sudo xargs rm < build/install_manifest.txt` removes the files again). On Debian and Ubuntu, as
+in CI (add `catch2` for the tests):
+
+```bash
+sudo apt-get install cmake ninja-build g++ extra-cmake-modules \
+    libfcitx5core-dev libfcitx5config-dev libfcitx5utils-dev fcitx5-modules-dev fcitx5
 ```
 
 Tests: configure with `-DXRNIKEY_ENABLE_TESTS=ON` (needs `catch2`), then `ctest --test-dir build`.
@@ -189,7 +199,7 @@ xrnikey/
 ├── cli-tools/      xk-setup, xk-diagnose, xk-dict, xk-macro
 ├── data/           dictionary, n-gram and emoji data, icon
 ├── tests/          Catch2 tests of the core
-└── packaging/      PKGBUILD (and INSTALL.sh, an older installer for other distros, not kept up to date)
+└── packaging/      PKGBUILD
 ```
 
 How a key travels from the app to the engine and back: [ARCHITECTURE.md](ARCHITECTURE.md). When
