@@ -33,7 +33,7 @@
 #include <unordered_map>
 #include <vector>
 
-using namespace xrnikey::lmfmt;
+using namespace xrnkey::lmfmt;
 
 namespace {
 

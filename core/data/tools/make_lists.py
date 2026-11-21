@@ -1,6 +1,6 @@
 """Build core/data/english.txt and core/data/vi-syllables.txt.
 
-usage: make_lists.py OUTDIR LIBXRNIKEY SCOWL_FINAL_DIR HAND_ENGLISH UNIHAN_READINGS CV_TXT WS_TXT SEED_WORDLIST TATOEBA_TSV
+usage: make_lists.py OUTDIR LIBXRNKEY SCOWL_FINAL_DIR HAND_ENGLISH UNIHAN_READINGS CV_TXT WS_TXT SEED_WORDLIST TATOEBA_TSV
 Syllables are kept only if the engine's own validator accepts them, and are
 written with the tone where the engine puts it.
 """

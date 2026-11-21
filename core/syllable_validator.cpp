@@ -1,9 +1,9 @@
-#include "xrnikey_internal.h"
+#include "xrnkey_internal.h"
 #include <unordered_set>
 #include <string>
 #include <vector>
 
-namespace xrnikey {
+namespace xrnkey {
 
 /* A Vietnamese syllable is onset + rime + tone. The tables below are the
  * spelling rules of modern quốc ngữ; every valid toneless syllable is built
@@ -268,13 +268,13 @@ bool is_valid_vn_syllable(const std::string& word) {
     return syllable_valid(letters, tone);
 }
 
-} /* namespace xrnikey */
+} /* namespace xrnkey */
 
 extern "C" {
 
 int xk_is_valid_syllable(const char* word) {
     if (!word) return 0;
-    return xrnikey::is_valid_vn_syllable(word) ? 1 : 0;
+    return xrnkey::is_valid_vn_syllable(word) ? 1 : 0;
 }
 
 } /* extern "C" */

@@ -1,6 +1,6 @@
 """Tests for the tokenizer the language models are trained on.
 
-Run with the built engine: XRNIKEY_LIB=build/core/libxrnikey.so python3 -I data/lm/test_xklm_text.py
+Run with the built engine: XRNKEY_LIB=build/core/libxrnkey.so python3 -I data/lm/test_xklm_text.py
 """
 
 import os
@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import build  # noqa: E402
 import xklm_text  # noqa: E402
 
-ENGINE = xklm_text.Engine(os.environ["XRNIKEY_LIB"])
+ENGINE = xklm_text.Engine(os.environ["XRNKEY_LIB"])
 
 
 def toks(text):

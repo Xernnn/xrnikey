@@ -1,11 +1,11 @@
 /* Personal words, behind XKUser (learn.cpp). */
-#ifndef XRNIKEY_LEARN_H
-#define XRNIKEY_LEARN_H
+#ifndef XRNKEY_LEARN_H
+#define XRNKEY_LEARN_H
 
 #include <string>
 #include <unordered_map>
 
-namespace xrnikey {
+namespace xrnkey {
 
 struct User {
     std::unordered_map<std::string, double> words;  /* token -> count */
@@ -21,6 +21,6 @@ struct User {
     double blend(double p_models, const std::string& prev, const std::string& word) const;
 };
 
-}  // namespace xrnikey
+}  // namespace xrnkey
 
 #endif

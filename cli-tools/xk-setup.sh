@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# xk-setup — check and, step by step with your consent, set up Fcitx5 for Xrnikey.
+# xk-setup — check and, step by step with your consent, set up Fcitx5 for xrnkey.
 #
 # It never changes an existing input-method setup on its own: every change is
 # shown first and needs a "y"; without a terminal to ask on it only reports.
@@ -11,13 +11,16 @@
 #   xk-setup --rollback  undo the changes it made (from its backups)
 set -euo pipefail
 
-STATE_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/xrnikey"
+STATE_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/xrnkey"
 BACKUP_DIR="$STATE_DIR/setup-backup"
 CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
-ENV_FILE="$CONFIG_HOME/environment.d/90-xrnikey.conf"
+ENV_FILE="$CONFIG_HOME/environment.d/90-xrnkey.conf"
 AUTOSTART_FILE="$CONFIG_HOME/autostart/fcitx5.desktop"
 # Files this script may create; a rollback only ever touches these.
 MANAGED=("$ENV_FILE" "$AUTOSTART_FILE")
+# Until 1.1.0 the project was called xrnikey, and so were these two.
+OLD_STATE_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/xrnikey"
+OLD_ENV_FILE="$CONFIG_HOME/environment.d/90-xrnikey.conf"
 
 # Qt's plugin folders (Qt 6 and 5; Arch, Fedora, Debian-style multiarch).
 # XK_QT_PLUGIN_DIRS, space-separated, replaces the list (for tests).
@@ -58,6 +61,35 @@ profile_ims() {
     local profile="$CONFIG_HOME/fcitx5/profile"
     [ -f "$profile" ] || return 0
     sed -n 's/^Name=\(.*\)$/\1/p' "$profile" | grep -v -x Default | tr '\n' ' ' || true
+}
+
+move_old() {
+    if [ "$MODE" = dry ]; then
+        log "(dry run) would: move $1 to $2"
+    else
+        mv "$1" "$2"
+    fi
+}
+
+# Give what an older xk-setup left under the old name the new one: its
+# backups, and the environment file it wrote with its marker, so that
+# --rollback still finds them. Only when nothing has the new name yet.
+adopt_old_names() {
+    local b
+    if [ ! -e "$STATE_DIR" ] && [ -d "$OLD_STATE_DIR" ]; then
+        move_old "$OLD_STATE_DIR" "$STATE_DIR"
+    fi
+    if [ ! -e "$ENV_FILE" ] && [ ! -e "$ENV_FILE.xk-setup" ] && [ -f "$OLD_ENV_FILE.xk-setup" ]; then
+        if [ -e "$OLD_ENV_FILE" ]; then
+            move_old "$OLD_ENV_FILE" "$ENV_FILE"
+        fi
+        move_old "$OLD_ENV_FILE.xk-setup" "$ENV_FILE.xk-setup"
+        for b in "$BACKUP_DIR"/90-xrnikey.conf.*; do
+            if [ -e "$b" ]; then
+                move_old "$b" "$BACKUP_DIR/90-xrnkey.conf.${b##*/90-xrnikey.conf.}"
+            fi
+        done
+    fi
 }
 
 backup_file() {
@@ -162,7 +194,7 @@ step_environment() {
         backup_file "$ENV_FILE"
         mkdir -p "$(dirname "$ENV_FILE")"
         {
-            echo "# Written by xk-setup for Fcitx5/Xrnikey; xk-setup --rollback removes it."
+            echo "# Written by xk-setup for Fcitx5/xrnkey; xk-setup --rollback removes it."
             printf '%s\n' "${missing[@]}"
         } > "$ENV_FILE"
         : > "$ENV_FILE.xk-setup"
@@ -200,19 +232,19 @@ DESKTOP
 step_profile() {
     local ims
     ims=$(profile_ims)
-    if [[ " $ims " == *" xrnikey "* ]]; then
-        log "Xrnikey is in your Fcitx5 input methods: $ims"
+    if [[ " $ims " == *" xrnkey "* ]]; then
+        log "xrnkey is in your Fcitx5 input methods: $ims"
         return
     fi
-    log "Xrnikey is not in your Fcitx5 input methods yet${ims:+ (they are: $ims)}."
+    log "xrnkey is not in your Fcitx5 input methods yet${ims:+ (they are: $ims)}."
     log "Add it in fcitx5-configtool, or, with Fcitx5 running, keeping the others (e.g. Bamboo):"
     cat <<'CMDS'
     busctl --user call org.fcitx.Fcitx5 /controller org.fcitx.Fcitx.Controller1 InputMethodGroupInfo s Default
-    # prints e.g.: "us" 2 "keyboard-us" "" "bamboo" ""  -- give the same list back with xrnikey added:
+    # prints e.g.: "us" 2 "keyboard-us" "" "bamboo" ""  -- give the same list back with xrnkey added:
     busctl --user call org.fcitx.Fcitx5 /controller org.fcitx.Fcitx.Controller1 \
-        SetInputMethodGroupInfo 'ssa(ss)' Default us 3 keyboard-us '' bamboo '' xrnikey ''
+        SetInputMethodGroupInfo 'ssa(ss)' Default us 3 keyboard-us '' bamboo '' xrnkey ''
     busctl --user call org.fcitx.Fcitx5 /controller org.fcitx.Fcitx.Controller1 Save
-    fcitx5-remote -s xrnikey     # use it now; fcitx5-remote -s bamboo goes back
+    fcitx5-remote -s xrnkey     # use it now; fcitx5-remote -s bamboo goes back
 CMDS
 }
 
@@ -223,12 +255,13 @@ step_apps() {
 
 main() {
     case "${1:-}" in
-        --rollback) rollback; exit 0 ;;
+        --rollback) adopt_old_names; rollback; exit 0 ;;
         --dry-run) MODE=dry ;;
         --yes) MODE=yes ;;
         "") ;;
         *) echo "usage: xk-setup [--dry-run | --yes | --rollback]" >&2; exit 2 ;;
     esac
+    adopt_old_names
 
     log "Session: $(session_type), desktop: ${XDG_CURRENT_DESKTOP:-unknown}, running: $(running_imf)"
     if [ "$(running_imf)" != none ] || [ -n "${QT_IM_MODULE:-}${GTK_IM_MODULE:-}${XMODIFIERS:-}" ]; then
@@ -239,7 +272,7 @@ main() {
     step_autostart
     step_profile
     step_apps
-    log "Done. With Xrnikey on, 'xin chaof' in a text field should become 'xin chào'."
+    log "Done. With xrnkey on, 'xin chaof' in a text field should become 'xin chào'."
 }
 
 main "$@"

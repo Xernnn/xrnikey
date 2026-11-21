@@ -2,8 +2,8 @@
  * English and Vietnamese names and keywords): the panel's emoji in order,
  * search by keyword in either language with or without accents, and the
  * emoji that go with the words just typed, for the suggestion strip. */
-#include "xrnikey.h"
-#include "xrnikey_internal.h"
+#include "xrnkey.h"
+#include "xrnkey_internal.h"
 
 #include <algorithm>
 #include <cstdlib>
@@ -14,7 +14,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace xrnikey {
+namespace xrnkey {
 
 namespace {
 
@@ -99,9 +99,9 @@ struct EmojiDB {
     std::unordered_map<std::string, std::vector<int>> by_keyword;
 };
 
-}  // namespace xrnikey
+}  // namespace xrnkey
 
-using xrnikey::EmojiDB;
+using xrnkey::EmojiDB;
 
 extern "C" {
 
@@ -120,18 +120,18 @@ XKEmojiDB* xk_emoji_load(const char* path) {
         while (std::getline(in, cur, '\t')) col.push_back(cur);
         if (col.size() < 4 || col[0].empty()) continue;
         col.resize(7);
-        xrnikey::Entry e;
+        xrnkey::Entry e;
         e.emoji = col[0];
         e.group = col[1];
         e.skin = col[2] == "1";
         e.en_name = col[3];
-        e.en_kw = xrnikey::split(col[4], '|');
+        e.en_kw = xrnkey::split(col[4], '|');
         e.vi_name = col[5];
-        e.vi_kw = xrnikey::split(col[6], '|');
+        e.vi_kw = xrnkey::split(col[6], '|');
         const int idx = static_cast<int>(db->entries.size());
         for (const auto* kws : {&e.vi_kw, &e.en_kw})
             for (const auto& k : *kws) {
-                auto& list = db->by_keyword[xrnikey::lower_vi(k)];
+                auto& list = db->by_keyword[xrnkey::lower_vi(k)];
                 if (list.empty() || list.back() != idx) list.push_back(idx);  /* "ok" in both languages */
             }
         db->entries.push_back(std::move(e));
@@ -165,7 +165,7 @@ int xk_emoji_at(const XKEmojiDB* db, int i, const char** emoji, const char** gro
 int xk_emoji_search(XKEmojiDB* db, const char* query, char** chars, char** names, int max_results) {
     if (!db || !query || !chars || !names || max_results <= 0) return 0;
     const auto* d = reinterpret_cast<const EmojiDB*>(db);
-    const std::string q = xrnikey::fold(query);
+    const std::string q = xrnkey::fold(query);
     if (q.empty()) return 0;
     struct Match { int idx; int score; };
     std::vector<Match> matches;
@@ -173,7 +173,7 @@ int xk_emoji_search(XKEmojiDB* db, const char* query, char** chars, char** names
         const auto& e = d->entries[i];
         int best = 0;
         auto consider = [&](const std::string& text, int exact, int prefix, int inside) {
-            const std::string t = xrnikey::fold(text);
+            const std::string t = xrnkey::fold(text);
             if (t == q) best = std::max(best, exact);
             else if (t.compare(0, q.size(), q) == 0) best = std::max(best, prefix);
             else if (t.find(q) != std::string::npos) best = std::max(best, inside);
@@ -203,7 +203,7 @@ int xk_emoji_suggest(const XKEmojiDB* db, const char* const* words, int n, char*
     constexpr size_t kTooCommon = 24;
     std::vector<int> picked;
     auto take = [&](const std::string& key) {
-        auto it = d->by_keyword.find(xrnikey::lower_vi(key));
+        auto it = d->by_keyword.find(xrnkey::lower_vi(key));
         if (it == d->by_keyword.end() || it->second.size() > kTooCommon) return;
         for (int idx : it->second)
             if (std::find(picked.begin(), picked.end(), idx) == picked.end()) picked.push_back(idx);

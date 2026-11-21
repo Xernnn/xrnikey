@@ -1,4 +1,5 @@
 #include "macro_table.h"
+#include "user_paths.h"
 
 #include <cstdlib>
 #include <sys/stat.h>
@@ -8,12 +9,7 @@ namespace fcitx {
 /* Parsing, matching and case are the core's (xk_shortcuts_*), shared with
  * the phone; this class only finds the file and notices when it changes. */
 
-std::string MacroTable::defaultPath() {
-    const char *xdg = std::getenv("XDG_DATA_HOME");
-    if (xdg && *xdg == '/') return std::string(xdg) + "/xrnikey/macros.txt";
-    const char *home = std::getenv("HOME");
-    return std::string(home ? home : "") + "/.local/share/xrnikey/macros.txt";
-}
+std::string MacroTable::defaultPath() { return userDataDir() + "/macros.txt"; }
 
 MacroTable::MacroTable(std::string path)
     : path_(std::move(path)), table_(xk_shortcuts_new(), &xk_shortcuts_free) {

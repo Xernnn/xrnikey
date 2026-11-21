@@ -5,13 +5,13 @@
 #include <string>
 #include <vector>
 
-#include "xrnikey.h"
+#include "xrnkey.h"
 
 namespace {
 
 struct Models {
-    XKLm* vi = xk_lm_open((std::string(XRNIKEY_TEST_LM_DIR) + "/vi.xklm").c_str());
-    XKLm* en = xk_lm_open((std::string(XRNIKEY_TEST_LM_DIR) + "/en.xklm").c_str());
+    XKLm* vi = xk_lm_open((std::string(XRNKEY_TEST_LM_DIR) + "/vi.xklm").c_str());
+    XKLm* en = xk_lm_open((std::string(XRNKEY_TEST_LM_DIR) + "/en.xklm").c_str());
     XKModels* both = xk_models_new(vi, en);
     ~Models() {
         xk_models_free(both);

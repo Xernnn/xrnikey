@@ -60,7 +60,7 @@ class Field:
         call(self.path, IC, "SetCapability", "(t)", (caps,))
         call(self.path, IC, "FocusIn")
         self.report()
-        call("/controller", CONTROLLER, "SetCurrentIM", "(s)", ("xrnikey",))
+        call("/controller", CONTROLLER, "SetCurrentIM", "(s)", ("xrnkey",))
         pump()
 
     def close(self):
@@ -109,7 +109,7 @@ class Field:
 def set_options(text):
     with open(CONF, "w", encoding="utf-8") as fp:
         fp.write(text)
-    call("/controller", CONTROLLER, "ReloadAddonConfig", "(s)", ("xrnikey5",))
+    call("/controller", CONTROLLER, "ReloadAddonConfig", "(s)", ("xrnkey",))
     pump()
 
 
@@ -124,6 +124,21 @@ def expect(what, got, want):
 
 
 wait_for_fcitx5()
+# dbus_session.sh left Macro=True and the abbreviation ko where a version from
+# before the rename (xrnikey) kept them. Fcitx5 loads the addon for the first
+# field, and the addon moves them to the new names first.
+r = Field(PREEDIT | FORMATTED | UNFOCUS_COMMIT | SURROUNDING)
+data = os.environ["XDG_DATA_HOME"]
+expect("the old settings file was moved",
+       [os.path.exists(os.path.join(os.path.dirname(CONF), "xrnikey5.conf")), os.path.exists(CONF)],
+       [False, True])
+expect("the old data folder was moved",
+       [os.path.exists(os.path.join(data, "xrnikey")), os.path.exists(os.path.join(data, "xrnkey", "macros.txt"))],
+       [False, True])
+r.type("ko ")
+expect("the moved settings and abbreviations are used", r.text, "không ")
+r.close()
+
 f = Field(PREEDIT | FORMATTED | UNFOCUS_COMMIT | SURROUNDING)
 f.type("chaof")
 expect("the word is shown inline", f.preedit, "chào")

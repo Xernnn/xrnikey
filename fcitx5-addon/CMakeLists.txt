@@ -1,15 +1,16 @@
 find_package(Fcitx5Core REQUIRED)
 find_package(Fcitx5Module REQUIRED COMPONENTS QuickPhrase Notifications)
 
-add_library(xrnikey5 MODULE
-    xrnikey5.cpp
+add_library(xrnkey_addon MODULE
+    xrnkey_addon.cpp
     candidate_provider.cpp
     macro_table.cpp
+    user_paths.cpp
 )
 
-target_link_libraries(xrnikey5
+target_link_libraries(xrnkey_addon
     PRIVATE Fcitx5::Core
-    PRIVATE xrnikey
+    PRIVATE xrnkey
     ## Header-only interface target: brings in the notifications module's
     ## public header so the addon can show a tip when a setting is toggled.
     ## The addon declares it as an OPTIONAL dependency, so a system without
@@ -17,23 +18,30 @@ target_link_libraries(xrnikey5
     PRIVATE Fcitx5::Module::Notifications
 )
 
-target_include_directories(xrnikey5 PRIVATE
+target_include_directories(xrnkey_addon PRIVATE
     ${CMAKE_SOURCE_DIR}/core
 )
 
-target_compile_definitions(xrnikey5 PRIVATE
-    XRNIKEY_DATA_DIR="${XRNIKEY_DATA_DIR}"
+target_compile_definitions(xrnkey_addon PRIVATE
+    XRNKEY_DATA_DIR="${XRNKEY_DATA_DIR}"
 )
+
+## The addon is called xrnkey, like its input method, so Fcitx5 loads it from
+## libxrnkey.so in its addon dir. The core library has the same file name in
+## /usr/lib; they never meet, because /usr/lib/fcitx5 is not on the linker's
+## search path and the addon asks for the core by its soname, libxrnkey.so.1.
+## The target has its own name only because CMake's must be unique.
+set_target_properties(xrnkey_addon PROPERTIES OUTPUT_NAME xrnkey)
 
 ## The addon library goes in Fcitx5's addon lib dir (e.g. /usr/lib/fcitx5,
 ## alongside libquickphrase.so, libclassicui.so, ...) — NOT under
 ## FCITX_INSTALL_PKGDATADIR/addon, which is reserved for the .conf metadata
 ## file below. Fcitx5 resolves the "Library=" key in that .conf against
 ## this directory.
-install(TARGETS xrnikey5 DESTINATION "${FCITX_INSTALL_ADDONDIR}")
+install(TARGETS xrnkey_addon DESTINATION "${FCITX_INSTALL_ADDONDIR}")
 
-configure_file(xrnikey5.conf.in xrnikey5.conf @ONLY)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/xrnikey5.conf
+configure_file(xrnkey-addon.conf.in addon/xrnkey.conf @ONLY)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/addon/xrnkey.conf
         DESTINATION "${FCITX_INSTALL_PKGDATADIR}/addon")
 
 ## The addon .conf above only tells Fcitx5 that a loadable addon exists; it
@@ -42,12 +50,12 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/xrnikey5.conf
 ## FCITX_INSTALL_PKGDATADIR/inputmethod — the addon parser reads only the
 ## [Addon] / [Addon/*] sections and silently ignores anything else, so an
 ## [InputMethod] stanza placed in the addon .conf has no effect at all.
-## Without this file Xrnikey loads as an addon but never appears in
+## Without this file xrnkey loads as an addon but never appears in
 ## fcitx5-configtool's input method list.
-configure_file(xrnikey.conf.in xrnikey.conf @ONLY)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/xrnikey.conf
+configure_file(xrnkey.conf.in inputmethod/xrnkey.conf @ONLY)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/inputmethod/xrnkey.conf
         DESTINATION "${FCITX_INSTALL_PKGDATADIR}/inputmethod")
 
-if(XRNIKEY_ENABLE_TESTS)
+if(XRNKEY_ENABLE_TESTS)
     add_subdirectory(tests)
 endif()

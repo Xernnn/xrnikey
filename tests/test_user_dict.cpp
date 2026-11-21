@@ -5,7 +5,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
-#include "xrnikey.h"
+#include "xrnkey.h"
 
 namespace {
 
@@ -23,7 +23,7 @@ bool has(const std::vector<std::string>& v, const std::string& w) {
 }
 
 std::string writeUserFile(const std::string& body) {
-    std::string path = std::string(XRNIKEY_TEST_TMP) + "/user-dict-test.txt";
+    std::string path = std::string(XRNKEY_TEST_TMP) + "/user-dict-test.txt";
     std::ofstream(path) << body;
     return path;
 }
@@ -31,7 +31,7 @@ std::string writeUserFile(const std::string& body) {
 }  // namespace
 
 TEST_CASE("user words complete and look up alongside the dictionary", "[userdict]") {
-    XKDict* d = xk_dict_load(XRNIKEY_TEST_DICT);
+    XKDict* d = xk_dict_load(XRNKEY_TEST_DICT);
     REQUIRE(d != nullptr);
     REQUIRE(xk_dict_lookup(d, "xrnzzword") == 0);
 
@@ -49,7 +49,7 @@ TEST_CASE("user words complete and look up alongside the dictionary", "[userdict
 }
 
 TEST_CASE("bad lines in the user file are skipped, not fatal", "[userdict]") {
-    XKDict* d = xk_dict_load(XRNIKEY_TEST_DICT);
+    XKDict* d = xk_dict_load(XRNKEY_TEST_DICT);
     REQUIRE(d != nullptr);
     xk_dict_reload_user(d, writeUserFile(
         "xrnzzgood\t50\r\nnotab\n\t7\nxrnzzbad\tabc\nxrnzzhuge\t99999999999999\nxrnzzneg\t-3\n").c_str());
@@ -57,7 +57,7 @@ TEST_CASE("bad lines in the user file are skipped, not fatal", "[userdict]") {
     CHECK(xk_dict_lookup(d, "xrnzzbad") == 0);
     CHECK(xk_dict_lookup(d, "xrnzzhuge") == 0);
     CHECK(xk_dict_lookup(d, "xrnzzneg") == 0);
-    xk_dict_reload_user(d, "/nonexistent/xrnikey/user-dict.txt");  // missing file: no words, no crash
+    xk_dict_reload_user(d, "/nonexistent/xrnkey/user-dict.txt");  // missing file: no words, no crash
     CHECK(xk_dict_lookup(d, "xrnzzgood") == 0);
     xk_dict_free(d);
 }

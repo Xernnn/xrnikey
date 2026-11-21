@@ -28,7 +28,7 @@ TOKEN = re.compile(r"(\d+(?:[.,]\d+)*)|([^\W\d_]+)|([,;:])|([.!?…]+)")
 
 
 class Engine:
-    """The parts of libxrnikey the text tools use, through ctypes."""
+    """The parts of libxrnkey the text tools use, through ctypes."""
 
     class Result(ctypes.Structure):
         _fields_ = [("commit", ctypes.c_char * 64), ("preedit", ctypes.c_char * 64),

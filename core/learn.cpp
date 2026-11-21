@@ -32,7 +32,7 @@
 #include <string>
 #include <vector>
 
-namespace xrnikey {
+namespace xrnkey {
 
 namespace {
 
@@ -107,9 +107,9 @@ void learn_word(User& u, const Context& c, const std::string& text) {
     if (!prev.empty() && prev != "<unk>") u.add_pair(prev, w, 1.0);
 }
 
-}  // namespace xrnikey
+}  // namespace xrnkey
 
-using xrnikey::User;
+using xrnkey::User;
 
 extern "C" {
 
@@ -120,12 +120,12 @@ void xk_user_free(XKUser* user) { delete reinterpret_cast<User*>(user); }
 void xk_user_learn(XKUser* user, const char* prev, const char* word) {
     if (!user || !word) return;
     auto* u = reinterpret_cast<User*>(user);
-    const std::string w = xrnikey::context_token(word);
-    if (!xrnikey::learnable(w)) return;
+    const std::string w = xrnkey::context_token(word);
+    if (!xrnkey::learnable(w)) return;
     u->add_word(w, 1.0);
     std::string p = prev && *prev ? (std::strcmp(prev, "<s>") == 0 || std::strcmp(prev, "<p>") == 0
                                          ? std::string(prev)
-                                         : xrnikey::context_token(prev))
+                                         : xrnkey::context_token(prev))
                                   : std::string("<s>");
     if (p == "<unk>") return;
     u->add_pair(p, w, 1.0);
@@ -134,12 +134,12 @@ void xk_user_learn(XKUser* user, const char* prev, const char* word) {
 double xk_user_count(const XKUser* user, const char* prev, const char* word) {
     if (!user || !word) return 0.0;
     const auto* u = reinterpret_cast<const User*>(user);
-    const std::string w = xrnikey::context_token(word);
+    const std::string w = xrnkey::context_token(word);
     if (!prev) {
         auto it = u->words.find(w);
         return it == u->words.end() ? 0.0 : it->second;
     }
-    const std::string p = std::strcmp(prev, "<s>") == 0 ? std::string("<s>") : xrnikey::context_token(prev);
+    const std::string p = std::strcmp(prev, "<s>") == 0 ? std::string("<s>") : xrnkey::context_token(prev);
     auto it = u->pairs.find(p + " " + w);
     return it == u->pairs.end() ? 0.0 : it->second;
 }
@@ -147,7 +147,7 @@ double xk_user_count(const XKUser* user, const char* prev, const char* word) {
 void xk_user_forget(XKUser* user, const char* word) {
     if (!user || !word) return;
     auto* u = reinterpret_cast<User*>(user);
-    const std::string w = xrnikey::context_token(word);
+    const std::string w = xrnkey::context_token(word);
     u->words.erase(w);
     for (auto it = u->pairs.begin(); it != u->pairs.end();) {
         const size_t sp = it->first.find(' ');
@@ -190,11 +190,11 @@ int xk_user_load(XKUser* user, const char* path) {
         if (end == num || errno == ERANGE || !(count > 0.0) || count > 1e9) continue;
         const size_t sp = key.find(' ');
         if (sp == std::string::npos) {
-            if (!xrnikey::learnable(key)) continue;
+            if (!xrnkey::learnable(key)) continue;
             fresh.add_word(key, count);
         } else {
             const std::string prev = key.substr(0, sp), word = key.substr(sp + 1);
-            if (word.find(' ') != std::string::npos || !xrnikey::learnable(word) || prev.empty()) continue;
+            if (word.find(' ') != std::string::npos || !xrnkey::learnable(word) || prev.empty()) continue;
             fresh.add_pair(prev, word, count);
         }
         ++n;
@@ -237,7 +237,7 @@ int xk_user_save(const XKUser* user, const char* path) {
 
 void xk_models_set_user(XKModels* models, XKUser* user) {
     if (!models) return;
-    reinterpret_cast<xrnikey::Models*>(models)->user = reinterpret_cast<User*>(user);
+    reinterpret_cast<xrnkey::Models*>(models)->user = reinterpret_cast<User*>(user);
 }
 
 }  /* extern "C" */

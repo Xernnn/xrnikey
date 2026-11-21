@@ -11,8 +11,8 @@
  * import also takes a table someone made elsewhere: "abbr,expansion" (CSV,
  * quoted fields allowed) or "abbr=expansion", whichever separator comes
  * first on the line. */
-#include "xrnikey.h"
-#include "xrnikey_internal.h"
+#include "xrnkey.h"
+#include "xrnkey_internal.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -23,7 +23,7 @@
 #include <sstream>
 #include <string>
 
-namespace xrnikey {
+namespace xrnkey {
 
 namespace {
 
@@ -168,9 +168,9 @@ struct Shortcuts {
     std::map<std::string, std::string> table;  /* lowercase abbreviation -> expansion */
 };
 
-}  // namespace xrnikey
+}  // namespace xrnkey
 
-using xrnikey::Shortcuts;
+using xrnkey::Shortcuts;
 
 extern "C" {
 
@@ -189,11 +189,11 @@ int xk_shortcuts_import(XKShortcuts* sc, const char* text, int apply, XKShortcut
     std::string line, abbr, expansion;
     bool blank;
     while (std::getline(in, line)) {
-        if (!xrnikey::parse_line(line, &abbr, &expansion, &blank)) {
+        if (!xrnkey::parse_line(line, &abbr, &expansion, &blank)) {
             if (!blank) ++n.skipped;
             continue;
         }
-        seen[xrnikey::lower(abbr)] = expansion;
+        seen[xrnkey::lower(abbr)] = expansion;
     }
     for (const auto& [key, exp] : seen) {
         auto it = s->table.find(key);
@@ -203,7 +203,7 @@ int xk_shortcuts_import(XKShortcuts* sc, const char* text, int apply, XKShortcut
     }
     if (apply)
         for (const auto& [key, exp] : seen)
-            if (s->table.size() < xrnikey::kMaxEntries || s->table.count(key)) s->table[key] = exp;
+            if (s->table.size() < xrnkey::kMaxEntries || s->table.count(key)) s->table[key] = exp;
     if (counts) *counts = n;
     return n.added + n.same + n.changed;
 }
@@ -257,16 +257,16 @@ int xk_shortcuts_set(XKShortcuts* sc, const char* abbr, const char* expansion) {
     std::string line = std::string(abbr) + "\t" + expansion;
     std::string a, e;
     bool blank;
-    if (!xrnikey::parse_line(line, &a, &e, &blank)) return 0;
+    if (!xrnkey::parse_line(line, &a, &e, &blank)) return 0;
     auto* s = reinterpret_cast<Shortcuts*>(sc);
-    if (s->table.size() >= xrnikey::kMaxEntries && !s->table.count(xrnikey::lower(a))) return 0;
-    s->table[xrnikey::lower(a)] = e;
+    if (s->table.size() >= xrnkey::kMaxEntries && !s->table.count(xrnkey::lower(a))) return 0;
+    s->table[xrnkey::lower(a)] = e;
     return 1;
 }
 
 void xk_shortcuts_remove(XKShortcuts* sc, const char* abbr) {
     if (!sc || !abbr) return;
-    reinterpret_cast<Shortcuts*>(sc)->table.erase(xrnikey::lower(abbr));
+    reinterpret_cast<Shortcuts*>(sc)->table.erase(xrnkey::lower(abbr));
 }
 
 int xk_shortcuts_count(const XKShortcuts* sc) {
@@ -288,17 +288,17 @@ char* xk_shortcuts_expand(const XKShortcuts* sc, const char* typed, int match_ca
     if (!sc || !typed || !*typed) return nullptr;
     const auto& t = reinterpret_cast<const Shortcuts*>(sc)->table;
     const std::string word = typed;
-    if (!xrnikey::clean_utf8(word)) return nullptr;
-    auto it = t.find(xrnikey::lower(word));
+    if (!xrnkey::clean_utf8(word)) return nullptr;
+    auto it = t.find(xrnkey::lower(word));
     if (it == t.end()) return nullptr;
     std::string out = it->second;
-    const bool has_upper = xrnikey::lower(word) != word;
-    const bool has_lower = xrnikey::upper(word) != word;
+    const bool has_upper = xrnkey::lower(word) != word;
+    const bool has_lower = xrnkey::upper(word) != word;
     if (match_case && has_upper) {
         /* Two or more letters, all capitals: "KO" -> "KHÔNG"; otherwise a
          * capital first letter: "Ko" -> "Không". */
-        if (!has_lower && xrnikey::letters(word) > 1) out = xrnikey::upper(out);
-        else out = xrnikey::map_letters(out, xrnikey::vn_upper, 1);
+        if (!has_lower && xrnkey::letters(word) > 1) out = xrnkey::upper(out);
+        else out = xrnkey::map_letters(out, xrnkey::vn_upper, 1);
     }
     char* r = static_cast<char*>(std::malloc(out.size() + 1));
     if (r) std::memcpy(r, out.c_str(), out.size() + 1);

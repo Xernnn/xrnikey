@@ -1,17 +1,17 @@
 /* The language model reader's C++ side, for the core's own modules
  * (accent restoration, the English/Vietnamese choice). The C API is in
- * xrnikey.h. */
-#ifndef XRNIKEY_LM_INTERNAL_H
-#define XRNIKEY_LM_INTERNAL_H
+ * xrnkey.h. */
+#ifndef XRNKEY_LM_INTERNAL_H
+#define XRNKEY_LM_INTERNAL_H
 
 #include "lm_format.h"
-#include "xrnikey.h"
+#include "xrnkey.h"
 
 #include <cstdint>
 #include <mutex>
 #include <string_view>
 
-namespace xrnikey {
+namespace xrnkey {
 
 /* Syllables by ASCII shape, for accent restoration (restore.cpp). */
 struct ShapeIndex;
@@ -56,6 +56,6 @@ float lm_unk_share(const Lm& m);
 
 inline const Lm& lm_of(const XKLm* lm) { return *reinterpret_cast<const Lm*>(lm); }
 
-}  // namespace xrnikey
+}  // namespace xrnkey
 
 #endif

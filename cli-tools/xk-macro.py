@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""xk-macro -- manage Xrnikey's abbreviations (Bamboo calls them macros).
+"""xk-macro -- manage xrnkey's abbreviations (Bamboo calls them macros).
 
-They live in $XDG_DATA_HOME/xrnikey/macros.txt (default
-~/.local/share/xrnikey/macros.txt), one `abbreviation<TAB>expansion` per line.
+They live in $XDG_DATA_HOME/xrnkey/macros.txt (default
+~/.local/share/xrnkey/macros.txt), one `abbreviation<TAB>expansion` per line.
 The Fcitx5 addon re-reads the file when it changes and expands an abbreviation
 when the word ends, once the Macro option is on (Fcitx5 settings, or
-Macro=True in ~/.config/fcitx5/conf/xrnikey5.conf).
+Macro=True in ~/.config/fcitx5/conf/xrnkey.conf).
 """
 
 import argparse
@@ -14,12 +14,25 @@ import sys
 import tempfile
 
 
-def macro_path():
-    # Same place the Fcitx5 addon reads (macro_table.cpp, MacroTable::defaultPath).
+def data_dir():
+    """The folder of the user's files, where the Fcitx5 addon reads them
+    (user_paths.cpp, userDataDir). Until 1.1.0 it was called xrnikey; when
+    only that one exists it is moved to the new name."""
     data_home = os.environ.get("XDG_DATA_HOME", "")
     if not data_home.startswith("/"):
         data_home = os.path.expanduser("~/.local/share")
-    return os.path.join(data_home, "xrnikey", "macros.txt")
+    new, old = os.path.join(data_home, "xrnkey"), os.path.join(data_home, "xrnikey")
+    if not os.path.lexists(new) and os.path.lexists(old):
+        try:
+            os.rename(old, new)
+        except OSError:
+            if not os.path.lexists(new):
+                return old
+    return new
+
+
+def macro_path():
+    return os.path.join(data_dir(), "macros.txt")
 
 
 def read_lines(path):

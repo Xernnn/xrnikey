@@ -1,0 +1,8 @@
+[InputMethod]
+Name=xrnkey
+Name[vi]=xrnkey
+Icon=xrnkey
+Label=VN
+LangCode=vi
+Addon=xrnkey
+Configurable=True

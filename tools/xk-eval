@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """xk-eval: measure the engine against the targets in android/docs/feature-spec.md.
 
-usage: xk-eval --lib LIBXRNIKEY --vi VI.xklm [--en EN.xklm] [--work WORK]
+usage: xk-eval --lib LIBXRNKEY --vi VI.xklm [--en EN.xklm] [--work WORK]
                [--chat data/lm/eval/chat.txt] [--json OUT] [--quick]
 
 Sets (feature-spec.md, "Done means"):

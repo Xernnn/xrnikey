@@ -8,13 +8,13 @@
 #include <string>
 #include <vector>
 
-#include "xrnikey.h"
+#include "xrnkey.h"
 
 namespace {
 
 struct Setup {
-    XKLm* vi = xk_lm_open((std::string(XRNIKEY_TEST_LM_DIR) + "/vi-general.xklm").c_str());
-    XKLm* en = xk_lm_open((std::string(XRNIKEY_TEST_LM_DIR) + "/en.xklm").c_str());
+    XKLm* vi = xk_lm_open((std::string(XRNKEY_TEST_LM_DIR) + "/vi-general.xklm").c_str());
+    XKLm* en = xk_lm_open((std::string(XRNKEY_TEST_LM_DIR) + "/en.xklm").c_str());
     XKUser* user = xk_user_new();
     XKModels* models = xk_models_new(vi, en);
     Setup() { xk_models_set_user(models, user); }
@@ -38,7 +38,7 @@ struct Setup {
     }
 };
 
-std::string tmp(const char* name) { return std::string(XRNIKEY_TEST_TMP) + "/" + name; }
+std::string tmp(const char* name) { return std::string(XRNKEY_TEST_TMP) + "/" + name; }
 
 struct Pair {
     const char* keys;         // what is typed, Vietnamese context first

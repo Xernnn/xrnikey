@@ -2,13 +2,16 @@
 # committed HEAD, not uncommitted changes. From packaging/:
 #   makepkg -si          build, test and install (asks for sudo)
 #   makepkg              build and test only; install later with pacman -U
-pkgname=xrnikey
-pkgver=1.0.0
+pkgname=xrnkey
+pkgver=1.1.0
 pkgrel=1
 pkgdesc="Vietnamese (Telex/VNI) input method for Fcitx5"
 arch=('x86_64' 'aarch64')
-url="https://github.com/Xernnn/xrnikey"
+url="https://github.com/Xernnn/xrnkey"
 license=('MIT')
+# Called xrnikey until 1.1.0.
+replaces=('xrnikey')
+conflicts=('xrnikey')
 depends=('fcitx5' 'gcc-libs' 'glibc')
 makedepends=('catch2' 'cmake' 'extra-cmake-modules' 'git' 'ninja')
 # For the test that runs fcitx5 over D-Bus; it is skipped without them.
@@ -26,8 +29,8 @@ build() {
         -DCMAKE_BUILD_TYPE=None \
         -DCMAKE_INSTALL_PREFIX=/usr \
         -DCMAKE_REQUIRE_FIND_PACKAGE_Fcitx5Core=ON \
-        -DXRNIKEY_BUILD_IBUS=OFF \
-        -DXRNIKEY_ENABLE_TESTS=ON
+        -DXRNKEY_BUILD_IBUS=OFF \
+        -DXRNKEY_ENABLE_TESTS=ON
     cmake --build build
 }
 

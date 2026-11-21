@@ -1,10 +1,10 @@
 [Addon]
-Name=Xrnikey
-Name[vi]=Xrnikey
+Name=xrnkey
+Name[vi]=xrnkey
 Type=SharedLibrary
-Library=libxrnikey5
+Library=libxrnkey
 Category=InputMethod
-Version=1.0.0
+Version=1.1.0
 OnDemand=True
 Configurable=True
 

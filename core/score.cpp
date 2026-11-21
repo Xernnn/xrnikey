@@ -5,7 +5,7 @@
 #include <cmath>
 #include <vector>
 
-namespace xrnikey {
+namespace xrnkey {
 
 /* The owner writes mostly Vietnamese. English words that Vietnamese text
  * itself uses need no switch: the Vietnamese model has them ("file",
@@ -112,4 +112,4 @@ Context context_from(const Models* m, const char* const* words, int n, bool star
     return c;
 }
 
-}  // namespace xrnikey
+}  // namespace xrnkey

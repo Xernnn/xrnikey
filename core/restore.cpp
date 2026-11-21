@@ -18,7 +18,7 @@
 #include "keys.h"
 #include "lm_internal.h"
 #include "score.h"
-#include "xrnikey_internal.h"
+#include "xrnkey_internal.h"
 
 #include <algorithm>
 #include <cmath>
@@ -30,7 +30,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace xrnikey {
+namespace xrnkey {
 
 using lmfmt::kUnk;
 
@@ -242,9 +242,9 @@ std::vector<Cand> candidates(const Models& models, const std::string& lower, std
 
 }  // namespace
 
-}  // namespace xrnikey
+}  // namespace xrnkey
 
-using namespace xrnikey;
+using namespace xrnkey;
 
 extern "C" {
 

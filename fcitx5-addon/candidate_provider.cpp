@@ -1,4 +1,5 @@
 #include "candidate_provider.h"
+#include "user_paths.h"
 
 #include <cstdlib>
 #include <fcitx-utils/i18n.h>
@@ -15,17 +16,12 @@ CandidateProvider::~CandidateProvider() {
     if (ngram_) xk_ngram_free(ngram_);
 }
 
-void CandidateProvider::setConfig(std::shared_ptr<XrnikeyConfig> config) {
+void CandidateProvider::setConfig(std::shared_ptr<XrnkeyConfig> config) {
     config_ = config;
 }
 
 /* Where xk-dict add writes the user's own words. */
-static std::string userDictPath() {
-    const char* xdg = std::getenv("XDG_DATA_HOME");
-    if (xdg && *xdg == '/') return std::string(xdg) + "/xrnikey/user-dict.txt";
-    const char* home = std::getenv("HOME");
-    return std::string(home ? home : "") + "/.local/share/xrnikey/user-dict.txt";
-}
+static std::string userDictPath() { return userDataDir() + "/user-dict.txt"; }
 
 void CandidateProvider::load(const std::string& dataDir) {
     /* Idempotent: reloadConfig() calls this again, which is when words added with
@@ -37,10 +33,10 @@ void CandidateProvider::load(const std::string& dataDir) {
     if (dict_) xk_dict_reload_user(dict_, userDictPath().c_str());
 }
 
-std::vector<XrnikeyCandidate> CandidateProvider::getCandidates(
+std::vector<XrnkeyCandidate> CandidateProvider::getCandidates(
     const std::string& prefix, int max,
     const std::vector<std::string>& context) {
-    std::vector<XrnikeyCandidate> results;
+    std::vector<XrnkeyCandidate> results;
     if (!dict_ || prefix.empty()) return results;
 
     /* Raw C pointers for the C ABI; `context` outlives this call. */
@@ -51,7 +47,7 @@ std::vector<XrnikeyCandidate> CandidateProvider::getCandidates(
     char* completions[32];
     int n = xk_dict_complete(dict_, prefix.c_str(), completions, max);
     for (int i = 0; i < n; ++i) {
-        XrnikeyCandidate c;
+        XrnkeyCandidate c;
         c.text = completions[i];
         /* Dictionary frequency is the base score; the n-gram model then says
          * how well the word follows what was just typed. Without this the
@@ -78,7 +74,7 @@ std::vector<XrnikeyCandidate> CandidateProvider::getCandidates(
         for (int i = 0; i < nc; ++i) {
             if (corrections[i].score < config_->autoCorrectThreshold.value())
                 continue;
-            XrnikeyCandidate c;
+            XrnkeyCandidate c;
             c.text = corrections[i].text;
             c.score = corrections[i].score;
             c.type = corrections[i].type;
@@ -88,7 +84,7 @@ std::vector<XrnikeyCandidate> CandidateProvider::getCandidates(
     }
 
     std::sort(results.begin(), results.end(),
-              [](const XrnikeyCandidate& a, const XrnikeyCandidate& b) {
+              [](const XrnkeyCandidate& a, const XrnkeyCandidate& b) {
                   return a.score > b.score;
               });
     if (static_cast<int>(results.size()) > max) results.resize(max);
