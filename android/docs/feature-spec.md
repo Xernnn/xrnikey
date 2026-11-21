@@ -345,13 +345,21 @@ of the keys in context:
 
 - **Vietnamese reading**: the Telex result, or the accent-restored syllable, scored by the
   Vietnamese model.
-- **English reading**: the keys as typed, scored by an English word model (unigrams and bigrams)
-  and by the Vietnamese model, where the word occurs in Vietnamese text.
-- **A switch cost**: P(language | the previous word's language), estimated from the corpora,
-  then adapted to the owner's own typing on the phone.
+- **English reading**: the keys as typed, as a mixture of two things. One is the Vietnamese
+  model's own estimate: it has the English words Vietnamese text uses ("file", "check") as
+  tokens. The other is a switch into English, scored by the English model (order 3).
+- **Frames**: P(stay | the previous word's language) and P(switch | …). The values are 0.99
+  and 0.01 after a Vietnamese word, 0.30 and 0.70 (back to Vietnamese, or on in English) after
+  an English one, and 0.85 and 0.15 at the start of a sentence. They are set from the owner's
+  mix (mostly Vietnamese, short English runs), not tuned on the evaluation sets. Adapting them
+  to the owner's own typing comes with personal learning.
 
-The higher total wins. Ties go to Vietnamese, the laptop's rule that "typing Vietnamese never
-turns into English".
+The likelier reading wins. Ties go to Vietnamese, the laptop's rule that "typing Vietnamese
+never turns into English". The state keeps its own context:
+
+- finished words, digits (`<num>`) and `, ; :` (`<p>`) are kept;
+- `. ! ?`, Return, the cursor keys, Backspace over committed text and a reset start afresh;
+- a frontend that knows the text before the cursor can set it (`xk_state_set_context`).
 
 **Why the laptop has 19 wrong words, and how this fixes them.** The core decides at the end of
 each word with no context. If the Telex result is an *attested* syllable, Vietnamese always

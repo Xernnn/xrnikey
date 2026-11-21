@@ -84,6 +84,31 @@ struct Options {
     bool w_shortcut = true;
 };
 
+struct Lm;
+
+/* Which language a finished word is in, as far as choosing the next one
+ * goes. Numbers and pauses have none. */
+enum Lang : uint8_t { LANG_NONE = 0, LANG_VI, LANG_EN };
+
+/* The words before the next one, as model tokens (bilingual.cpp), so the
+ * choice between a word's English and Vietnamese readings can use them. */
+struct Context {
+    std::vector<std::string> tokens;  /* oldest first, at most kKeep */
+    std::vector<uint8_t> langs;       /* Lang of each token */
+    bool start = true;                /* tokens follow the start of a sentence */
+    static constexpr size_t kKeep = 3;
+    void clear() { tokens.clear(); langs.clear(); start = true; }
+    void push(std::string token, uint8_t lang) {
+        tokens.push_back(std::move(token));
+        langs.push_back(lang);
+        if (tokens.size() > kKeep) {
+            tokens.erase(tokens.begin());
+            langs.erase(langs.begin());
+            start = false;
+        }
+    }
+};
+
 struct XKStateImpl {
     int mode;
     Word word;
@@ -91,6 +116,10 @@ struct XKStateImpl {
     bool enabled;
     bool instant_commit;
     Options opt;
+    /* Language models for the English/Vietnamese choice; not owned. */
+    const Lm* vi_lm = nullptr;
+    const Lm* en_lm = nullptr;
+    Context ctx;
 
     XKStateImpl(int m) : mode(m), enabled(true), instant_commit(false) {}
 };
@@ -113,7 +142,10 @@ void word_undo(Word& w, int i, int undone);
 /* What to show while the word is still being typed. */
 std::string word_display(const Word& w, const Options& o);
 /* What to commit when the word ends (auto-restore decided here). */
-std::string word_final(const Word& w, const Options& o);
+/* `s`, when given and holding both language models, decides between the
+ * readings of keys that are both an attested syllable and an English word
+ * (bilingual.cpp); without it the syllable always wins. */
+std::string word_final(const Word& w, const Options& o, const XKStateImpl* s = nullptr);
 /* BackSpace: delete the last character shown and recompose from the keys
  * that remain. */
 void word_backspace(Word& w, int mode, const Options& o);
@@ -165,6 +197,18 @@ bool lexicon_is_attested(const std::u32string& letters, int tone);
 /* Every attested syllable, as the list writes it (NFC, the engine's tone
  * placement). */
 const std::vector<std::string>& lexicon_attested_words();
+
+/* bilingual.cpp */
+/* `text` as a model token: a syllable lowercase with the engine's tone
+ * placement, a-z words lowercase, digits "<num>", , ; : "<p>", else "<unk>". */
+std::string context_token(const std::string& text);
+/* Remember a finished word, or a number or pause, as context. */
+void context_note_word(XKStateImpl& s, const std::string& text);
+void context_note_char(XKStateImpl& s, char c);
+/* Both models are there to choose with. */
+bool bilingual_ready(const XKStateImpl& s);
+/* The English reading `en` is likelier than the Vietnamese `vi` here. */
+bool bilingual_prefers_english(const XKStateImpl& s, const std::string& vi, const std::string& en);
 
 /* Utility */
 bool is_vowel_char(char c);

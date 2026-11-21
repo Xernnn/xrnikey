@@ -167,6 +167,19 @@ int xk_restore_word(const XKLm* lm, const char* const* context, int ctx_len,
 int xk_restore_run(const XKLm* lm, const char* const* context, int ctx_len,
                    const char* const* typed, int n, const char* next, char** out);
 
+/* The choice between a word's English and Vietnamese readings. Telex keys
+ * can spell both an English word and an attested syllable ("list" is
+ * "lít"); with both models set, the words before decide ("my list", "hai
+ * lít"). The state keeps those words itself from what it commits (digits,
+ * , ; : count too; . ! ? Return, Tab, arrows, BackSpace over committed
+ * text and xk_state_reset start afresh). Without both models the syllable
+ * always wins. The state does not own the models; they must outlive it or
+ * be unset first. */
+void xk_state_set_models(XKState* state, const XKLm* vi, const XKLm* en);
+/* What comes before the cursor, for a frontend that knows (oldest first;
+ * "<s>" marks the start of a sentence). Replaces what the state kept. */
+void xk_state_set_context(XKState* state, const char* const* words, int n);
+
 /* Bilingual switch */
 int  xk_is_english_word(const char* word);
 void xk_bilingual_set_enabled(XKState* state, int enabled);

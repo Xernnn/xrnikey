@@ -267,11 +267,17 @@ def eval_restoration(sentences, restore):
 
 # ---- Telex through the engine -------------------------------------------------
 
+MODELS = []  # (vi, en) model pointers for xk_state_set_models, when given
+
+
 def type_words(engine, words):
-    """Type `words` with Telex, each followed by Space, into one fresh state;
-    return what each word was committed as."""
+    """Type `words` with Telex, each followed by Space, into one fresh state
+    (with the language models, when given); return what each word was
+    committed as."""
     lib = engine.lib
     s = lib.xk_state_new(0)
+    if MODELS:
+        lib.xk_state_set_models(s, *MODELS)
     out = []
     try:
         for keys in words:
@@ -293,6 +299,54 @@ def eval_english(engine, words, before=None):
         got = type_words(engine, seq)[-1]
         kept.append(got == w)
     return sum(kept), len(kept), [w for w, k in zip(words, kept) if not k]
+
+
+def eval_english_in_context(engine, messages):
+    """Set C typed with Telex, message by message (the Vietnamese as Telex
+    keys, English as it is): how many English words and abbreviations come
+    out as typed."""
+    kept = total = 0
+    missed = []
+    for items in messages:
+        words = [(tok, vi) for tok, vi in items if vi is not None]
+        keys = [xklm_text.telex_keys(tok) if vi else tok for tok, vi in words]
+        got = type_words(engine, keys)
+        for (tok, vi), g in zip(words, got):
+            if vi is False:
+                total += 1
+                if g == tok:
+                    kept += 1
+                else:
+                    missed.append(f"{tok}->{g}")
+    return kept, total, missed
+
+
+def eval_english_restored(messages, restorer):
+    """Set C typed without marks, with look-back: how many English words and
+    abbreviations come out as typed."""
+    kept = total = 0
+    missed = []
+    for items in messages:
+        out, typed = ["<s>"], [None]
+        for tok, vi in items:
+            if vi is None:
+                out.append(tok)
+                typed.append(None)
+                continue
+            out.append(None)
+            typed.append(xklm_text.strip_marks(tok) if vi else tok)
+            frm = len(out) - 1
+            while frm > 1 and typed[frm - 1] is not None and frm > len(out) - 3:
+                frm -= 1
+            out[frm:] = restorer.run(out[:frm], typed[frm:])
+        for (tok, vi), g in zip(items, out[1:]):
+            if vi is False:
+                total += 1
+                if g == tok:
+                    kept += 1
+                else:
+                    missed.append(f"{tok}->{g}")
+    return kept, total, missed
 
 
 def eval_vietnamese(engine, syllables, before="tooi"):
@@ -352,6 +406,10 @@ def main():
 
     engine = xklm_text.Engine(os.path.abspath(args.lib))
     vi = Lm(engine.lib, args.vi)
+    en = Lm(engine.lib, args.en) if args.en else None
+    if en and hasattr(engine.lib, "xk_state_set_models"):
+        engine.lib.xk_state_set_models.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p]
+        MODELS[:] = [vi.ptr, en.ptr]
     shapes = Shapes(engine, vi, args.syllables)
     results = []
 
@@ -400,10 +458,12 @@ def main():
     row("V", "syllables typed with Telex after 'tôi', turned into something else", pct(bad, n), 0.5,
         higher=False, detail=f"{bad}/{n}; e.g. {', '.join(f'{a}->{b}' for a, b in examples[:8])}")
 
-    en_tokens = [tok for items in sets["C"] for tok, v in items if v is False]
-    k, n, missed = eval_english(engine, en_tokens)
-    row("C", "English and abbreviations typed with Telex, kept as typed", pct(k, n), 98.0,
+    k, n, missed = eval_english_in_context(engine, sets["C"])
+    row("C", "English and abbreviations, the Vietnamese typed with Telex, kept as typed", pct(k, n), 98.0,
         detail=f"{k}/{n}; e.g. {', '.join(missed[:12])}")
+    k, n, missed = eval_english_restored(sets["C"], restorer)
+    row("C", "English and abbreviations, the Vietnamese typed without marks, kept as typed",
+        pct(k, n), None, detail=f"{k}/{n}; e.g. {', '.join(missed[:12])}")
 
     rows19 = eval_nineteen(engine)
     ok = sum(1 for _, want, got in rows19 if want == got)

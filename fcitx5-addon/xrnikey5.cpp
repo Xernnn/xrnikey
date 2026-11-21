@@ -427,6 +427,8 @@ public:
         XKState *state = icState->state();
         if (!state) return;
         applyOptions(state);
+        /* Cheap, and covers states made since (new fields, a mode change). */
+        xk_state_set_models(state, viLm_.get(), enLm_.get());
 
         /* A key the engine lets through may change the app's text in any
          * way (Return, BackSpace, a paste shortcut, an arrow key moving the
@@ -933,8 +935,16 @@ public:
          * XRNIKEY_DATA_DIR in the environment points it at an uninstalled
          * build's data (the addon tests use this). */
         const char *dataDir = std::getenv("XRNIKEY_DATA_DIR");
-        candidateProvider_.load(dataDir && *dataDir ? dataDir
-                                                    : XRNIKEY_DATA_DIR);
+        const std::string dir = dataDir && *dataDir ? dataDir : XRNIKEY_DATA_DIR;
+        candidateProvider_.load(dir);
+        /* The language models that choose between a word's English and
+         * Vietnamese readings in context (data/lm/README.md). Loaded once:
+         * they are read-only, and every field's state points at them.
+         * Without them the core keeps its per-word rule. */
+        if (!viLm_ && !enLm_) {
+            viLm_.reset(xk_lm_open((dir + "/lm/vi.xklm").c_str()));
+            enLm_.reset(xk_lm_open((dir + "/lm/en.xklm").c_str()));
+        }
     }
 
     const Configuration *getConfig() const override { return config_.get(); }
@@ -950,6 +960,8 @@ private:
     std::shared_ptr<XrnikeyConfig> config_;
     CandidateProvider candidateProvider_;
     MacroTable macros_;
+    std::unique_ptr<XKLm, decltype(&xk_lm_free)> viLm_{nullptr, &xk_lm_free};
+    std::unique_ptr<XKLm, decltype(&xk_lm_free)> enLm_{nullptr, &xk_lm_free};
     FactoryFor<XrnikeyState> factory_;
     std::unique_ptr<HandlerTableEntry<EventHandler>> surroundingWatcher_;
     uint32_t notifyId_ = 0;
