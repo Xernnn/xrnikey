@@ -233,6 +233,43 @@ void xk_state_set_models(XKState* state, const XKModels* models);
  * "<s>" marks the start of a sentence). Replaces what the state kept. */
 void xk_state_set_context(XKState* state, const char* const* words, int n);
 
+/* Shortcuts ("gõ tắt"; the laptop's macros): an abbreviation that expands
+ * when its word ends, "ko" -> "không". Abbreviations match without case;
+ * with match_case the expansion takes the typed case: "Ko" -> "Không",
+ * "KO" -> "KHÔNG". The file is the laptop's macros.txt, one
+ * "abbreviation<TAB>expansion" per line (# starts a comment). */
+typedef struct XKShortcuts XKShortcuts;
+typedef struct XKShortcutCounts {
+    int added;    /* abbreviations the table did not have */
+    int same;     /* already there with the same expansion */
+    int changed;  /* already there with another expansion: replaced */
+    int skipped;  /* lines that are not an entry */
+} XKShortcutCounts;
+XKShortcuts* xk_shortcuts_new(void);
+void         xk_shortcuts_free(XKShortcuts* sc);
+/* Replace the table with the file's TAB lines; the entries read, or -1. */
+int          xk_shortcuts_load(XKShortcuts* sc, const char* path);
+/* Write the table, sorted, to a temporary file and rename it; 0 or -1. */
+int          xk_shortcuts_save(const XKShortcuts* sc, const char* path);
+/* Read a table made elsewhere: per line "abbr<TAB>expansion",
+ * "abbr,expansion" (CSV, quoted fields allowed) or "abbr=expansion",
+ * whichever separator comes first (TAB before all). An abbreviation is one
+ * word of at most 32 bytes; the last of repeated ones counts. Fills
+ * `counts` with what it would do, and does it only when `apply`. Returns
+ * the entries found, or -1. */
+int          xk_shortcuts_import(XKShortcuts* sc, const char* text, int apply,
+                                 XKShortcutCounts* counts);
+/* Add or replace one; 0 if it is not a valid entry. */
+int          xk_shortcuts_set(XKShortcuts* sc, const char* abbr, const char* expansion);
+void         xk_shortcuts_remove(XKShortcuts* sc, const char* abbr);
+int          xk_shortcuts_count(const XKShortcuts* sc);
+/* The i-th entry in order of abbreviation (owned by the table); 0 past
+ * the end. */
+int          xk_shortcuts_at(const XKShortcuts* sc, int i, const char** abbr,
+                             const char** expansion);
+/* The expansion of `typed`, newly allocated (the caller frees it), or NULL. */
+char*        xk_shortcuts_expand(const XKShortcuts* sc, const char* typed, int match_case);
+
 /* Bilingual switch */
 int  xk_is_english_word(const char* word);
 void xk_bilingual_set_enabled(XKState* state, int enabled);
