@@ -1061,6 +1061,25 @@ TEST_CASE("apps that report surrounding text get instant commit",
 }
 
 /* Write the user's abbreviation file, as xk-macro does. */
+TEST_CASE("the words before decide whether keys are English or Vietnamese",
+          "[bilingual]") {
+    // "list" is also the Telex keys of "lít". With the language models (the
+    // small test ones from data/lm/test), an English word before keeps it
+    // English and a Vietnamese one makes it Vietnamese; it used to be "lít"
+    // after anything.
+    for (const char *instant : {"False", "True"}) {
+        configure({{"InstantCommit", instant}});
+        for (auto [keys, want] : std::vector<std::pair<const char *, const char *>>{
+                 {"my list ", "my list "}, {"hai list ", "hai lít "},
+                 {"your turn ", "your turn "}, {"ngawns turn ", "ngắn tủn "}}) {
+            FakeClient c(std::string(instant) == "True" ? instantApp() : preeditApp());
+            c.type(keys);
+            INFO(instant << " " << keys);
+            CHECK(c.text() == want);
+        }
+    }
+}
+
 void writeMacros(const std::string &content) {
     std::ofstream(std::string(std::getenv("XDG_DATA_HOME")) +
                   "/xrnikey/macros.txt")

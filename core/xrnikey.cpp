@@ -31,7 +31,9 @@ static void show_word(XKStateImpl* s, XKResult* r) {
  * e.g. ' ' or a punctuation mark) into `r`. Shared by Space and by any other
  * non-letter key that ends a word. */
 static void finalize_word(XKStateImpl* s, XKResult* r, char trailing) {
-    std::string final_text = word_final(s->word, s->opt);
+    std::string final_text = word_final(s->word, s->opt, s);
+    context_note_word(*s, final_text);
+    if (trailing) context_note_char(*s, trailing);
 
     if (s->instant_commit) {
         /* Reconcile with whatever was already committed incrementally
@@ -63,6 +65,9 @@ static void finalize_word(XKStateImpl* s, XKResult* r, char trailing) {
  * stale "viee". */
 static void end_word(XKStateImpl* s, XKResult* r) {
     if (!s->word.empty()) finalize_word(s, r, 0);
+    /* Return starts a new line or sends the message; the others move the
+     * cursor or leave the field: what comes next follows nothing known. */
+    s->ctx.clear();
     r->consumed = 0;
 }
 
@@ -96,7 +101,10 @@ static void word_key(XKStateImpl* s, XKResult* r, char c) {
 }
 
 static void backspace(XKStateImpl* s, XKResult* r) {
-    if (s->word.empty()) return;  /* nothing buffered: the app deletes */
+    if (s->word.empty()) {  /* nothing buffered: the app deletes */
+        s->ctx.clear();     /* ... text the context may have held */
+        return;
+    }
     word_backspace(s->word, s->mode, s->opt);
     show_word(s, r);
 }
@@ -119,6 +127,7 @@ void xk_state_reset(XKState* state) {
     auto* s = reinterpret_cast<xrnikey::XKStateImpl*>(state);
     s->word.clear();
     s->committed.clear();
+    s->ctx.clear();
 }
 
 void xk_state_set_instant_commit(XKState* state, int enabled) {
@@ -238,6 +247,7 @@ XKResult xk_process_key(XKState* state, uint32_t keysym, uint32_t modifiers) {
          * key, so the word could never be a syllable: "(vieetj)" stayed
          * "(vieetj)", "2tieengs" "2tieengs". */
         if (!is_letter && s->word.empty()) {
+            xrnikey::context_note_char(*s, c);
             r.commit[0] = c;
             r.commit[1] = '\0';
             r.consumed = 1;

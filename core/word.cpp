@@ -162,7 +162,7 @@ std::string word_display(const Word& w, const Options& o) {
     return word_raw_effective(w);
 }
 
-std::string word_final(const Word& w, const Options& o) {
+std::string word_final(const Word& w, const Options& o, const XKStateImpl* s) {
     if (w.literal) return word_raw(w);
     std::string v = word_render(w, o);
     if (!o.auto_restore) return v;
@@ -192,12 +192,14 @@ std::string word_final(const Word& w, const Options& o) {
     if (syllable_valid(letters, w.tone)) {
         /* A real syllable, but the keys also spell a common English word and
          * the syllable is not one Vietnamese uses ("terms" -> "tém",
-         * "more" -> "mỏe"): the English word was meant. A syllable that IS
-         * attested stays Vietnamese even when the keys are English ("of" ->
-         * "ò", "is" -> "í"), as in Bamboo: typing Vietnamese never turns
-         * into English. */
-        if (!lexicon_is_attested(letters, w.tone))
-            if (const std::string* en = english()) return *en;
+         * "more" -> "mỏe"): the English word was meant. */
+        const std::string* en = english();
+        if (!lexicon_is_attested(letters, w.tone)) return en ? *en : v;
+        /* Both are real words: "list" is "lít", "turn" is "tủn". With the
+         * language models, the words around decide ("my list", "hai lít").
+         * Without them the syllable wins, as in Bamboo: typing Vietnamese
+         * never turns into English. */
+        if (en && s && bilingual_ready(*s) && bilingual_prefers_english(*s, v, *en)) return *en;
         return v;
     }
     if (const std::string* en = english()) return *en;
