@@ -1,6 +1,8 @@
 package com.xern.xrnkey
 
+import com.xern.xrnkey.engine.EmojiIndex
 import com.xern.xrnkey.engine.TypingState
+import java.io.File
 import com.xern.xrnkey.ime.StripMaker
 import com.xern.xrnkey.ime.Typist
 import com.xern.xrnkey.keyboard.Strip
@@ -29,8 +31,8 @@ class StripMakerTest {
                     assertTrue(side in readings)
                     assertTrue(side != shown.centre)
                 }
-                assertEquals("được", strip.pick(1))
-                t.pick(strip.pick(1)!!)
+                assertEquals(StripMaker.Pick("được"), strip.pick(1))
+                t.pick(strip.pick(1)!!.text)
                 assertEquals("Tôi không được ", f.text)  // Space restored "khong"
                 assertEquals(Strip.Tools, strip.make(t))
             }
@@ -47,5 +49,27 @@ class StripMakerTest {
                 assertEquals(Strip.Candidates(null, "được", null), StripMaker(m.models).make(t))
             }
         }
+    }
+
+    @Test
+    fun anEmojiThatGoesWithTheWordsTakesTheRightSlot() {
+        val index = EmojiIndex.load(File(System.getProperty("xrnkey.emojiIndex")!!).readBytes())!!
+        TestModels.test().use { m ->
+            TypingState().use { s ->
+                s.useModels(m.models)
+                val f = FakeEditor("Chúc mừng ")
+                val t = Typist(s, f, m.models).also { it.reset() }
+                val strip = StripMaker(m.models, index)
+                t.text("sinh nhaatj")
+                val shown = strip.make(t) as Strip.Candidates
+                assertEquals("nhật", shown.centre)
+                assertTrue(shown.right in setOf("🎂", "🥳", "🎉", "🎁"))
+                val pick = strip.pick(2)!!
+                assertTrue(pick.emoji)
+                strip.emojiSuggestions = false
+                assertTrue((strip.make(t) as Strip.Candidates).right != shown.right)
+            }
+        }
+        index.close()
     }
 }

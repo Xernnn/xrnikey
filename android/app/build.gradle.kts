@@ -49,6 +49,7 @@ val buildHost = tasks.register<Exec>("buildHost") {
 abstract class BundleModels : DefaultTask() {
     @get:Internal abstract val realDir: DirectoryProperty
     @get:Internal abstract val testDir: DirectoryProperty
+    @get:InputFile abstract val emojiIndex: RegularFileProperty
     @get:Input abstract val release: Property<Boolean>
     @get:OutputDirectory abstract val outputDir: DirectoryProperty
 
@@ -57,6 +58,7 @@ abstract class BundleModels : DefaultTask() {
         val out = outputDir.get().asFile
         out.deleteRecursively()
         out.mkdirs()
+        emojiIndex.get().asFile.copyTo(out.resolve("emoji-index.tsv"))
         val real = realDir.get().asFile
         val vi = real.resolve("vi-phone.xklm")
         val en = real.resolve("en.xklm")
@@ -150,6 +152,7 @@ android {
                 test.systemProperty("java.library.path", hostDir.resolve("jni").path)
                 test.systemProperty("xrnkey.testModels", hostDir.resolve("lm").path)
                 test.systemProperty("xrnkey.realModels", modelDir.path)
+                test.systemProperty("xrnkey.emojiIndex", repoDir.resolve("data/emoji/emoji-index.tsv").path)
                 (findProperty("xrnkey.shots") as String?)?.let { test.systemProperty("xrnkey.shots", it) }
                 test.maxHeapSize = "1536m"
                 // A native library binds to one class loader: the Robolectric tests and the plain
@@ -167,6 +170,7 @@ androidComponents {
         val name = variant.name.replaceFirstChar { it.uppercase() }
         val bundle = tasks.register<BundleModels>("bundle${name}Models") {
             realDir.set(modelDir)
+            emojiIndex.set(repoDir.resolve("data/emoji/emoji-index.tsv"))
             testDir.set(hostDir.resolve("lm"))
             this.release.set(release)
             if (!release && !modelDir.resolve("vi-phone.xklm").isFile) dependsOn(buildHost)

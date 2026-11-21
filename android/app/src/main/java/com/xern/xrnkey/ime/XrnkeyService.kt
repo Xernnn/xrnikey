@@ -7,12 +7,16 @@ import android.inputmethodservice.InputMethodService
 import android.text.InputType
 import android.view.KeyEvent
 import android.view.View
+import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
+import android.widget.FrameLayout
 import com.xern.xrnkey.SettingsActivity
+import com.xern.xrnkey.engine.EmojiIndex
 import com.xern.xrnkey.engine.Model
 import com.xern.xrnkey.engine.Models
 import com.xern.xrnkey.engine.TypingState
+import com.xern.xrnkey.keyboard.EmojiPanelView
 import com.xern.xrnkey.keyboard.EnterAction
 import com.xern.xrnkey.keyboard.KeyboardView
 import com.xern.xrnkey.keyboard.Page
@@ -25,15 +29,23 @@ import java.io.IOException
 /**
  * The keyboard. The models are memory-mapped straight from the APK (uncompressed assets), so
  * they cost no copy and only the pages in use take RAM. Nothing needs a permission.
+ *
+ * The input view is a frame: the keys, and the panels that take their place (emoji). A panel
+ * hides the keys but keeps their height, so the field above doesn't jump.
  */
-class XrnkeyService : InputMethodService(), KeyboardView.Listener {
+class XrnkeyService : InputMethodService(), KeyboardView.Listener, EmojiPanelView.Listener {
     private var vi: Model? = null
     private var en: Model? = null
     private var models: Models? = null
+    private var emoji: EmojiIndex? = null
     private var state: TypingState? = null
     private lateinit var typist: Typist
     private lateinit var strip: StripMaker
     private var keyboard: KeyboardView? = null
+    private var emojiPanel: EmojiPanelView? = null
+
+    /** The emoji search's query, while the keys type into it rather than the field. */
+    private var searchQuery: String? = null
 
     private val editor = object : Editor {
         override fun setComposing(text: String) {
@@ -72,9 +84,14 @@ class XrnkeyService : InputMethodService(), KeyboardView.Listener {
         en = openModel("en.xklm")
         models = Models(vi, en)
         models?.correction = Models.CORRECT_FLEXIBLE
+        emoji = try {
+            assets.open("emoji-index.tsv").use { EmojiIndex.load(it.readBytes()) }
+        } catch (e: IOException) {
+            null
+        }
         state = TypingState().also { it.useModels(models) }
         typist = Typist(state, editor, models)
-        strip = StripMaker(models)
+        strip = StripMaker(models, emoji)
     }
 
     private fun openModel(name: String): Model? = try {
@@ -86,15 +103,28 @@ class XrnkeyService : InputMethodService(), KeyboardView.Listener {
     override fun onDestroy() {
         state?.close()
         models?.close()
+        emoji?.close()
         vi?.close()
         en?.close()
         super.onDestroy()
     }
 
-    override fun onCreateInputView(): View = KeyboardView(this).also {
-        it.listener = this
-        it.palette = savedPalette()
-        keyboard = it
+    override fun onCreateInputView(): View {
+        val frame = FrameLayout(this)
+        val keys = KeyboardView(this).also {
+            it.listener = this
+            it.palette = savedPalette()
+            keyboard = it
+        }
+        val panel = EmojiPanelView(this).also {
+            it.listener = this
+            it.palette = keys.palette
+            it.visibility = View.GONE
+            emojiPanel = it
+        }
+        frame.addView(keys, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        frame.addView(panel, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        return frame
     }
 
     /** Never the full-screen editor in landscape. */
@@ -106,6 +136,8 @@ class XrnkeyService : InputMethodService(), KeyboardView.Listener {
         // No auto-correct where words are addresses, not language.
         typist.autoCorrect = !isAddress(info)
         typist.reset()
+        searchQuery = null
+        showKeys()
         keyboard?.apply {
             page = Page.LETTERS
             shift = Shift.OFF
@@ -137,23 +169,43 @@ class XrnkeyService : InputMethodService(), KeyboardView.Listener {
     // ---- the keyboard's keys ------------------------------------------------------------------
 
     override fun onText(text: String) {
+        val q = searchQuery
+        if (q != null) {
+            search(q + text)
+            return
+        }
         typist.text(text)
         showStrip()
     }
 
     override fun onBackspace() {
+        val q = searchQuery
+        if (q != null) {
+            search(q.dropLast(1))
+            return
+        }
         typist.backspace()
         showStrip()
     }
 
     override fun onEnter() {
+        if (searchQuery != null) {
+            onSearchClose()
+            return
+        }
         typist.enter()
         showStrip()
     }
 
     override fun onCandidate(slot: Int) {
         val pick = strip.pick(slot) ?: return
-        typist.pick(pick)
+        if (pick.emoji) {
+            strip.centre?.let { if (typist.shown.isNotEmpty()) typist.pick(it) }
+            typist.insert(pick.text)
+            memory.addRecent(pick.text)
+        } else {
+            typist.pick(pick.text)
+        }
         showStrip()
     }
 
@@ -173,10 +225,12 @@ class XrnkeyService : InputMethodService(), KeyboardView.Listener {
             Tool.THEME -> {
                 val next = if (keyboard?.palette == Palette.LIGHT) Palette.DARK else Palette.LIGHT
                 keyboard?.palette = next
+                emojiPanel?.palette = next
                 prefs().edit().putString("palette", if (next == Palette.LIGHT) "light" else "dark").apply()
             }
-            // The clipboard, cursor pad and emoji panels come in later steps.
-            Tool.CLIPBOARD, Tool.CURSOR, Tool.EMOJI -> Unit
+            Tool.EMOJI -> showEmoji()
+            // The clipboard and the cursor pad come in later steps.
+            Tool.CLIPBOARD, Tool.CURSOR -> Unit
         }
     }
 
@@ -184,10 +238,67 @@ class XrnkeyService : InputMethodService(), KeyboardView.Listener {
         keyboard?.strip = strip.make(typist)
     }
 
+    // ---- the emoji panel ----------------------------------------------------------------------
+
+    private fun showKeys() {
+        emojiPanel?.visibility = View.GONE
+        keyboard?.visibility = View.VISIBLE
+    }
+
+    private fun showEmoji() {
+        val panel = emojiPanel ?: return
+        val index = emoji
+        if (panel.emoji.isEmpty()) panel.emoji = index?.all.orEmpty()
+        panel.recents = memory.recents()
+        panel.tones = memory.tones()
+        panel.suggestions = index?.suggest(typist.context().filter { it != "<s>" } + listOfNotNull(strip.centre)).orEmpty()
+        // The keys stay laid out (invisible), so the panel keeps their height.
+        keyboard?.visibility = View.INVISIBLE
+        panel.visibility = View.VISIBLE
+    }
+
+    override fun onEmoji(text: String) {
+        typist.insert(text)
+        memory.addRecent(text)
+        emojiPanel?.recents = memory.recents()
+    }
+
+    override fun onSkinTone(base: String, toned: String) {
+        memory.setTone(base, toned)
+        emojiPanel?.tones = memory.tones()
+    }
+
+    override fun onClosePanel() {
+        showKeys()
+        showStrip()
+    }
+
+    override fun onEmojiSearch() {
+        showKeys()
+        search("")
+    }
+
+    private fun search(query: String) {
+        searchQuery = query
+        val found = if (query.isBlank()) memory.recents() else emoji?.search(query).orEmpty()
+        keyboard?.strip = Strip.Search(query, found)
+    }
+
+    override fun onSearchPick(emoji: String) {
+        onEmoji(emoji)
+    }
+
+    override fun onSearchClose() {
+        searchQuery = null
+        showEmoji()
+    }
+
     // ---- settings -----------------------------------------------------------------------------
 
     /** Device-protected storage: the keyboard runs before the phone's first unlock. */
     private fun prefs() = createDeviceProtectedStorageContext().getSharedPreferences("keyboard", MODE_PRIVATE)
+
+    private val memory by lazy { EmojiMemory(prefs()) }
 
     private fun savedPalette() = if (prefs().getString("palette", "dark") == "light") Palette.LIGHT else Palette.DARK
 

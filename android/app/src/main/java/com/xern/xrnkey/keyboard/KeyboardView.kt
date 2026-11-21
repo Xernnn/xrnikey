@@ -30,6 +30,8 @@ class KeyboardView(context: Context) : View(context) {
         fun onTool(tool: Tool) {}
         fun onPickKeyboard() {}
         fun onStripMenu() {}
+        fun onSearchClose() {}
+        fun onSearchPick(emoji: String) {}
     }
 
     var listener: Listener? = null
@@ -110,6 +112,7 @@ class KeyboardView(context: Context) : View(context) {
         when (val s = strip) {
             Strip.Tools -> drawTools(canvas)
             is Strip.Candidates -> drawCandidates(canvas, s)
+            is Strip.Search -> drawSearch(canvas, s)
         }
         for (h in hits) drawKey(canvas, h, h === pressed && !holdFired)
         pressed?.let { if (keyPreview && it.key.kind == KeyKind.CHAR && !holdFired) drawPreview(canvas, it) }
@@ -347,6 +350,39 @@ class KeyboardView(context: Context) : View(context) {
         }
     }
 
+    /** The emoji search: a back arrow, the query with its cursor, then what it finds. */
+    private fun drawSearch(canvas: Canvas, s: Strip.Search) {
+        val side = 48 * dp
+        val cy = stripHeight / 2
+        stroke(palette.dim, 2f * dp)
+        canvas.drawLine(side / 2 - 8 * dp, cy, side / 2 + 8 * dp, cy, line)
+        canvas.drawLine(side / 2 - 8 * dp, cy, side / 2 - 2 * dp, cy - 6 * dp, line)
+        canvas.drawLine(side / 2 - 8 * dp, cy, side / 2 - 2 * dp, cy + 6 * dp, line)
+        val box = RectF(side, 7 * dp, side + width * 0.32f, stripHeight - 7 * dp)
+        fill.color = palette.space
+        canvas.drawRoundRect(box, 8 * dp, 8 * dp, fill)
+        glyph.textSize = 16 * sp
+        glyph.typeface = font
+        val q = ellipsize(s.query, box.width() - 24 * dp)
+        glyph.textAlign = Paint.Align.LEFT
+        glyph.color = palette.glyph
+        val m = glyph.fontMetrics
+        canvas.drawText(q, box.left + 10 * dp, cy - (m.ascent + m.descent) / 2, glyph)
+        glyph.textAlign = Paint.Align.CENTER
+        val caret = box.left + 10 * dp + glyph.measureText(q) + 2 * dp
+        fill.color = palette.accent
+        canvas.drawRect(caret, box.top + 8 * dp, caret + 2 * dp, box.bottom - 8 * dp, fill)
+        val w = 44 * dp
+        searchResults(s).forEachIndexed { i, e ->
+            drawLabel(canvas, e, box.right + 8 * dp + i * w + w / 2, cy, 22 * sp, palette.glyph, Typeface.DEFAULT)
+        }
+    }
+
+    private fun searchResults(s: Strip.Search): List<String> {
+        val room = ((width - (48 * dp + width * 0.32f + 8 * dp)) / (44 * dp)).toInt()
+        return s.results.take(maxOf(0, room))
+    }
+
     private fun ellipsize(text: String, max: Float): String {
         if (glyph.measureText(text) <= max) return text
         var t = text
@@ -477,6 +513,17 @@ class KeyboardView(context: Context) : View(context) {
             Strip.Tools -> {
                 val i = (x / (width.toFloat() / toolSlots())).toInt().coerceIn(0, toolSlots() - 1)
                 listener?.onTool(Tool.entries[i])
+            }
+            is Strip.Search -> {
+                val s = strip as Strip.Search
+                val side = 48 * dp
+                val start = side + width * 0.32f + 8 * dp
+                val i = ((x - start) / (44 * dp)).toInt()
+                val shown = searchResults(s)
+                when {
+                    x < side -> listener?.onSearchClose()
+                    x >= start && i in shown.indices -> listener?.onSearchPick(shown[i])
+                }
             }
             is Strip.Candidates -> {
                 val side = 48 * dp

@@ -5,6 +5,9 @@ import android.graphics.Canvas
 import android.os.SystemClock
 import android.view.MotionEvent
 import android.view.View.MeasureSpec
+import com.xern.xrnkey.engine.EmojiIndex
+import com.xern.xrnkey.keyboard.EmojiPanelView
+import com.xern.xrnkey.keyboard.EmojiTab
 import com.xern.xrnkey.keyboard.KeyboardView
 import com.xern.xrnkey.keyboard.Page
 import com.xern.xrnkey.keyboard.Palette
@@ -87,5 +90,48 @@ class KeyboardShotsTest {
             v.onTouchEvent(MotionEvent.obtain(t, t, MotionEvent.ACTION_DOWN, x, y, 0))
             shot("pressed-d-$name", v)
         }
+    }
+
+    private fun panel(palette: Palette, tab: EmojiTab): EmojiPanelView {
+        val keys = view(palette)
+        val index = EmojiIndex.load(File(System.getProperty("xrnkey.emojiIndex")!!).readBytes())!!
+        val p = EmojiPanelView(RuntimeEnvironment.getApplication())
+        p.palette = palette
+        p.emoji = index.all
+        p.recents = listOf("😂", "❤️", "👍", "🙏", "🥰", "😭", "🎂", "☕", "🔥", "😅")
+        p.suggestions = index.suggest(listOf("chúc", "mừng", "sinh", "nhật"), 8)
+        p.tab = tab
+        index.close()
+        p.measure(
+            MeasureSpec.makeMeasureSpec(1080, MeasureSpec.EXACTLY),
+            MeasureSpec.makeMeasureSpec(keys.height, MeasureSpec.EXACTLY),
+        )
+        p.layout(0, 0, p.measuredWidth, p.measuredHeight)
+        return p
+    }
+
+    private fun shotPanel(name: String, v: EmojiPanelView) {
+        val bmp = Bitmap.createBitmap(v.width, v.height, Bitmap.Config.ARGB_8888)
+        v.draw(Canvas(bmp))
+        out.mkdirs()
+        File(out, "$name.png").outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
+    }
+
+    @Test
+    fun emojiPanel() {
+        for ((name, palette) in listOf("dark" to Palette.DARK, "light" to Palette.LIGHT)) {
+            shotPanel("emoji-$name", panel(palette, EmojiTab.EMOJI))
+            shotPanel("emoticons-$name", panel(palette, EmojiTab.EMOTICONS))
+            shotPanel("symbols-tab-$name", panel(palette, EmojiTab.SYMBOLS))
+        }
+    }
+
+    @Test
+    fun emojiSearchAndTheStripsEmoji() {
+        val index = EmojiIndex.load(File(System.getProperty("xrnkey.emojiIndex")!!).readBytes())!!
+        val found = index.search("cuoi")
+        index.close()
+        both("emoji-search") { strip = Strip.Search("cuoi", found) }
+        both("strip-emoji") { strip = Strip.Candidates("sinh", "nhật", "🎂", more = true) }
     }
 }
