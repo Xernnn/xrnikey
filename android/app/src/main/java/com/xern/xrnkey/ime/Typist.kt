@@ -2,6 +2,8 @@ package com.xern.xrnkey.ime
 
 import com.xern.xrnkey.engine.KeyResult
 import com.xern.xrnkey.engine.Models
+import com.xern.xrnkey.engine.PersonalWords
+import com.xern.xrnkey.engine.Shortcuts
 import com.xern.xrnkey.engine.TypingState
 
 /**
@@ -56,6 +58,23 @@ class Typist(
     /** Two spaces after a word give ". " (only where auto-correct is on). */
     var doubleSpace = true
 
+    /**
+     * Where the words typed are learned (null: nowhere). Only settled words are: a word is
+     * learned once look-back can no longer change it, with the word before it. Never in
+     * password, address or incognito fields ([learnHere]), never from pasted text.
+     */
+    var personal: PersonalWords? = null
+
+    /** This field allows learning (off for incognito fields). */
+    var learnHere = true
+
+    /** Abbreviations that expand when their word ends (null: none). */
+    var shortcuts: Shortcuts? = null
+
+    /** Committed text whose words are not learned yet, and the word before it. */
+    private val pending = StringBuilder()
+    private var pendingPrev: String? = "<s>"
+
     private var composing = ""
 
     /** What was committed lately, for the words before the next one. */
@@ -101,8 +120,13 @@ class Typist(
         return (if (start) listOf("<s>") else emptyList()) + words.takeLast(3)
     }
 
-    /** What Space would commit for the word in progress, if restoration has it. */
+    /** The expansion of the word in progress, if it is an abbreviation. */
+    fun expansion(): String? =
+        if (composing.isEmpty() || raw || !autoCorrect) null else shortcuts?.expand(keys())
+
+    /** What Space would commit for the word in progress: its expansion, or its restoration. */
     fun preview(): String? {
+        expansion()?.let { return it }
         if (!restorable()) return null
         val prior = run.takeLast(2)
         return models!!.restoreRun(context(prior.size), prior.map { it.typed } + keys())?.last()
@@ -129,6 +153,18 @@ class Typist(
         if (c == ' ' && composing.isEmpty() && wasSpaceAfterWord && doubleSpace && autoCorrect) {
             replaceBefore(" ", ". ")
             run.clear()
+            s.setContext(context())
+            return
+        }
+        if (isSeparator(c) && expansion() != null) {
+            val shown = composing
+            val e = expansion()!!
+            commit(e + c)
+            composing = ""
+            s.reset()
+            run.clear()
+            undo = Undo(shown + c, e + c)
+            spaceAfterWord = c == ' '
             s.setContext(context())
             return
         }
@@ -197,6 +233,7 @@ class Typist(
         apply(s.key(TypingState.BACKSPACE)) {
             editor.backspace()
             if (tail.isNotEmpty()) tail.setLength(tail.length - 1)
+            if (pending.isNotEmpty()) pending.setLength(pending.length - 1)
             run.clear()
         }
     }
@@ -219,6 +256,8 @@ class Typist(
         run.clear()
         editor.enter()
         tail.append('\n')
+        pending.append('\n')
+        learnSettled(all = true)
     }
 
     /**
@@ -233,6 +272,7 @@ class Typist(
             composing.isNotEmpty() -> {
                 editor.finishComposing()
                 tail.append(composing)
+                pending.append(composing)
             }
         }
         composing = ""
@@ -240,10 +280,12 @@ class Typist(
         run.clear()
         undo = null
         spaceAfterWord = false
+        learnSettled(all = true)
     }
 
     /** A new field: nothing is in progress; what is before the cursor is the field's text. */
     fun reset() {
+        learnSettled(all = true)
         state?.reset()
         composing = ""
         run.clear()
@@ -253,6 +295,8 @@ class Typist(
         val before = editor.textBefore(TAIL)
         tail.append(before)
         wholeField = before.length < TAIL
+        pending.clear()
+        pendingPrev = context().lastOrNull()
         state?.setContext(context())
     }
 
@@ -262,7 +306,9 @@ class Typist(
         undo = null
         spaceAfterWord = false
         run.clear()
-        commit(text)
+        learnSettled(all = true)
+        commit(text, learnable = false)
+        pendingPrev = "<p>"
         state?.setContext(context())
     }
 
@@ -277,13 +323,50 @@ class Typist(
         state?.setContext(context())
     }
 
-    private fun commit(text: String) {
+    private fun commit(text: String, learnable: Boolean = true) {
         editor.commit(text)
         tail.append(text)
         if (tail.length > TAIL) {
             tail.delete(0, tail.length - TAIL)
             wholeField = false
         }
+        if (learnable) {
+            pending.append(text)
+            learnSettled(all = false)
+        }
+    }
+
+    /**
+     * Learns the words of [pending] that look-back and Backspace can no longer change (all of
+     * them at a new line, or when the field is left or the cursor moves), each with the word before
+     * it: "<s>" at a sentence's start, "<p>" after other punctuation.
+     */
+    private fun learnSettled(all: Boolean) {
+        val p = personal
+        if (p == null || raw || !autoCorrect || !learnHere) {
+            pending.clear()
+            return
+        }
+        val text = pending.toString()
+        val words = WORD.findAll(text).toList()
+        val n = words.size - if (all) 0 else SETTLE
+        if (n <= 0) return
+        var prev = pendingPrev
+        var at = 0
+        for (i in 0 until n) {
+            val m = words[i]
+            val gap = text.substring(at, m.range.first)
+            prev = when {
+                gap.any { it in SENTENCE_END } -> "<s>"
+                gap.any { it != ' ' } -> "<p>"
+                else -> prev
+            }
+            p.learn(prev, m.value)
+            prev = m.value
+            at = m.range.last + 1
+        }
+        pending.delete(0, at)
+        pendingPrev = prev
     }
 
     /**
@@ -294,6 +377,7 @@ class Typist(
         if (editor.textBefore(old.length) != old) return false
         editor.deleteBefore(old.codePointCount(0, old.length))
         if (tail.endsWith(old)) tail.setLength(tail.length - old.length)
+        if (pending.endsWith(old)) pending.setLength(pending.length - old.length)
         commit(new)
         return true
     }
@@ -316,5 +400,10 @@ class Typist(
         val WORD = Regex("[\\p{L}\\p{N}]+")
 
         fun isSeparator(c: Char) = c == ' ' || c in ",.;:!?"
+
+        const val SENTENCE_END = ".!?\n"
+
+        /** Words kept back from learning: the look-back window (two) and the newest. */
+        const val SETTLE = 3
     }
 }

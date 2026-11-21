@@ -217,3 +217,85 @@ FN(jobjectArray, emojiSuggest)(JNIEnv* env, jobject, jlong db, jobjectArray word
     }
     return byte_arrays(env, out);
 }
+
+// ---- personal words (core/learn.cpp) -----------------------------------------------------------
+
+FN(jlong, userNew)(JNIEnv*, jobject) { return handle(xk_user_new()); }
+
+FN(void, userFree)(JNIEnv*, jobject, jlong u) { xk_user_free(as<XKUser>(u)); }
+
+FN(jint, userLoad)(JNIEnv* env, jobject, jlong u, jbyteArray path) {
+    return xk_user_load(as<XKUser>(u), text_of(env, path).c_str());
+}
+
+FN(jint, userSave)(JNIEnv* env, jobject, jlong u, jbyteArray path) {
+    return xk_user_save(as<XKUser>(u), text_of(env, path).c_str());
+}
+
+FN(void, userLearn)(JNIEnv* env, jobject, jlong u, jbyteArray prev, jbyteArray word) {
+    const std::string p = prev ? text_of(env, prev) : std::string();
+    xk_user_learn(as<XKUser>(u), prev ? p.c_str() : nullptr, text_of(env, word).c_str());
+}
+
+FN(jdouble, userCount)(JNIEnv* env, jobject, jlong u, jbyteArray prev, jbyteArray word) {
+    const std::string p = prev ? text_of(env, prev) : std::string();
+    return xk_user_count(as<XKUser>(u), prev ? p.c_str() : nullptr, text_of(env, word).c_str());
+}
+
+FN(void, userForget)(JNIEnv* env, jobject, jlong u, jbyteArray word) {
+    xk_user_forget(as<XKUser>(u), text_of(env, word).c_str());
+}
+
+FN(void, userDecay)(JNIEnv*, jobject, jlong u, jdouble factor) { xk_user_decay(as<XKUser>(u), factor); }
+
+FN(void, modelsSetUser)(JNIEnv*, jobject, jlong m, jlong u) { xk_models_set_user(as<XKModels>(m), as<XKUser>(u)); }
+
+// ---- shortcuts (core/shortcuts.cpp) ------------------------------------------------------------
+
+FN(jlong, shortcutsNew)(JNIEnv*, jobject) { return handle(xk_shortcuts_new()); }
+
+FN(void, shortcutsFree)(JNIEnv*, jobject, jlong sc) { xk_shortcuts_free(as<XKShortcuts>(sc)); }
+
+FN(jint, shortcutsLoad)(JNIEnv* env, jobject, jlong sc, jbyteArray path) {
+    return xk_shortcuts_load(as<XKShortcuts>(sc), text_of(env, path).c_str());
+}
+
+FN(jint, shortcutsSave)(JNIEnv* env, jobject, jlong sc, jbyteArray path) {
+    return xk_shortcuts_save(as<XKShortcuts>(sc), text_of(env, path).c_str());
+}
+
+/* counts: added, same, changed, skipped. */
+FN(jint, shortcutsImport)(JNIEnv* env, jobject, jlong sc, jbyteArray text, jboolean apply, jintArray counts) {
+    XKShortcutCounts c{};
+    const int n = xk_shortcuts_import(as<XKShortcuts>(sc), text_of(env, text).c_str(), apply ? 1 : 0, &c);
+    const jint out[4] = {c.added, c.same, c.changed, c.skipped};
+    if (counts && env->GetArrayLength(counts) >= 4) env->SetIntArrayRegion(counts, 0, 4, out);
+    return n;
+}
+
+FN(jboolean, shortcutsSet)(JNIEnv* env, jobject, jlong sc, jbyteArray abbr, jbyteArray expansion) {
+    return xk_shortcuts_set(as<XKShortcuts>(sc), text_of(env, abbr).c_str(), text_of(env, expansion).c_str()) ? JNI_TRUE : JNI_FALSE;
+}
+
+FN(void, shortcutsRemove)(JNIEnv* env, jobject, jlong sc, jbyteArray abbr) {
+    xk_shortcuts_remove(as<XKShortcuts>(sc), text_of(env, abbr).c_str());
+}
+
+/* Every entry, as abbr, expansion, abbr, expansion... */
+FN(jobjectArray, shortcutsAll)(JNIEnv* env, jobject, jlong sc) {
+    std::vector<std::string> out;
+    const char *a = nullptr, *e = nullptr;
+    for (int i = 0; xk_shortcuts_at(as<XKShortcuts>(sc), i, &a, &e); ++i) {
+        out.emplace_back(a);
+        out.emplace_back(e);
+    }
+    return byte_arrays(env, out);
+}
+
+FN(jbyteArray, shortcutsExpand)(JNIEnv* env, jobject, jlong sc, jbyteArray typed) {
+    char* e = xk_shortcuts_expand(as<XKShortcuts>(sc), text_of(env, typed).c_str(), 1);
+    if (!e) return nullptr;
+    jbyteArray out = bytes(env, e);
+    std::free(e);
+    return out;
+}

@@ -139,7 +139,9 @@ double xk_user_count(const XKUser* user, const char* prev, const char* word) {
         auto it = u->words.find(w);
         return it == u->words.end() ? 0.0 : it->second;
     }
-    const std::string p = std::strcmp(prev, "<s>") == 0 ? std::string("<s>") : xrnkey::context_token(prev);
+    const std::string p = std::strcmp(prev, "<s>") == 0 || std::strcmp(prev, "<p>") == 0
+                              ? std::string(prev)
+                              : xrnkey::context_token(prev);
     auto it = u->pairs.find(p + " " + w);
     return it == u->pairs.end() ? 0.0 : it->second;
 }

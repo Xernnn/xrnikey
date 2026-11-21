@@ -38,4 +38,23 @@ internal object Native {
     external fun emojiAt(db: Long, index: Int, skin: IntArray): Array<ByteArray>?
     external fun emojiSearch(db: Long, query: ByteArray, max: Int): Array<ByteArray>
     external fun emojiSuggest(db: Long, words: Array<ByteArray>, max: Int): Array<ByteArray>
+
+    external fun userNew(): Long
+    external fun userFree(user: Long)
+    external fun userLoad(user: Long, path: ByteArray): Int
+    external fun userSave(user: Long, path: ByteArray): Int
+    external fun userLearn(user: Long, prev: ByteArray?, word: ByteArray)
+    external fun userCount(user: Long, prev: ByteArray?, word: ByteArray): Double
+    external fun userForget(user: Long, word: ByteArray)
+    external fun userDecay(user: Long, factor: Double)
+    external fun modelsSetUser(models: Long, user: Long)
+    external fun shortcutsNew(): Long
+    external fun shortcutsFree(sc: Long)
+    external fun shortcutsLoad(sc: Long, path: ByteArray): Int
+    external fun shortcutsSave(sc: Long, path: ByteArray): Int
+    external fun shortcutsImport(sc: Long, text: ByteArray, apply: Boolean, counts: IntArray): Int
+    external fun shortcutsSet(sc: Long, abbr: ByteArray, expansion: ByteArray): Boolean
+    external fun shortcutsRemove(sc: Long, abbr: ByteArray)
+    external fun shortcutsAll(sc: Long): Array<ByteArray>
+    external fun shortcutsExpand(sc: Long, typed: ByteArray): ByteArray?
 }

@@ -115,6 +115,10 @@ TEST_CASE("the frontend can teach words directly, as the phone will", "[learn]")
     xk_user_learn(m.user, nullptr, "<num>");
     xk_user_learn(m.user, nullptr, "123");
     CHECK(xk_user_count(m.user, nullptr, "<num>") == 0.0);
+    // A word after a comma is learned after "<p>", and counted there.
+    xk_user_learn(m.user, "<p>", "vâng");
+    CHECK(xk_user_count(m.user, "<p>", "vâng") == 1.0);
+    CHECK(xk_user_count(m.user, "<s>", "vâng") == 0.0);
 }
 
 TEST_CASE("forgetting a word and fading old counts", "[learn]") {
