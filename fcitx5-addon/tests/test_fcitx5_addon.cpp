@@ -493,6 +493,22 @@ FakeClient::Options instantApp() {
 
 } // namespace
 
+/* main() leaves the abbreviations where a version from before the rename
+ * (xrnikey) kept them, before the addon loads. The settings file's move is
+ * checked in the real fcitx5 (dbus_driver.py): Fcitx5's testing
+ * environment has no user config folder. */
+TEST_CASE("the data folder from before the rename is moved and used",
+          "[rename]") {
+    namespace fs = std::filesystem;
+    const fs::path data = std::getenv("XDG_DATA_HOME");
+    CHECK_FALSE(fs::exists(data / "xrnikey"));
+    REQUIRE(fs::exists(data / "xrnkey/macros.txt"));
+    configure({{"Macro", "True"}});
+    FakeClient c(preeditApp());
+    c.type("ko ");
+    CHECK(c.text() == "không ");
+}
+
 TEST_CASE("preedit mode composes a word and commits it on space",
           "[basic]") {
     configure({{"InstantCommit", "False"}});
@@ -1081,9 +1097,9 @@ TEST_CASE("the words before decide whether keys are English or Vietnamese",
 }
 
 void writeMacros(const std::string &content) {
-    std::ofstream(std::string(std::getenv("XDG_DATA_HOME")) +
-                  "/xrnkey/macros.txt")
-        << content;
+    const std::string dir = std::string(std::getenv("XDG_DATA_HOME")) + "/xrnkey";
+    std::filesystem::create_directories(dir);
+    std::ofstream(dir + "/macros.txt") << content;
 }
 
 TEST_CASE("abbreviations are off by default", "[macro]") {
@@ -1180,7 +1196,10 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     fs::path home = tmpl;
-    fs::create_directories(home / ".local/share/xrnkey");
+    /* The user's files as a version from before the rename left them; the
+     * addon moves them to the new name when it loads ("[rename]"). */
+    fs::create_directories(home / ".local/share/xrnikey");
+    std::ofstream(home / ".local/share/xrnikey/macros.txt") << "ko\tkhông\n";
     setenv("HOME", home.c_str(), 1);
     setenv("XDG_DATA_HOME", (home / ".local/share").c_str(), 1);
     setenv("XDG_CONFIG_HOME", (home / ".config").c_str(), 1);

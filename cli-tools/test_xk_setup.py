@@ -1,8 +1,8 @@
 """Tests for xk-setup; run with python3 cli-tools/test_xk_setup.py.
 
-Only --dry-run is used, with every path it reads or writes under a temporary
-directory, so nothing on the machine is looked at beyond running processes
-and installed programs, and nothing is changed.
+Only --dry-run and --rollback are used, with every path they read or write
+under a temporary directory, so nothing on the machine is looked at beyond
+running processes and installed programs, and nothing outside it is changed.
 """
 import os
 import subprocess
@@ -57,6 +57,43 @@ class XkSetupTest(unittest.TestCase):
     def test_warns_when_qt_im_module_points_at_a_missing_module(self):
         _, err = self.dry_run(QT_IM_MODULE="fcitx")
         self.assertIn("fcitx5-qt", err)
+
+    def old_setup(self):
+        """What xk-setup left before the rename (xrnikey): the environment file
+        it wrote, its marker, and a backup of the version before."""
+        envd = os.path.join(self.tmp.name, "config", "environment.d")
+        backups = os.path.join(self.tmp.name, "data", "xrnikey", "setup-backup")
+        os.makedirs(envd)
+        os.makedirs(backups)
+        for path, text in ((os.path.join(envd, "90-xrnikey.conf"), "XMODIFIERS=@im=fcitx\n"),
+                           (os.path.join(envd, "90-xrnikey.conf.xk-setup"), ""),
+                           (os.path.join(backups, "90-xrnikey.conf.20261101120000"), "SDL_IM_MODULE=fcitx\n")):
+            with open(path, "w") as f:
+                f.write(text)
+        return envd
+
+    def test_rollback_undoes_what_it_did_before_the_rename(self):
+        envd = self.old_setup()
+        r = subprocess.run(["bash", SCRIPT, "--rollback"], env=self.env,
+                           capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(sorted(os.listdir(envd)), ["90-xrnkey.conf"])
+        with open(os.path.join(envd, "90-xrnkey.conf")) as f:
+            self.assertEqual(f.read(), "SDL_IM_MODULE=fcitx\n")
+        data = os.path.join(self.tmp.name, "data")
+        self.assertEqual(os.listdir(data), ["xrnkey"])
+        self.assertEqual(os.listdir(os.path.join(data, "xrnkey", "setup-backup")),
+                         ["90-xrnkey.conf.20261101120000"])
+
+    def test_dry_run_only_says_it_would_move_the_old_files(self):
+        self.old_setup()
+        r = subprocess.run(["bash", SCRIPT, "--dry-run"], env=self.env,
+                           capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("would: move", r.stdout)
+        self.assertTrue(os.path.exists(os.path.join(self.tmp.name, "data", "xrnikey")))
+        self.assertEqual(sorted(os.listdir(os.path.join(self.tmp.name, "config", "environment.d"))),
+                         ["90-xrnikey.conf", "90-xrnikey.conf.xk-setup"])
 
 
 if __name__ == "__main__":

@@ -73,6 +73,12 @@ Then restart Fcitx5 (`fcitx5 -r -d`) so it finds the new addon, add xrnkey to it
 (next section), and check the environment with `xk-setup` (it reports, and asks before changing
 anything) and `xk-diagnose`.
 
+Until 1.1.0 the project was called xrnikey. The `xrnkey` package replaces the `xrnikey` one, and
+the input method's name changed with it, so add xrnkey to Fcitx5's list again. Your settings
+(`~/.config/fcitx5/conf/xrnikey5.conf`), words and abbreviations (`~/.local/share/xrnikey`) move to
+the new names the first time xrnkey, `xk-dict` or `xk-macro` needs them, and `xk-setup` moves the
+files it wrote.
+
 ## Switching from Bamboo (and back)
 
 xrnkey and fcitx5-bamboo can both be in Fcitx5's input method list; only the current one types.

@@ -5,6 +5,7 @@ add_library(xrnkey_addon MODULE
     xrnkey_addon.cpp
     candidate_provider.cpp
     macro_table.cpp
+    user_paths.cpp
 )
 
 target_link_libraries(xrnkey_addon
