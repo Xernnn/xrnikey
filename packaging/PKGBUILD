@@ -3,7 +3,7 @@
 #   makepkg -si          build, test and install (asks for sudo)
 #   makepkg              build and test only; install later with pacman -U
 pkgname=xrnkey
-pkgver=1.0.0
+pkgver=1.1.0
 pkgrel=1
 pkgdesc="Vietnamese (Telex/VNI) input method for Fcitx5"
 arch=('x86_64' 'aarch64')
