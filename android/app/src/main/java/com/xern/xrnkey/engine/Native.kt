@@ -57,4 +57,5 @@ internal object Native {
     external fun shortcutsRemove(sc: Long, abbr: ByteArray)
     external fun shortcutsAll(sc: Long): Array<ByteArray>
     external fun shortcutsExpand(sc: Long, typed: ByteArray): ByteArray?
+    external fun predict(models: Long, context: Array<ByteArray>, max: Int): Array<ByteArray>
 }

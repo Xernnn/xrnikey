@@ -299,3 +299,18 @@ FN(jbyteArray, shortcutsExpand)(JNIEnv* env, jobject, jlong sc, jbyteArray typed
     std::free(e);
     return out;
 }
+
+// ---- next words (core/predict.cpp) -------------------------------------------------------------
+
+FN(jobjectArray, predict)(JNIEnv* env, jobject, jlong models, jobjectArray context, jint max) {
+    const auto c = strings(env, context);
+    const auto p = pointers(c);
+    std::vector<char*> got(static_cast<size_t>(max > 0 ? max : 0));
+    const int n = max > 0 ? xk_predict(as<XKModels>(models), p.data(), static_cast<int>(p.size()), got.data(), max) : 0;
+    std::vector<std::string> out;
+    for (int i = 0; i < n; ++i) {
+        out.emplace_back(got[static_cast<size_t>(i)]);
+        std::free(got[static_cast<size_t>(i)]);
+    }
+    return byte_arrays(env, out);
+}

@@ -120,6 +120,16 @@ class Typist(
         return (if (start) listOf("<s>") else emptyList()) + words.takeLast(3)
     }
 
+    /**
+     * Right after a word and a space (or punctuation and a space), with no word in progress:
+     * where the strip offers the next word.
+     */
+    fun afterWord(): Boolean {
+        if (composing.isNotEmpty() || raw || !autoCorrect) return false
+        val n = tail.length
+        return n >= 2 && tail[n - 1] == ' ' && tail[n - 2] != ' ' && !tail[n - 2].isWhitespace()
+    }
+
     /** The expansion of the word in progress, if it is an abbreviation. */
     fun expansion(): String? =
         if (composing.isEmpty() || raw || !autoCorrect) null else shortcuts?.expand(keys())

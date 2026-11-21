@@ -38,7 +38,8 @@ class EngineBenchmarkTest {
         TypingState().use { state ->
             state.useModels(models)
             val typist = Typist(state, FakeEditor(), models).also { it.reset() }
-            val strip = StripMaker(models)
+            // As on the phone: emoji in the strip, next words after a Space.
+            val strip = StripMaker(models, emoji)
             repeat(rounds) {
                 for (c in text) {
                     val t0 = System.nanoTime()
@@ -46,6 +47,22 @@ class EngineBenchmarkTest {
                     strip.make(typist)
                     times += System.nanoTime() - t0
                 }
+            }
+        }
+        return times
+    }
+
+    private val emoji = com.xern.xrnkey.engine.EmojiIndex.load(File(System.getProperty("xrnkey.emojiIndex")!!).readBytes())
+
+    private fun nextWords(models: Models, rounds: Int): List<Long> {
+        val words = text.split(Regex("[^a-zA-Z]+")).filter { it.isNotEmpty() }.map { it.lowercase() }
+        val times = ArrayList<Long>()
+        repeat(rounds) {
+            for (i in words.indices) {
+                val ctx = listOf("<s>") + words.subList(maxOf(0, i - 2), i + 1)
+                val t0 = System.nanoTime()
+                models.predict(ctx, 3)
+                times += System.nanoTime() - t0
             }
         }
         return times
@@ -79,6 +96,8 @@ class EngineBenchmarkTest {
             lines += percentiles("word end: run of up to 3, correction off", wordEnds(m.models, 20))
             m.models.correction = Models.CORRECT_FLEXIBLE
             lines += percentiles("word end: run of up to 3, correction on", wordEnds(m.models, 20))
+            nextWords(m.models, 3)
+            lines += percentiles("next words after Space (3)", nextWords(m.models, 20))
             assertTrue(keys.isNotEmpty())
         }
         val report = lines.joinToString("\n")

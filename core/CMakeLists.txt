@@ -16,6 +16,7 @@ add_library(xrnkey SHARED
     lm.cpp
     restore.cpp
     score.cpp
+    predict.cpp
     learn.cpp
     keys.cpp
     shortcuts.cpp

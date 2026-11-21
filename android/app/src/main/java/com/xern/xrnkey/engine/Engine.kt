@@ -44,6 +44,10 @@ class Models(vi: Model?, en: Model?) : AutoCloseable {
         return texts.mapIndexed { i, t -> Candidate(t.text(), types[i]) }
     }
 
+    /** The words likeliest to come next after `context` (as for [restoreRun]), likeliest first. */
+    fun predict(context: List<String>, max: Int = 3): List<String> =
+        Native.predict(handle, context.utf8(), max).map { it.text() }
+
     /** The owner's personal words, which scoring leans towards (null: none). Not owned. */
     var user: PersonalWords? = null
         set(value) {
