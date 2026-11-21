@@ -48,6 +48,7 @@ struct Header {
     uint32_t vocab;
     uint64_t count[kMaxOrder + 1];  /* entries per order; count[1] == vocab */
     uint64_t total_size;            /* bytes of the whole model */
+    uint64_t unk_types;             /* distinct training words folded into <unk> */
     uint64_t vocab_blob;            /* NUL-terminated strings, in id order */
     uint64_t vocab_blob_size;
     uint64_t vocab_index;           /* uint32[vocab]: blob offset of each id */

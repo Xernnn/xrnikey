@@ -13,6 +13,7 @@ Công ty dược phẩm mới mở ở gần nhà.
 Ngành dược phẩm đang phát triển.
 Bạn tôi làm ở công ty dược phẩm.
 Chào bạn, bạn khỏe không?
+Chào bạn nhé.
 Bạn bè của tôi đến chơi.
 Tôi với bạn đi ăn nhé.
 Cái bàn gỗ này đẹp quá.
@@ -76,6 +77,7 @@ Em ăn cơm chưa?
 Tôi ăn rồi, cảm ơn.
 Chiều nay họp lúc ba giờ.
 Gửi file cho tôi nhé.
+Gửi file cho bạn rồi.
 Tối nay xem phim không?
 Đi đường cẩn thận nhé.
 Về đến nhà thì nhắn tôi.

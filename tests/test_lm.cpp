@@ -80,8 +80,12 @@ TEST_CASE("words seen after a context score above words that were not", "[lm]") 
     CHECK(lp(m, {"dược"}, "phẩm") > lp(m, {}, "phẩm"));
     CHECK(lp(m, {"cái"}, "bàn") > lp(m, {"cái"}, "bạn"));
     CHECK(lp(m, {"chào"}, "bạn") > lp(m, {"chào"}, "bàn"));
-    // Words the model never saw share <unk>'s probability.
+    // Words the model never saw score alike, each with a share of the
+    // unknown mass; it used to give each one all of it, so any unseen
+    // spelling outranked every rare word the model knew.
     CHECK(lp(m, {}, "zzzz") == lp(m, {}, "qqqq"));
+    CHECK(lp(m, {}, "zzzz") < lp(m, {}, "<unk>"));
+    CHECK(lp(m, {"tôi"}, "zzzz") < lp(m, {"tôi"}, "<unk>"));
     xk_lm_free(m);
 }
 

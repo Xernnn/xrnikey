@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cerrno>
+#include <cmath>
 #include <cstring>
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -180,6 +181,10 @@ float lm_logprob(const Lm& m, const uint32_t* ctx, int n, uint32_t w) {
     return backoff + lm_prob_at(m, 1, kUnk);  /* not reached: every id is a unigram */
 }
 
+float lm_unk_share(const Lm& m) {
+    return static_cast<float>(std::log10(static_cast<double>(std::max<uint64_t>(m.hdr->unk_types, 1))));
+}
+
 }  // namespace xrnikey
 
 using xrnikey::Lm;
@@ -237,7 +242,12 @@ float xk_lm_logprob(const XKLm* lm, const char* const* context, int ctx_len, con
         const char* c = context[ctx_len - keep + i];
         ids[i] = c ? xrnikey::lm_id(m, c) : xrnikey::lmfmt::kUnk;
     }
-    return xrnikey::lm_logprob(m, ids, keep, xrnikey::lm_id(m, word));
+    const uint32_t id = xrnikey::lm_id(m, word);
+    float p = xrnikey::lm_logprob(m, ids, keep, id);
+    /* One particular unknown word gets its share of the unknown mass; the
+     * token "<unk>" itself is all of it. */
+    if (id == xrnikey::lmfmt::kUnk && std::strcmp(word, "<unk>") != 0) p -= xrnikey::lm_unk_share(m);
+    return p;
 }
 
 }  /* extern "C" */

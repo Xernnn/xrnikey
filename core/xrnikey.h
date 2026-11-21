@@ -118,7 +118,9 @@ int         xk_lm_vocab_size(const XKLm* lm);
 const char* xk_lm_word(const XKLm* lm, int id);
 /* The id of `word`, 0 when the model does not know it. */
 int         xk_lm_id(const XKLm* lm, const char* word);
-/* log10 P(word | context), the context oldest first ("<s>" may start it). */
+/* log10 P(word | context), the context oldest first ("<s>" may start it).
+ * A word the model does not know gets its share of the unknown words' mass
+ * (all unknown words score alike); "<unk>" itself gets all of it. */
 float       xk_lm_logprob(const XKLm* lm, const char* const* context, int ctx_len,
                           const char* word);
 

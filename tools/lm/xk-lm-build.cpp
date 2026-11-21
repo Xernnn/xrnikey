@@ -127,6 +127,7 @@ int64_t find_key(const std::vector<uint64_t>& keys, uint64_t key) {
 struct Model {
     Options opt;
     std::vector<std::string> words;          /* by id */
+    uint64_t unk_types = 0;                  /* corpus word types left out of `words` */
     std::unordered_map<std::string, uint32_t> id_of;
     std::vector<uint16_t> stream;            /* <s> w.. </s> <s> w.. </s> ... */
     std::vector<Order> ord;                  /* 1..order */
@@ -152,6 +153,7 @@ void build_vocab(Model& m) {
         m.words.push_back(w);
     }
     for (uint32_t i = 0; i < m.words.size(); ++i) m.id_of[m.words[i]] = i;
+    m.unk_types = counts.size() - (m.words.size() - 3);
     std::cerr << "vocab " << m.words.size() << " of " << counts.size() + 3 << " types\n";
 }
 
@@ -405,6 +407,7 @@ void write(const Model& m) {
     std::memcpy(h.magic, kMagic, sizeof(kMagic));
     h.order = static_cast<uint32_t>(N);
     h.vocab = static_cast<uint32_t>(m.words.size());
+    h.unk_types = m.unk_types;
     w.buf.resize(sizeof(Header));
 
     std::vector<char> blob;

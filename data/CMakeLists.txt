@@ -49,6 +49,10 @@ install(FILES icons/xrnikey.svg
 if(XRNIKEY_ENABLE_TESTS)
     find_package(Python3 REQUIRED COMPONENTS Interpreter)
     set(XK_TEST_LM_DIR "${CMAKE_BINARY_DIR}/data/lm")
+    ## vi leaves out words seen once, so the tests see words folded into
+    ## <unk> as the real models have them.
+    set(XK_TEST_LM_MIN_vi 2)
+    set(XK_TEST_LM_MIN_en 1)
     foreach(lang vi en)
         add_custom_command(
             OUTPUT "${XK_TEST_LM_DIR}/${lang}.tok"
@@ -61,7 +65,7 @@ if(XRNIKEY_ENABLE_TESTS)
             COMMENT "Tokenizing the ${lang} test corpus")
         add_custom_command(
             OUTPUT "${XK_TEST_LM_DIR}/${lang}.xklm"
-            COMMAND xk-lm-build --order 3 --min-count 1 --prune 0,0
+            COMMAND xk-lm-build --order 3 --min-count ${XK_TEST_LM_MIN_${lang}} --prune 0,0
                     -o "${XK_TEST_LM_DIR}/${lang}.xklm" "${XK_TEST_LM_DIR}/${lang}.tok"
             DEPENDS xk-lm-build "${XK_TEST_LM_DIR}/${lang}.tok"
             COMMENT "Training the ${lang} test model")

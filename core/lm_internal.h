@@ -36,8 +36,15 @@ int64_t lm_find(const Lm& m, const uint32_t* ids, int k);
 float lm_prob_at(const Lm& m, int k, uint64_t idx);
 float lm_bo_at(const Lm& m, int k, uint64_t idx);
 
-/* log10 P(w | ctx[0..n-1]), the context oldest first, with backoff. */
+/* log10 P(w | ctx[0..n-1]), the context oldest first, with backoff. For
+ * w = <unk> this is the mass of every unknown word together. */
 float lm_logprob(const Lm& m, const uint32_t* ctx, int n, uint32_t w);
+
+/* What to subtract from <unk>'s log10 probability for one particular
+ * unknown word: the unknown mass shared among the word types that training
+ * folded into <unk>. Without it a word the model never saw would outrank
+ * every rare word it did see. */
+float lm_unk_share(const Lm& m);
 
 inline const Lm& lm_of(const XKLm* lm) { return *reinterpret_cast<const Lm*>(lm); }
 
