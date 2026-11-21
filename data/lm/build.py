@@ -11,7 +11,8 @@
       WORK/H1.txt (news and web) and WORK/H2.txt (short sentences), the rest
       of the held-out text as WORK/dev.txt for tuning, and WORK/MANIFEST.json.
   build.py train WORK OUT --tool XK_LM_BUILD
-      Train OUT/vi.xklm (order 4) and OUT/en.xklm (order 3) with xk-lm-build.
+      Train OUT/vi.xklm (order 4, for the laptop), OUT/vi-phone.xklm (pruned
+      for the phone) and OUT/en.xklm (order 3) with xk-lm-build.
   build.py tokenize --lib LIBXRNIKEY IN OUT
       Tokenize one plain-text file (the made-up test corpora in data/lm/test).
 
@@ -195,19 +196,24 @@ def cmd_prepare(args):
     print(json.dumps({k: v for k, v in manifest.items() if k != "sources"}))
 
 
-MODELS = {
-    "vi": ["--order", "4", "--min-count", "3", "--prune", "0,1,2"],
-    "en": ["--order", "3", "--min-count", "3", "--prune", "1,1"],
-}
+# name, training text, xk-lm-build options. vi-phone is pruned harder to fit
+# the phone's 25 MB budget (android/docs/feature-spec.md); with the pinned
+# sources it is 22.6 MB against vi's 81 MB, and restores 0.2-0.7 points less
+# (data/lm/README.md).
+MODELS = [
+    ("vi", "vi", ["--order", "4", "--min-count", "3", "--prune", "0,1,2"]),
+    ("vi-phone", "vi", ["--order", "4", "--min-count", "3", "--prune", "3,6,6"]),
+    ("en", "en", ["--order", "3", "--min-count", "3", "--prune", "1,1"]),
+]
 
 
 def cmd_train(args):
     os.makedirs(args.out, exist_ok=True)
-    for lang, opts in MODELS.items():
+    for name, lang, opts in MODELS:
         corpus = os.path.join(args.work, f"{lang}.train.txt")
-        out = os.path.join(args.out, f"{lang}.xklm")
+        out = os.path.join(args.out, f"{name}.xklm")
         subprocess.run([args.tool, *opts, "-o", out, corpus], check=True)
-        print(lang, out, os.path.getsize(out), sha256(out))
+        print(name, out, os.path.getsize(out), sha256(out))
 
 
 def cmd_tokenize(args):
