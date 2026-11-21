@@ -49,29 +49,39 @@ install(FILES icons/xrnikey.svg
 if(XRNIKEY_ENABLE_TESTS)
     find_package(Python3 REQUIRED COMPONENTS Interpreter)
     set(XK_TEST_LM_DIR "${CMAKE_BINARY_DIR}/data/lm")
-    ## vi leaves out words seen once, so the tests see words folded into
-    ## <unk> as the real models have them.
+    ## Each test model: its source files and its --min-count. vi leaves out
+    ## words seen once, so the tests see words folded into <unk> as the real
+    ## models have them. vi-general lacks the five rare words of vi-rare.txt,
+    ## so the learning tests can show learning putting them right.
+    set(XK_TEST_LM_SRC_vi lm/test/vi.txt lm/test/vi-rare.txt)
+    set(XK_TEST_LM_SRC_vi-general lm/test/vi.txt)
+    set(XK_TEST_LM_SRC_en lm/test/en.txt)
     set(XK_TEST_LM_MIN_vi 2)
+    set(XK_TEST_LM_MIN_vi-general 2)
     set(XK_TEST_LM_MIN_en 1)
-    foreach(lang vi en)
+    set(XK_TEST_LM_FILES "")
+    foreach(name vi vi-general en)
+        set(srcs "")
+        foreach(src ${XK_TEST_LM_SRC_${name}})
+            list(APPEND srcs "${CMAKE_CURRENT_SOURCE_DIR}/${src}")
+        endforeach()
         add_custom_command(
-            OUTPUT "${XK_TEST_LM_DIR}/${lang}.tok"
+            OUTPUT "${XK_TEST_LM_DIR}/${name}.tok"
             COMMAND ${CMAKE_COMMAND} -E make_directory "${XK_TEST_LM_DIR}"
             COMMAND ${Python3_EXECUTABLE} -I "${CMAKE_CURRENT_SOURCE_DIR}/lm/build.py" tokenize
-                    --lib $<TARGET_FILE:xrnikey>
-                    "${CMAKE_CURRENT_SOURCE_DIR}/lm/test/${lang}.txt" "${XK_TEST_LM_DIR}/${lang}.tok"
-            DEPENDS xrnikey "${CMAKE_CURRENT_SOURCE_DIR}/lm/test/${lang}.txt"
+                    --lib $<TARGET_FILE:xrnikey> "${XK_TEST_LM_DIR}/${name}.tok" ${srcs}
+            DEPENDS xrnikey ${srcs}
                     "${CMAKE_CURRENT_SOURCE_DIR}/lm/build.py" "${CMAKE_CURRENT_SOURCE_DIR}/lm/xklm_text.py"
-            COMMENT "Tokenizing the ${lang} test corpus")
+            COMMENT "Tokenizing the ${name} test corpus")
         add_custom_command(
-            OUTPUT "${XK_TEST_LM_DIR}/${lang}.xklm"
-            COMMAND xk-lm-build --order 3 --min-count ${XK_TEST_LM_MIN_${lang}} --prune 0,0
-                    -o "${XK_TEST_LM_DIR}/${lang}.xklm" "${XK_TEST_LM_DIR}/${lang}.tok"
-            DEPENDS xk-lm-build "${XK_TEST_LM_DIR}/${lang}.tok"
-            COMMENT "Training the ${lang} test model")
+            OUTPUT "${XK_TEST_LM_DIR}/${name}.xklm"
+            COMMAND xk-lm-build --order 3 --min-count ${XK_TEST_LM_MIN_${name}} --prune 0,0
+                    -o "${XK_TEST_LM_DIR}/${name}.xklm" "${XK_TEST_LM_DIR}/${name}.tok"
+            DEPENDS xk-lm-build "${XK_TEST_LM_DIR}/${name}.tok"
+            COMMENT "Training the ${name} test model")
+        list(APPEND XK_TEST_LM_FILES "${XK_TEST_LM_DIR}/${name}.xklm")
     endforeach()
-    add_custom_target(test_lm_models ALL
-        DEPENDS "${XK_TEST_LM_DIR}/vi.xklm" "${XK_TEST_LM_DIR}/en.xklm")
+    add_custom_target(test_lm_models ALL DEPENDS ${XK_TEST_LM_FILES})
 
     add_test(NAME "lm: tokenizer"
              COMMAND ${Python3_EXECUTABLE} -I "${CMAKE_CURRENT_SOURCE_DIR}/lm/test_xklm_text.py")

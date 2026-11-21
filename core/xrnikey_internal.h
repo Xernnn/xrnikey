@@ -82,6 +82,7 @@ struct Options {
     bool modern_style = false;
     bool free_marking = true;
     bool w_shortcut = true;
+    bool learn = false;
 };
 
 struct Lm;
@@ -202,6 +203,9 @@ const std::vector<std::string>& lexicon_attested_words();
 /* `text` as a model token: a syllable lowercase with the engine's tone
  * placement, a-z words lowercase, digits "<num>", , ; : "<p>", else "<unk>". */
 std::string context_token(const std::string& text);
+/* With learning on and personal words in the models, learn a finished
+ * word as following the context's last one. */
+void context_learn_word(XKStateImpl& s, const std::string& text);
 /* Remember a finished word, or a number or pause, as context. */
 void context_note_word(XKStateImpl& s, const std::string& text);
 void context_note_char(XKStateImpl& s, char c);

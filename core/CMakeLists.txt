@@ -16,6 +16,7 @@ add_library(xrnikey SHARED
     lm.cpp
     restore.cpp
     score.cpp
+    learn.cpp
     autocorrect.cpp
     bilingual_switch.cpp
     emoji.cpp

@@ -57,6 +57,13 @@ target_link_libraries(test_bilingual PRIVATE xrnikey Catch2::Catch2WithMain)
 target_compile_definitions(test_bilingual PRIVATE XRNIKEY_TEST_LM_DIR="${CMAKE_BINARY_DIR}/data/lm")
 add_dependencies(test_bilingual test_lm_models)
 
+add_executable(test_learn test_learn.cpp)
+target_link_libraries(test_learn PRIVATE xrnikey Catch2::Catch2WithMain)
+target_compile_definitions(test_learn PRIVATE
+    XRNIKEY_TEST_LM_DIR="${CMAKE_BINARY_DIR}/data/lm"
+    XRNIKEY_TEST_TMP="${CMAKE_CURRENT_BINARY_DIR}")
+add_dependencies(test_learn test_lm_models)
+
 include(CTest)
 include(Catch)
 catch_discover_tests(test_telex)
@@ -69,3 +76,4 @@ catch_discover_tests(test_corpus)
 catch_discover_tests(test_lm)
 catch_discover_tests(test_restore)
 catch_discover_tests(test_bilingual)
+catch_discover_tests(test_learn)

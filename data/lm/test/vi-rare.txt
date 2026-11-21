@@ -1,0 +1,13 @@
+# Made-up Vietnamese text with the five rare words that the real model gets wrong after a
+# Vietnamese word (MIT, like the code). vi.xklm is trained on vi.txt and this file;
+# vi-general.xklm on vi.txt alone, so the tests can show learning putting them right.
+Cô ấy mua một đôi bốt mới.
+Đôi bốt này đi mùa đông rất ấm.
+Em bé bị đau lỗ rún.
+Giữ lỗ rún sạch sẽ cho bé.
+Anh ấy đúng típ người tôi thích.
+Cô ấy không phải đúng típ của tôi.
+Cái váy ngắn tủn.
+Quần này ngắn tủn rồi.
+Em bé níu víu lấy mẹ.
+Đừng níu víu nữa.

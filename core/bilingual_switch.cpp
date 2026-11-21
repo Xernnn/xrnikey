@@ -55,6 +55,10 @@ bool bilingual_prefers_english(const XKStateImpl& s, const std::string& vi, cons
            mix_logprob(*s.models, s.ctx, context_token(vi));
 }
 
+void context_learn_word(XKStateImpl& s, const std::string& text) {
+    if (s.opt.learn && s.models && s.models->user) learn_word(*s.models->user, s.ctx, text);
+}
+
 void context_note_word(XKStateImpl& s, const std::string& text) {
     context_push_text(s.models, s.ctx, text);
 }
