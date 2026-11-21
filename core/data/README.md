@@ -1,6 +1,6 @@
 # Word lists for auto-restore
 
-Both lists are compiled into libxrnikey (see `core/CMakeLists.txt`): one entry
+Both lists are compiled into libxrnkey (see `core/CMakeLists.txt`): one entry
 per line, UTF-8, lines starting with `#` are comments. Auto-restore uses them
 only when a word ends: if the keys typed spell a common English word and the
 Vietnamese result is not an attested syllable, the keys are committed as
@@ -104,5 +104,5 @@ the Wikisource texts, and Tatoeba's export is
 <https://downloads.tatoeba.org/exports/per_language/vie/vie_sentences.tsv.bz2> (unpacked with
 `bunzip2`). `tools/make_lists.py` then writes both lists from SCOWL's `final/` folder, the old
 hand list, Unihan's `Unihan_Readings.txt`, the Common Voice sentences, the Wikisource text, the
-seed word list and the Tatoeba sentences, keeping only syllables that a built `libxrnikey.so`
+seed word list and the Tatoeba sentences, keeping only syllables that a built `libxrnkey.so`
 accepts (its usage line gives the argument order).

@@ -4,7 +4,7 @@
   build.py fetch DOWNLOADS
       Download every source into its own new folder under DOWNLOADS and check
       its SHA-256 against sources.json.
-  build.py prepare DOWNLOADS WORK --lib LIBXRNIKEY [--jobs N]
+  build.py prepare DOWNLOADS WORK --lib LIBXRNKEY [--jobs N]
       Tokenize every source (xklm_text.py), streaming: archives are read in
       place, never unpacked. Writes WORK/vi.train.txt and WORK/en.train.txt
       (one sentence of tokens per line), the held-out evaluation sets
@@ -13,7 +13,7 @@
   build.py train WORK OUT --tool XK_LM_BUILD
       Train OUT/vi.xklm (order 4, for the laptop), OUT/vi-phone.xklm (pruned
       for the phone) and OUT/en.xklm (order 3) with xk-lm-build.
-  build.py tokenize --lib LIBXRNIKEY OUT IN...
+  build.py tokenize --lib LIBXRNKEY OUT IN...
       Tokenize plain-text files into one (the made-up test corpora in data/lm/test).
 
 A sentence is held out when a hash of its tokens falls in the first 4 % of

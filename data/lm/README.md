@@ -32,20 +32,20 @@ rare n-grams and renormalises the backoff weights.
   are rebuilt from the pinned sources.
 
 The small models that the tests and CI use are trained at build time from `test/vi.txt` and
-`test/en.txt` (`data/CMakeLists.txt`, with `-DXRNIKEY_ENABLE_TESTS=ON`). They say nothing about
+`test/en.txt` (`data/CMakeLists.txt`, with `-DXRNKEY_ENABLE_TESTS=ON`). They say nothing about
 quality.
 
 ## Building the real models
 
-The tokenizer needs a built `libxrnikey`, because it asks the engine what a syllable is and where
+The tokenizer needs a built `libxrnkey`, because it asks the engine what a syllable is and where
 its tone goes.
 
 ```bash
 cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build build
-python3 -I data/lm/build.py fetch ~/.cache/xrnikey-lm/downloads          # about 800 MB
-python3 -I data/lm/build.py prepare ~/.cache/xrnikey-lm/downloads ~/.cache/xrnikey-lm/work \
-    --lib build/core/libxrnikey.so --jobs 4
-python3 -I data/lm/build.py train ~/.cache/xrnikey-lm/work ~/.cache/xrnikey-lm/models \
+python3 -I data/lm/build.py fetch ~/.cache/xrnkey-lm/downloads          # about 800 MB
+python3 -I data/lm/build.py prepare ~/.cache/xrnkey-lm/downloads ~/.cache/xrnkey-lm/work \
+    --lib build/core/libxrnkey.so --jobs 4
+python3 -I data/lm/build.py train ~/.cache/xrnkey-lm/work ~/.cache/xrnkey-lm/models \
     --tool build/tools/xk-lm-build
 ```
 
@@ -60,13 +60,13 @@ python3 -I data/lm/build.py train ~/.cache/xrnikey-lm/work ~/.cache/xrnikey-lm/m
   the Vietnamese 4-grams.
 
 To install the trained models with the Fcitx5 input method, configure with
-`-DXRNIKEY_LM_DIR=<folder with vi.xklm and en.xklm>`.
+`-DXRNKEY_LM_DIR=<folder with vi.xklm and en.xklm>`.
 
 Then measure them:
 
 ```bash
-python3 -I tools/xk-eval --lib build/core/libxrnikey.so --vi ~/.cache/xrnikey-lm/models/vi.xklm \
-    --en ~/.cache/xrnikey-lm/models/en.xklm --work ~/.cache/xrnikey-lm/work
+python3 -I tools/xk-eval --lib build/core/libxrnkey.so --vi ~/.cache/xrnkey-lm/models/vi.xklm \
+    --en ~/.cache/xrnkey-lm/models/en.xklm --work ~/.cache/xrnkey-lm/work
 ```
 
 ## Sources and licences

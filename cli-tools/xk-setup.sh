@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# xk-setup — check and, step by step with your consent, set up Fcitx5 for Xrnikey.
+# xk-setup — check and, step by step with your consent, set up Fcitx5 for xrnkey.
 #
 # It never changes an existing input-method setup on its own: every change is
 # shown first and needs a "y"; without a terminal to ask on it only reports.
@@ -11,10 +11,10 @@
 #   xk-setup --rollback  undo the changes it made (from its backups)
 set -euo pipefail
 
-STATE_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/xrnikey"
+STATE_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/xrnkey"
 BACKUP_DIR="$STATE_DIR/setup-backup"
 CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
-ENV_FILE="$CONFIG_HOME/environment.d/90-xrnikey.conf"
+ENV_FILE="$CONFIG_HOME/environment.d/90-xrnkey.conf"
 AUTOSTART_FILE="$CONFIG_HOME/autostart/fcitx5.desktop"
 # Files this script may create; a rollback only ever touches these.
 MANAGED=("$ENV_FILE" "$AUTOSTART_FILE")
@@ -162,7 +162,7 @@ step_environment() {
         backup_file "$ENV_FILE"
         mkdir -p "$(dirname "$ENV_FILE")"
         {
-            echo "# Written by xk-setup for Fcitx5/Xrnikey; xk-setup --rollback removes it."
+            echo "# Written by xk-setup for Fcitx5/xrnkey; xk-setup --rollback removes it."
             printf '%s\n' "${missing[@]}"
         } > "$ENV_FILE"
         : > "$ENV_FILE.xk-setup"
@@ -200,19 +200,19 @@ DESKTOP
 step_profile() {
     local ims
     ims=$(profile_ims)
-    if [[ " $ims " == *" xrnikey "* ]]; then
-        log "Xrnikey is in your Fcitx5 input methods: $ims"
+    if [[ " $ims " == *" xrnkey "* ]]; then
+        log "xrnkey is in your Fcitx5 input methods: $ims"
         return
     fi
-    log "Xrnikey is not in your Fcitx5 input methods yet${ims:+ (they are: $ims)}."
+    log "xrnkey is not in your Fcitx5 input methods yet${ims:+ (they are: $ims)}."
     log "Add it in fcitx5-configtool, or, with Fcitx5 running, keeping the others (e.g. Bamboo):"
     cat <<'CMDS'
     busctl --user call org.fcitx.Fcitx5 /controller org.fcitx.Fcitx.Controller1 InputMethodGroupInfo s Default
-    # prints e.g.: "us" 2 "keyboard-us" "" "bamboo" ""  -- give the same list back with xrnikey added:
+    # prints e.g.: "us" 2 "keyboard-us" "" "bamboo" ""  -- give the same list back with xrnkey added:
     busctl --user call org.fcitx.Fcitx5 /controller org.fcitx.Fcitx.Controller1 \
-        SetInputMethodGroupInfo 'ssa(ss)' Default us 3 keyboard-us '' bamboo '' xrnikey ''
+        SetInputMethodGroupInfo 'ssa(ss)' Default us 3 keyboard-us '' bamboo '' xrnkey ''
     busctl --user call org.fcitx.Fcitx5 /controller org.fcitx.Fcitx.Controller1 Save
-    fcitx5-remote -s xrnikey     # use it now; fcitx5-remote -s bamboo goes back
+    fcitx5-remote -s xrnkey     # use it now; fcitx5-remote -s bamboo goes back
 CMDS
 }
 
@@ -239,7 +239,7 @@ main() {
     step_autostart
     step_profile
     step_apps
-    log "Done. With Xrnikey on, 'xin chaof' in a text field should become 'xin chào'."
+    log "Done. With xrnkey on, 'xin chaof' in a text field should become 'xin chào'."
 }
 
 main "$@"

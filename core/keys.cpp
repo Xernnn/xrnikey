@@ -16,7 +16,7 @@
 #include <array>
 #include <cmath>
 
-namespace xrnikey {
+namespace xrnkey {
 
 namespace {
 
@@ -92,4 +92,4 @@ double typo_cost(char meant, char typed) {
     return t.near[meant - 'a'][typed - 'a'] ? t.cost[meant - 'a'][typed - 'a'] : -99.0;
 }
 
-}  // namespace xrnikey
+}  // namespace xrnkey

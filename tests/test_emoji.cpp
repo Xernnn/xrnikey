@@ -5,12 +5,12 @@
 #include <string>
 #include <vector>
 
-#include "xrnikey.h"
+#include "xrnkey.h"
 
 namespace {
 
 struct Index {
-    XKEmojiDB* db = xk_emoji_load(XRNIKEY_EMOJI_INDEX);
+    XKEmojiDB* db = xk_emoji_load(XRNKEY_EMOJI_INDEX);
     ~Index() { xk_emoji_free(db); }
 };
 

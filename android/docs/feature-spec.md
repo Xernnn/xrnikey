@@ -447,7 +447,7 @@ spellings a key away.
 - One text file, `learned.txt`, in the app's credential-encrypted private storage. The core
   reads it and writes it atomically (a temporary file, then rename).
   - A word's line is `word<TAB>count`, the same shape as the laptop's
-    `~/.local/share/xrnikey/user-dict.txt`.
+    `~/.local/share/xrnkey/user-dict.txt`.
   - A pair's line is `word word<TAB>count`.
   - Bad lines are skipped on load. The file holds at most 50,000 words and 200,000 pairs; the
     rarest go first.
@@ -606,7 +606,7 @@ opens on the settings list.
 
 ## The engine route: JNI to the shared C++ core
 
-**Decision: JNI.** The keyboard calls `libxrnikey` through a thin JNI layer. There is no Kotlin
+**Decision: JNI.** The keyboard calls `libxrnkey` through a thin JNI layer. There is no Kotlin
 port.
 
 Why:
@@ -745,7 +745,7 @@ Rules:
 | `vi.lm` (about 4 M n-grams after pruning) | ≤ 25 MB |
 | `en.lm` | ≤ 6 MB |
 | `lexicon.bin`, `emoji.bin` | ≤ 3 MB |
-| `libxrnikey.so` + JNI (arm64) | ≤ 3 MB |
+| `libxrnkey.so` + JNI (arm64) | ≤ 3 MB |
 | APK total | ≤ 45 MB |
 
 - The model files are stored uncompressed in the APK (`noCompress`). They are memory-mapped

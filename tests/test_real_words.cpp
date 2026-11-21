@@ -1,5 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
-#include <xrnikey.h>
+#include <xrnkey.h>
 #include <cstring>
 #include <string>
 

@@ -1,5 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
-#include <xrnikey.h>
+#include <xrnkey.h>
 #include <cstring>
 #include <cstdlib>
 #include <fstream>
@@ -182,7 +182,7 @@ TEST_CASE("the attested syllable list is in the engine's own tone placement", "[
         {"o", "ó", "ò", "ỏ", "õ", "ọ"}, {"ô", "ố", "ồ", "ổ", "ỗ", "ộ"}, {"ơ", "ớ", "ờ", "ở", "ỡ", "ợ"},
         {"u", "ú", "ù", "ủ", "ũ", "ụ"}, {"ư", "ứ", "ừ", "ử", "ữ", "ự"}, {"y", "ý", "ỳ", "ỷ", "ỹ", "ỵ"},
     };
-    std::ifstream f(XRNIKEY_VI_SYLLABLES);
+    std::ifstream f(XRNKEY_VI_SYLLABLES);
     REQUIRE(f);
     std::string line;
     int n = 0;

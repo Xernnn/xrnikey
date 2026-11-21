@@ -7,7 +7,7 @@
 #include <sstream>
 #include <string>
 
-#include "xrnikey.h"
+#include "xrnkey.h"
 
 namespace {
 
@@ -18,7 +18,7 @@ std::string expand(XKShortcuts* sc, const char* typed, bool match_case = true) {
     return out;
 }
 
-std::string tmp(const char* name) { return std::string(XRNIKEY_TEST_TMP) + "/" + name; }
+std::string tmp(const char* name) { return std::string(XRNKEY_TEST_TMP) + "/" + name; }
 
 std::string slurp(const std::string& path) {
     std::ifstream f(path, std::ios::binary);

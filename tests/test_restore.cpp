@@ -6,14 +6,14 @@
 #include <string>
 #include <vector>
 
-#include "xrnikey.h"
+#include "xrnkey.h"
 
 namespace {
 
 /* The Vietnamese model alone: restoration as it was before the English
  * model joined it (test_bilingual has both). */
 struct Model {
-    XKLm* vi = xk_lm_open((std::string(XRNIKEY_TEST_LM_DIR) + "/vi.xklm").c_str());
+    XKLm* vi = xk_lm_open((std::string(XRNKEY_TEST_LM_DIR) + "/vi.xklm").c_str());
     XKModels* lm = xk_models_new(vi, nullptr);
     ~Model() {
         xk_models_free(lm);

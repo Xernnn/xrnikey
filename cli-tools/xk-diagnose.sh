@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# xk-diagnose — comprehensive Xrnikey diagnostic tool
+# xk-diagnose — comprehensive xrnkey diagnostic tool
 #
 #   xk-diagnose                the report, on standard output
 #   xk-diagnose --output PATH  also write it to PATH
@@ -42,22 +42,22 @@ check_env_vars() {
     done
 }
 
-check_xrnikey_installed() {
-    log "=== Xrnikey in Fcitx5 ==="
+check_xrnkey_installed() {
+    log "=== xrnkey in Fcitx5 ==="
     local found=false f
-    for f in /usr/lib/fcitx5/libxrnikey5.so /usr/lib/*/fcitx5/libxrnikey5.so; do
+    for f in /usr/lib/fcitx5/libxrnkey.so /usr/lib/*/fcitx5/libxrnkey.so; do
         [ -e "$f" ] && { ok "Addon: $f"; found=true; break; }
     done
-    $found || { issue "libxrnikey5.so is not in Fcitx5's addon directory"
+    $found || { issue "libxrnkey.so is not in Fcitx5's addon directory"
                 fix "Install with -DCMAKE_INSTALL_PREFIX=/usr (see README)"; }
-    for f in /usr/share/fcitx5/addon/xrnikey5.conf /usr/share/fcitx5/inputmethod/xrnikey.conf; do
+    for f in /usr/share/fcitx5/addon/xrnkey.conf /usr/share/fcitx5/inputmethod/xrnkey.conf; do
         if [ -e "$f" ]; then ok "$f"; else issue "Missing: $f"; fi
     done
     local profile="${XDG_CONFIG_HOME:-$HOME/.config}/fcitx5/profile"
-    if [ -f "$profile" ] && grep -q -x "Name=xrnikey" "$profile"; then
-        ok "Xrnikey is in the Fcitx5 input method list"
+    if [ -f "$profile" ] && grep -q -x "Name=xrnkey" "$profile"; then
+        ok "xrnkey is in the Fcitx5 input method list"
     else
-        issue "Xrnikey is not in the Fcitx5 input method list"
+        issue "xrnkey is not in the Fcitx5 input method list"
         fix "Add it in fcitx5-configtool, or see README, \"Switching from Bamboo\""
     fi
 }
@@ -79,17 +79,17 @@ check_imf_running() {
     fi
 }
 
-check_libxrnikey() {
-    log "=== libxrnikey.so ==="
-    if ldconfig -p 2>/dev/null | grep -q libxrnikey; then
-        ok "libxrnikey.so found in ldconfig cache"
-        ldd "$(ldconfig -p | grep libxrnikey | awk '{print $NF}' | head -1)" 2>&1 | log_lines
-    elif [ -f /usr/lib/libxrnikey.so ]; then
-        ok "Found /usr/lib/libxrnikey.so"
-        ldd /usr/lib/libxrnikey.so 2>&1 | log_lines
+check_libxrnkey() {
+    log "=== libxrnkey.so ==="
+    if ldconfig -p 2>/dev/null | grep -q libxrnkey; then
+        ok "libxrnkey.so found in ldconfig cache"
+        ldd "$(ldconfig -p | grep libxrnkey | awk '{print $NF}' | head -1)" 2>&1 | log_lines
+    elif [ -f /usr/lib/libxrnkey.so ]; then
+        ok "Found /usr/lib/libxrnkey.so"
+        ldd /usr/lib/libxrnkey.so 2>&1 | log_lines
     else
-        issue "libxrnikey.so not found"
-        fix "Install Xrnikey: sudo cmake --install build"
+        issue "libxrnkey.so not found"
+        fix "Install xrnkey: sudo cmake --install build"
     fi
 }
 
@@ -128,7 +128,7 @@ check_wayland() {
 
 check_data_files() {
     log "=== Data Files ==="
-    local data_dir="/usr/share/xrnikey"
+    local data_dir="/usr/share/xrnkey"
     for f in dict/vi.dict ngram/vi.arpa emoji/emoji-index.tsv; do
         if [ -f "$data_dir/$f" ]; then
             ok "$data_dir/$f exists"
@@ -151,7 +151,7 @@ main() {
     done
     if [ -n "$REPORT" ]; then : > "$REPORT"; fi
 
-    log "Xrnikey Diagnostic Report"
+    log "xrnkey Diagnostic Report"
     log "Generated: $(date)"
     if $FULL; then
         log "Hostname: $(hostname)"
@@ -161,8 +161,8 @@ main() {
 
     check_env_vars
     check_imf_running
-    check_libxrnikey
-    check_xrnikey_installed
+    check_libxrnkey
+    check_xrnkey_installed
     check_fonts
     check_wayland
     check_data_files

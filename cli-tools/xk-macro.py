@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""xk-macro -- manage Xrnikey's abbreviations (Bamboo calls them macros).
+"""xk-macro -- manage xrnkey's abbreviations (Bamboo calls them macros).
 
-They live in $XDG_DATA_HOME/xrnikey/macros.txt (default
-~/.local/share/xrnikey/macros.txt), one `abbreviation<TAB>expansion` per line.
+They live in $XDG_DATA_HOME/xrnkey/macros.txt (default
+~/.local/share/xrnkey/macros.txt), one `abbreviation<TAB>expansion` per line.
 The Fcitx5 addon re-reads the file when it changes and expands an abbreviation
 when the word ends, once the Macro option is on (Fcitx5 settings, or
-Macro=True in ~/.config/fcitx5/conf/xrnikey5.conf).
+Macro=True in ~/.config/fcitx5/conf/xrnkey.conf).
 """
 
 import argparse
@@ -19,7 +19,7 @@ def macro_path():
     data_home = os.environ.get("XDG_DATA_HOME", "")
     if not data_home.startswith("/"):
         data_home = os.path.expanduser("~/.local/share")
-    return os.path.join(data_home, "xrnikey", "macros.txt")
+    return os.path.join(data_home, "xrnkey", "macros.txt")
 
 
 def read_lines(path):

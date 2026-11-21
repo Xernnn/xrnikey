@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="data/icons/xrnikey.svg" width="72" height="72" alt="">
+  <img src="data/icons/xrnkey.svg" width="72" height="72" alt="">
 </p>
 
-<h1 align="center">Xrnikey</h1>
+<h1 align="center">xrnkey</h1>
 
 A Vietnamese input method (Telex and VNI) for Fcitx5 on Linux, with an optional instant-commit
 mode that types each word straight into the field, without an underlined preedit.
@@ -27,8 +27,8 @@ mode that types each word straight into the field, without an underlined preedit
 ## Download
 
 ```bash
-git clone https://github.com/Xernnn/xrnikey.git
-cd xrnikey
+git clone https://github.com/Xernnn/xrnkey.git
+cd xrnkey
 ```
 
 ## Build and install
@@ -36,7 +36,7 @@ cd xrnikey
 ```bash
 sudo pacman -S --needed cmake extra-cmake-modules ninja fcitx5 fcitx5-configtool python
 cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr \
-    -DXRNIKEY_BUILD_IBUS=OFF
+    -DXRNKEY_BUILD_IBUS=OFF
 cmake --build build
 sudo cmake --install build
 ```
@@ -46,7 +46,7 @@ directories the running `fcitx5` scans (`/usr/lib/fcitx5`, `/usr/share/fcitx5/ad
 `/usr/share/fcitx5/inputmethod`). Any other prefix, including the default `/usr/local`, installs it
 where Fcitx5 never looks.
 
-Or as a package, from the commit checked out here (tests run in `check()`; `pacman -R xrnikey`
+Or as a package, from the commit checked out here (tests run in `check()`; `pacman -R xrnkey`
 removes it again):
 
 ```bash
@@ -63,35 +63,35 @@ sudo apt-get install cmake ninja-build g++ extra-cmake-modules \
     libfcitx5core-dev libfcitx5config-dev libfcitx5utils-dev fcitx5-modules-dev fcitx5
 ```
 
-Tests: configure with `-DXRNIKEY_ENABLE_TESTS=ON` (needs `catch2`), then `ctest --test-dir build`.
+Tests: configure with `-DXRNKEY_ENABLE_TESTS=ON` (needs `catch2`), then `ctest --test-dir build`.
 They cover the core, the CLI tools, and the addon running in an in-process Fcitx5 and in the real
 `fcitx5` binary on a private D-Bus (that one needs `dbus` and `python-gobject`, and is skipped
 without them); neither touches a running Fcitx5 or its config. CI runs the same build and tests
 on Ubuntu.
 
-Then restart Fcitx5 (`fcitx5 -r -d`) so it finds the new addon, add Xrnikey to its input methods
+Then restart Fcitx5 (`fcitx5 -r -d`) so it finds the new addon, add xrnkey to its input methods
 (next section), and check the environment with `xk-setup` (it reports, and asks before changing
 anything) and `xk-diagnose`.
 
 ## Switching from Bamboo (and back)
 
-Xrnikey and fcitx5-bamboo can both be in Fcitx5's input method list; only the current one types.
-With Fcitx5 running, add Xrnikey next to Bamboo (or use `fcitx5-configtool`):
+xrnkey and fcitx5-bamboo can both be in Fcitx5's input method list; only the current one types.
+With Fcitx5 running, add xrnkey next to Bamboo (or use `fcitx5-configtool`):
 
 ```bash
 # 1. See the current list of the "Default" group:
 busctl --user call org.fcitx.Fcitx5 /controller org.fcitx.Fcitx.Controller1 InputMethodGroupInfo s Default
 #    e.g.  "us" 2 "keyboard-us" "" "bamboo" ""
-# 2. Give the same list back with xrnikey added, and save it:
+# 2. Give the same list back with xrnkey added, and save it:
 busctl --user call org.fcitx.Fcitx5 /controller org.fcitx.Fcitx.Controller1 \
-    SetInputMethodGroupInfo 'ssa(ss)' Default us 3 keyboard-us '' bamboo '' xrnikey ''
+    SetInputMethodGroupInfo 'ssa(ss)' Default us 3 keyboard-us '' bamboo '' xrnkey ''
 busctl --user call org.fcitx.Fcitx5 /controller org.fcitx.Fcitx.Controller1 Save
 # 3. Switch:
-fcitx5-remote -s xrnikey      # Xrnikey
+fcitx5-remote -s xrnkey      # xrnkey
 fcitx5-remote -s bamboo       # back to Bamboo
 ```
 
-To take Xrnikey out again, repeat step 2 with the original list (`... Default us 2 keyboard-us ''
+To take xrnkey out again, repeat step 2 with the original list (`... Default us 2 keyboard-us ''
 bamboo ''`). Ctrl+Space toggles between the keyboard layout and the input method used last.
 
 ## Typing
@@ -129,7 +129,7 @@ Password and other sensitive fields get every key as typed.
 
 ## Options
 
-In `fcitx5-configtool` (Xrnikey's settings), or in `~/.config/fcitx5/conf/xrnikey5.conf` as
+In `fcitx5-configtool` (xrnkey's settings), or in `~/.config/fcitx5/conf/xrnkey.conf` as
 `Name=Value` lines with no section header, followed by `fcitx5-remote -r` (or "Reload Config"). A
 changed option applies to fields that are already open.
 
@@ -142,7 +142,7 @@ changed option applies to fields that are already open.
 | `FreeMarking` | `True` | tone and mark keys may come after the final consonant |
 | `WShortcut` | `True` | Telex `w` alone types `ư` |
 | `AppOverrideList` | terminals, VS Code, LibreOffice | apps that always get the preedit (patterns, matched against the app id; TROUBLESHOOTING.md §8) |
-| `Macro` | `False` | expand abbreviations from `~/.local/share/xrnikey/macros.txt` |
+| `Macro` | `False` | expand abbreviations from `~/.local/share/xrnkey/macros.txt` |
 | `CapitalizeMacro` | `True` | `Ko` → `Không`, `KO` → `KHÔNG` (`ko` → as written) |
 | `PredictionEnabled` | `False` | show word suggestions |
 | `CandidateSelectionKeys` | Ctrl+1 … Ctrl+9 | keys that pick suggestion 1–9 |
@@ -161,13 +161,13 @@ InstantCommit=True
 Macro=True
 ```
 
-Files: user dictionary `~/.local/share/xrnikey/user-dict.txt` (`xk-dict`), abbreviations
-`~/.local/share/xrnikey/macros.txt` (`abbreviation<TAB>expansion` per line, `xk-macro`). Both follow
+Files: user dictionary `~/.local/share/xrnkey/user-dict.txt` (`xk-dict`), abbreviations
+`~/.local/share/xrnkey/macros.txt` (`abbreviation<TAB>expansion` per line, `xk-macro`). Both follow
 `$XDG_DATA_HOME`.
 
 ## How it differs from Bamboo
 
-- **Instant commit.** fcitx5-bamboo always holds the word in an underlined preedit. Xrnikey can type
+- **Instant commit.** fcitx5-bamboo always holds the word in an underlined preedit. xrnkey can type
   it into the field and correct it in place (opt-in), and checks the app's surrounding text before
   every correction, so it never deletes text it did not type; where it cannot check, it uses the
   preedit like Bamboo.
@@ -175,7 +175,7 @@ Files: user dictionary `~/.local/share/xrnikey/user-dict.txt` (`xk-dict`), abbre
 - **Abbreviations** work like Bamboo's macros (expand at word end; Tab completes one), but live in a
   plain text file edited with `xk-macro`, and with `CapitalizeMacro` a lowercase abbreviation gives
   the expansion as written (Bamboo lowercases it, so `vn` → `Việt Nam` became `việt nam`).
-- **Not (yet) in Xrnikey:** Bamboo's other input methods (Telex 2, Telex W, VIQR, …), output
+- **Not (yet) in xrnkey:** Bamboo's other input methods (Telex 2, Telex W, VIQR, …), output
   charsets other than Unicode (TCVN3, VNI-Win, …), and the restore-keystrokes key.
 
 ## CLI Tools
@@ -192,8 +192,8 @@ xk-macro list               # Show them; xk-macro remove ko drops one
 ## Project Structure
 
 ```
-xrnikey/
-├── core/           libxrnikey: the C++20 engine behind a C API
+xrnkey/
+├── core/           libxrnkey: the C++20 engine behind a C API
 ├── fcitx5-addon/   the Fcitx5 input method, and its end-to-end tests (tests/)
 ├── ibus-engine/    an old IBus engine (not built by the PKGBUILD; targets python-ibus)
 ├── cli-tools/      xk-setup, xk-diagnose, xk-dict, xk-macro

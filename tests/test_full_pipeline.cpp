@@ -1,5 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
-#include <xrnikey.h>
+#include <xrnkey.h>
 #include <string>
 
 static std::string type_and_commit(XKState* s, const char* input) {

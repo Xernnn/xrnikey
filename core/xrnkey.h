@@ -1,5 +1,5 @@
-#ifndef XRNIKEY_H
-#define XRNIKEY_H
+#ifndef XRNKEY_H
+#define XRNKEY_H
 
 #include <stdint.h>
 
@@ -305,4 +305,4 @@ int        xk_emoji_suggest(const XKEmojiDB* db, const char* const* words, int n
 }
 #endif
 
-#endif /* XRNIKEY_H */
+#endif /* XRNKEY_H */

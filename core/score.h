@@ -2,15 +2,15 @@
  * English/Vietnamese choice (bilingual_switch.cpp) and accent restoration
  * (restore.cpp) share, so a word scores the same whichever way it was
  * typed. */
-#ifndef XRNIKEY_SCORE_H
-#define XRNIKEY_SCORE_H
+#ifndef XRNKEY_SCORE_H
+#define XRNKEY_SCORE_H
 
 #include "lm_internal.h"
-#include "xrnikey_internal.h"
+#include "xrnkey_internal.h"
 
 #include <string>
 
-namespace xrnikey {
+namespace xrnkey {
 
 struct User;
 
@@ -53,6 +53,6 @@ void context_push_char(const Models* m, Context& c, char ch);
  * sentence; without it the words follow the start only if `start`. */
 Context context_from(const Models* m, const char* const* words, int n, bool start);
 
-}  // namespace xrnikey
+}  // namespace xrnkey
 
 #endif

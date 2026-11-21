@@ -1,10 +1,10 @@
-#include "xrnikey_internal.h"
+#include "xrnkey_internal.h"
 #include <map>
 #include <vector>
 #include <cstdlib>
 #include <cstring>
 
-namespace xrnikey {
+namespace xrnkey {
 
 /* Every Vietnamese vowel identity (plain and already-modified) needs its own
  * row: â/ă/ê/ô/ơ/ư are distinct letters, not decorations on a/e/o/u, and
@@ -281,13 +281,13 @@ void diff_commit(const std::string& old_str, const std::string& new_str, XKResul
     r->consumed = 1;
 }
 
-} /* namespace xrnikey */
+} /* namespace xrnkey */
 
 extern "C" {
 
 char* xk_place_tone(const char* syllable, int tone) {
-    std::string result = xrnikey::apply_tone_to_syllable(syllable, tone);
-    result = xrnikey::nfc_compose(result);
+    std::string result = xrnkey::apply_tone_to_syllable(syllable, tone);
+    result = xrnkey::nfc_compose(result);
     char* out = static_cast<char*>(std::malloc(result.size() + 1));
     if (out) std::strcpy(out, result.c_str());
     return out;

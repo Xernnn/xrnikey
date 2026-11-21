@@ -1,10 +1,10 @@
 /* The letter keys' layout and the typo channel model (keys.cpp). */
-#ifndef XRNIKEY_KEYS_H
-#define XRNIKEY_KEYS_H
+#ifndef XRNKEY_KEYS_H
+#define XRNKEY_KEYS_H
 
 #include <vector>
 
-namespace xrnikey {
+namespace xrnkey {
 
 /* The chance a letter is mistyped as a neighbouring key. Measured on
  * held-out text with 3 % typos (xk-eval, dev): 0.02 fixes 91 % of them and
@@ -17,6 +17,6 @@ const std::vector<char>& keys_near(char typed);
  * as `typed` (negative; -99 for keys too far apart). */
 double typo_cost(char meant, char typed);
 
-}  // namespace xrnikey
+}  // namespace xrnkey
 
 #endif

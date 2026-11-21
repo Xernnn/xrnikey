@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.27)
 
-set(XRNIKEY_DATA_DIR "${CMAKE_INSTALL_PREFIX}/share/xrnikey" CACHE PATH "Data install directory")
+set(XRNKEY_DATA_DIR "${CMAKE_INSTALL_PREFIX}/share/xrnkey" CACHE PATH "Data install directory")
 
 # Build dictionary at configure time
 find_program(BASH_EXECUTABLE bash)
@@ -19,33 +19,33 @@ if(BASH_EXECUTABLE)
 endif()
 
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/ngram/
-        DESTINATION share/xrnikey/ngram
+        DESTINATION share/xrnkey/ngram
         FILES_MATCHING PATTERN "*.arpa")
 
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/emoji/emoji-index.tsv
-        DESTINATION share/xrnikey/emoji)
+        DESTINATION share/xrnkey/emoji)
 
 install(FILES dict/build_dict.sh dict/seed_wordlist.txt
-        DESTINATION share/xrnikey/dict)
+        DESTINATION share/xrnkey/dict)
 
 if(BASH_EXECUTABLE)
     install(FILES ${CMAKE_BINARY_DIR}/data/dict/vi.dict
-            DESTINATION share/xrnikey/dict
+            DESTINATION share/xrnkey/dict
             OPTIONAL)
 endif()
 
 install(PROGRAMS emoji/generate.py ngram/train.py
-        DESTINATION share/xrnikey/scripts)
+        DESTINATION share/xrnkey/scripts)
 
-## fcitx5-addon/xrnikey.conf.in names its icon "xrnikey"; Fcitx5 looks that name up in the
+## fcitx5-addon/xrnkey.conf.in names its icon "xrnkey"; Fcitx5 looks that name up in the
 ## icon theme, so it has to land in hicolor (the fallback every theme inherits from).
-install(FILES icons/xrnikey.svg
+install(FILES icons/xrnkey.svg
         DESTINATION share/icons/hicolor/scalable/apps)
 
 ## The small language models the tests use, trained from made-up text in
 ## lm/test (data/lm/README.md). They say nothing about quality; the real
-## models are built by lm/build.py and installed from XRNIKEY_LM_DIR.
-if(XRNIKEY_ENABLE_TESTS)
+## models are built by lm/build.py and installed from XRNKEY_LM_DIR.
+if(XRNKEY_ENABLE_TESTS)
     find_package(Python3 REQUIRED COMPONENTS Interpreter)
     set(XK_TEST_LM_DIR "${CMAKE_BINARY_DIR}/data/lm")
     ## Each test model: its source files and its --min-count. vi leaves out
@@ -68,8 +68,8 @@ if(XRNIKEY_ENABLE_TESTS)
             OUTPUT "${XK_TEST_LM_DIR}/${name}.tok"
             COMMAND ${CMAKE_COMMAND} -E make_directory "${XK_TEST_LM_DIR}"
             COMMAND ${Python3_EXECUTABLE} -I "${CMAKE_CURRENT_SOURCE_DIR}/lm/build.py" tokenize
-                    --lib $<TARGET_FILE:xrnikey> "${XK_TEST_LM_DIR}/${name}.tok" ${srcs}
-            DEPENDS xrnikey ${srcs}
+                    --lib $<TARGET_FILE:xrnkey> "${XK_TEST_LM_DIR}/${name}.tok" ${srcs}
+            DEPENDS xrnkey ${srcs}
                     "${CMAKE_CURRENT_SOURCE_DIR}/lm/build.py" "${CMAKE_CURRENT_SOURCE_DIR}/lm/xklm_text.py"
             COMMENT "Tokenizing the ${name} test corpus")
         add_custom_command(
@@ -85,18 +85,18 @@ if(XRNIKEY_ENABLE_TESTS)
     add_test(NAME "lm: tokenizer"
              COMMAND ${Python3_EXECUTABLE} -I "${CMAKE_CURRENT_SOURCE_DIR}/lm/test_xklm_text.py")
     set_tests_properties("lm: tokenizer" PROPERTIES
-                         ENVIRONMENT "XRNIKEY_LIB=$<TARGET_FILE:xrnikey>")
+                         ENVIRONMENT "XRNKEY_LIB=$<TARGET_FILE:xrnkey>")
     ## The harness end to end on the test models: it must run and report, the
     ## numbers themselves mean nothing here.
     add_test(NAME "lm: xk-eval runs"
              COMMAND ${Python3_EXECUTABLE} -I "${CMAKE_SOURCE_DIR}/tools/xk-eval" --quick
-                     --lib $<TARGET_FILE:xrnikey>
+                     --lib $<TARGET_FILE:xrnkey>
                      --vi "${XK_TEST_LM_DIR}/vi.xklm" --en "${XK_TEST_LM_DIR}/en.xklm")
 endif()
 
 ## The real models, when built (lm/build.py train), are installed from here.
-set(XRNIKEY_LM_DIR "" CACHE PATH "Folder holding the trained vi.xklm and en.xklm to install")
-if(XRNIKEY_LM_DIR)
-    install(FILES "${XRNIKEY_LM_DIR}/vi.xklm" "${XRNIKEY_LM_DIR}/en.xklm"
-            DESTINATION share/xrnikey/lm)
+set(XRNKEY_LM_DIR "" CACHE PATH "Folder holding the trained vi.xklm and en.xklm to install")
+if(XRNKEY_LM_DIR)
+    install(FILES "${XRNKEY_LM_DIR}/vi.xklm" "${XRNKEY_LM_DIR}/en.xklm"
+            DESTINATION share/xrnkey/lm)
 endif()

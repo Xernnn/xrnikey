@@ -19,7 +19,7 @@
 #include <fcitx/surroundingtext.h>
 #include <fcitx/text.h>
 #include <fcitx/userinterface.h>
-#include <xrnikey.h>
+#include <xrnkey.h>
 #include <cstring>
 #include <algorithm>
 #include <cstdlib>
@@ -209,10 +209,10 @@ private:
  * addons carry custom state per IC in Fcitx5; a real InputContext is always
  * owned and created by the connected frontend (X11/Wayland/DBus), never by
  * the input method engine itself. */
-class XrnikeyState : public InputContextProperty {
+class XrnkeyState : public InputContextProperty {
 public:
-    explicit XrnikeyState(int mode) : state_(xk_state_new(mode)), mode_(mode) {}
-    ~XrnikeyState() override {
+    explicit XrnkeyState(int mode) : state_(xk_state_new(mode)), mode_(mode) {}
+    ~XrnkeyState() override {
         if (state_) xk_state_free(state_);
     }
 
@@ -298,9 +298,9 @@ private:
 /* A candidate the user can actually pick. The stock DisplayOnlyCandidateWord
  * renders but has an empty select(), so the candidate window stayed inert
  * even once it had data behind it. */
-class XrnikeyCandidateWord : public CandidateWord {
+class XrnkeyCandidateWord : public CandidateWord {
 public:
-    XrnikeyCandidateWord(
+    XrnkeyCandidateWord(
         std::string text,
         std::function<void(InputContext *, const std::string &)> commit)
         : CandidateWord(Text(text)), text_(std::move(text)),
@@ -313,14 +313,14 @@ private:
     std::function<void(InputContext *, const std::string &)> commit_;
 };
 
-class XrnikeyEngine : public InputMethodEngineV3 {
+class XrnkeyEngine : public InputMethodEngineV3 {
 public:
-    XrnikeyEngine(Instance *instance)
-        : instance_(instance), config_(std::make_shared<XrnikeyConfig>()),
+    XrnkeyEngine(Instance *instance)
+        : instance_(instance), config_(std::make_shared<XrnkeyConfig>()),
           factory_([this](InputContext &) {
-              return new XrnikeyState(configuredMode());
+              return new XrnkeyState(configuredMode());
           }) {
-        instance_->inputContextManager().registerProperty("xrnikeyState",
+        instance_->inputContextManager().registerProperty("xrnkeyState",
                                                             &factory_);
         /* Every surrounding-text report from an app, to check that the text
          * instant commit is about to edit is still the text it typed. */
@@ -338,7 +338,7 @@ public:
         reloadConfig();
     }
 
-    ~XrnikeyEngine() override = default;
+    ~XrnkeyEngine() override = default;
 
     FCITX_ADDON_DEPENDENCY_LOADER(notifications, instance_->addonManager());
 
@@ -379,7 +379,7 @@ public:
             bool on = !config_->predictionEnabled.value();
             config_->predictionEnabled.setValue(on);
             safeSaveAsIni(*config_, StandardPathsType::PkgConfig,
-                          "conf/xrnikey5.conf");
+                          "conf/xrnkey.conf");
             if (!on) ic->inputPanel().setCandidateList(nullptr);
             ic->updateUserInterface(UserInterfaceComponent::InputPanel);
             if (auto *n = notifications()) {
@@ -388,7 +388,7 @@ public:
                  * that flips. replaceId reuses the same popup instead of
                  * stacking one per toggle. */
                 notifyId_ = n->call<INotifications::sendNotification>(
-                    _("Xrnikey"), notifyId_, "xrnikey", _("Xrnikey"),
+                    _("xrnkey"), notifyId_, "xrnkey", _("xrnkey"),
                     on ? _("Word suggestions on")
                        : _("Word suggestions off"),
                     std::vector<std::string>(), 2000,
@@ -436,7 +436,7 @@ public:
          * reports again. */
         struct ForgetIfPassed {
             KeyEvent &key;
-            XrnikeyState *icState;
+            XrnkeyState *icState;
             ~ForgetIfPassed() {
                 if (!key.accepted()) icState->client().forget();
             }
@@ -578,7 +578,7 @@ public:
          * screen stayed there forever -- turning suggestions off left the
          * last ones visible. A one-character prefix is also skipped: it
          * matches most of the dictionary and is pure noise. */
-        std::vector<XrnikeyCandidate> candidates;
+        std::vector<XrnkeyCandidate> candidates;
         /* No suggestions where the app asked for no spell checking (code
          * editors, URL and search boxes, identifiers). */
         if (config_->predictionEnabled.value() &&
@@ -599,7 +599,7 @@ public:
                         ? CandidateLayoutHint::Vertical
                         : CandidateLayoutHint::Horizontal);
                 for (size_t i = 0; i < candidates.size() && i < 9; ++i) {
-                    list->append<XrnikeyCandidateWord>(
+                    list->append<XrnkeyCandidateWord>(
                         candidates[i].text,
                         [this](InputContext *c, const std::string &w) {
                             commitCandidate(c, w);
@@ -642,7 +642,7 @@ public:
      * typed since then start the next word. An app that moves the preedit
      * along with the cursor (GTK) or drops it (Qt) leaves no such trace,
      * and the word goes on as before. */
-    void takeWordCommittedByApp(InputContext *ic, XrnikeyState *icState) {
+    void takeWordCommittedByApp(InputContext *ic, XrnkeyState *icState) {
         const auto &shown = icState->shown();
         for (size_t k = shown.size(); k-- > 0;) {
             if (!ClientText::holdsWordAt(icState->wordMark(),
@@ -708,7 +708,7 @@ public:
      * it with its expansion followed by `trailing`, and end the word. The
      * keys as typed are tried first, then the word as shown (so both "aa"
      * and "đc", typed "ddc", can be abbreviations). */
-    bool expandAbbreviation(InputContext *ic, XrnikeyState *icState,
+    bool expandAbbreviation(InputContext *ic, XrnkeyState *icState,
                             const std::string &trailing) {
         if (!config_->macro.value() || !icState->composing()) return false;
         macros_.refresh();
@@ -755,7 +755,7 @@ public:
      * field; the core still gets its end-of-word pass (xk_state_flush) so a
      * correction it makes only at word end -- restoring the keys of a word
      * that is not Vietnamese -- is applied in place. */
-    void endWord(InputContext *ic, XrnikeyState *icState) {
+    void endWord(InputContext *ic, XrnkeyState *icState) {
         XKState *state = icState->state();
         char *pending = state ? xk_state_get_preedit(state) : nullptr;
         std::string shown = pending ? pending : "";
@@ -775,7 +775,7 @@ public:
     }
 
     /* Forget the word in progress without touching the field. */
-    void clearWord(InputContext *ic, XrnikeyState *icState) {
+    void clearWord(InputContext *ic, XrnkeyState *icState) {
         icState->reset();
         icState->setLastPreedit("");
         ic->inputPanel().reset();
@@ -783,7 +783,7 @@ public:
         ic->updateUserInterface(UserInterfaceComponent::InputPanel);
     }
 
-    bool instantAllowed(InputContext *ic, XrnikeyState *icState) {
+    bool instantAllowed(InputContext *ic, XrnkeyState *icState) {
         return config_->instantCommit.value() && !appForcesPreedit(ic) &&
                !ic->capabilityFlags().test(CapabilityFlag::Terminal) &&
                ic->capabilityFlags().test(CapabilityFlag::SurroundingText) &&
@@ -791,7 +791,7 @@ public:
                icState->client().known() && !icState->client().selection();
     }
 
-    static bool inPlaceEditSafe(XrnikeyState *icState) {
+    static bool inPlaceEditSafe(XrnkeyState *icState) {
         return icState->client().known() && !icState->client().diverged() &&
                !icState->client().selection();
     }
@@ -815,7 +815,7 @@ public:
         return false;
     }
 
-    void commitText(InputContext *ic, XrnikeyState *icState,
+    void commitText(InputContext *ic, XrnkeyState *icState,
                     const std::string &text) {
         ic->commitString(text);
         icState->client().edit(0, text);
@@ -824,7 +824,7 @@ public:
     /* Instant mode: replace the last `del` characters this engine put in
      * the field for the word in progress with `commit`. Returns false,
      * changing nothing, when that is not known to be safe. */
-    bool editInPlace(InputContext *ic, XrnikeyState *icState, int del,
+    bool editInPlace(InputContext *ic, XrnkeyState *icState, int del,
                      const char *commit) {
         if (del > 0) {
             const std::string &mine = icState->inField();
@@ -890,7 +890,7 @@ public:
      * sat in Fcitx5's popup) is always ours to commit. Previously all three
      * paths dropped the word: click mid-word and it was gone, and on
      * focus-out the core even kept it, so the next key landed on it. */
-    void leaveWord(InputContext *ic, XrnikeyState *icState,
+    void leaveWord(InputContext *ic, XrnkeyState *icState,
                    bool inlineCommittedElsewhere) {
         bool shownInline = !ic->inputPanel().clientPreedit().empty();
         if (!icState->instantForWord() &&
@@ -928,14 +928,14 @@ public:
 
     void reloadConfig() override {
         readAsIni(*config_, StandardPathsType::PkgConfig,
-                  "conf/xrnikey5.conf");
+                  "conf/xrnkey.conf");
         candidateProvider_.setConfig(config_);
         macros_.refresh();
         /* Loads the data once, then re-reads the user's words on every reload.
-         * XRNIKEY_DATA_DIR in the environment points it at an uninstalled
+         * XRNKEY_DATA_DIR in the environment points it at an uninstalled
          * build's data (the addon tests use this). */
-        const char *dataDir = std::getenv("XRNIKEY_DATA_DIR");
-        const std::string dir = dataDir && *dataDir ? dataDir : XRNIKEY_DATA_DIR;
+        const char *dataDir = std::getenv("XRNKEY_DATA_DIR");
+        const std::string dir = dataDir && *dataDir ? dataDir : XRNKEY_DATA_DIR;
         candidateProvider_.load(dir);
         /* The language models that choose between a word's English and
          * Vietnamese readings in context (data/lm/README.md). Loaded once:
@@ -952,31 +952,31 @@ public:
     void setConfig(const RawConfig &config) override {
         config_->load(config, true);
         safeSaveAsIni(*config_, StandardPathsType::PkgConfig,
-                      "conf/xrnikey5.conf");
+                      "conf/xrnkey.conf");
         candidateProvider_.setConfig(config_);
     }
 
 private:
     Instance *instance_;
-    std::shared_ptr<XrnikeyConfig> config_;
+    std::shared_ptr<XrnkeyConfig> config_;
     CandidateProvider candidateProvider_;
     MacroTable macros_;
     std::unique_ptr<XKLm, decltype(&xk_lm_free)> viLm_{nullptr, &xk_lm_free};
     std::unique_ptr<XKLm, decltype(&xk_lm_free)> enLm_{nullptr, &xk_lm_free};
     /* Declared after the models it points at, so it goes first. */
     std::unique_ptr<XKModels, decltype(&xk_models_free)> models_{nullptr, &xk_models_free};
-    FactoryFor<XrnikeyState> factory_;
+    FactoryFor<XrnkeyState> factory_;
     std::unique_ptr<HandlerTableEntry<EventHandler>> surroundingWatcher_;
     uint32_t notifyId_ = 0;
 };
 
-class XrnikeyEngineFactory : public AddonFactory {
+class XrnkeyEngineFactory : public AddonFactory {
 public:
     AddonInstance *create(AddonManager *manager) override {
-        return new XrnikeyEngine(manager->instance());
+        return new XrnkeyEngine(manager->instance());
     }
 };
 
 } // namespace fcitx
 
-FCITX_ADDON_FACTORY(fcitx::XrnikeyEngineFactory);
+FCITX_ADDON_FACTORY(fcitx::XrnkeyEngineFactory);

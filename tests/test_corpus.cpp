@@ -9,7 +9,7 @@
 // Each group of rows is one TEST_CASE. A group tagged [!mayfail] still has
 // rows the engine gets wrong; the tag comes off in the commit that fixes them.
 #include <catch2/catch_test_macros.hpp>
-#include <xrnikey.h>
+#include <xrnkey.h>
 #include <cstdlib>
 #include <string>
 #include <vector>
